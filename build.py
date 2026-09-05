@@ -9,8 +9,9 @@ Nuitka compiles Python to C and produces a normal native binary with a
 stable, cached onefile payload location.
 
 Usage:
-    python build.py            # release build -> dist/Vanta.exe
-    python build.py --debug    # keep a console window for troubleshooting
+    python build.py                  # onefile build -> dist/Vanta.exe
+    python build.py --standalone     # folder build -> dist/main.dist/ (zip for distribution)
+    python build.py --debug          # keep a console window for troubleshooting
 """
 
 import os
@@ -59,7 +60,7 @@ def check_compiler() -> None:
         )
 
 
-def build(debug: bool = False) -> int:
+def build(debug: bool = False, standalone: bool = False) -> int:
     if sys.version_info < (3, 10):
         print("[build] Python 3.10 or higher is required.", file=sys.stderr)
         return 1
@@ -67,14 +68,8 @@ def build(debug: bool = False) -> int:
     ensure_build_dependencies()
     check_compiler()
 
-    cmd = [
-        sys.executable, "-m", "nuitka",
+    onefile_flags = [] if standalone else [
         "--onefile",
-        "--standalone",
-        "--enable-plugin=pyqt6",
-        "--include-data-dir=icons=icons",
-        "--assume-yes-for-downloads",
-        "--output-dir=dist",
         # Stable, version-keyed onefile unpack location instead of a random
         # %TEMP%\\_MEIxxxx directory; cached across runs and re-extracted
         # exactly once per version.
@@ -82,6 +77,16 @@ def build(debug: bool = False) -> int:
         # The onefile payload compression (zstandard) can exhaust RAM on
         # low-memory machines mid-pack; ship the payload uncompressed.
         "--onefile-no-compression",
+    ]
+
+    cmd = [
+        sys.executable, "-m", "nuitka",
+        *onefile_flags,
+        "--standalone",
+        "--enable-plugin=pyqt6",
+        "--include-data-dir=icons=icons",
+        "--assume-yes-for-downloads",
+        "--output-dir=dist",
         # MSVC link-time codegen (/LTCG) exhausts RAM on low-memory machines
         # (C1002 "out of heap space in pass 2"); disable LTO and compile
         # serially to cap peak memory usage.
@@ -108,6 +113,27 @@ def build(debug: bool = False) -> int:
     result = subprocess.run(cmd, cwd=ROOT)
 
     exe_name = "Vanta.exe" if sys.platform == "win32" else "main.bin"
+
+    if standalone:
+        dist_folder = os.path.join(DIST_DIR, "main.dist")
+        if result.returncode == 0 and os.path.isdir(dist_folder):
+            total = sum(
+                os.path.getsize(os.path.join(dirpath, name))
+                for dirpath, _dirnames, filenames in os.walk(dist_folder)
+                for name in filenames
+            )
+            print(f"[build] OK: {dist_folder} ({total / (1024 * 1024):.1f} MiB total)")
+            print(
+                "[build] zip it for distribution: Compress-Archive -Path "
+                "dist/main.dist/* -DestinationPath dist/Vanta-1.8-standalone.zip -Force"
+            )
+        else:
+            print(
+                f"[build] FAILED: expected output folder not found at {dist_folder}",
+                file=sys.stderr,
+            )
+        return result.returncode
+
     exe_path = os.path.join(DIST_DIR, exe_name)
     if result.returncode == 0 and os.path.exists(exe_path):
         size_mib = os.path.getsize(exe_path) / (1024 * 1024)
@@ -118,4 +144,7 @@ def build(debug: bool = False) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(build(debug="--debug" in sys.argv))
+    sys.exit(build(
+        debug="--debug" in sys.argv,
+        standalone="--standalone" in sys.argv,
+    ))
