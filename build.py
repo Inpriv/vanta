@@ -82,6 +82,11 @@ def build(debug: bool = False) -> int:
         # The onefile payload compression (zstandard) can exhaust RAM on
         # low-memory machines mid-pack; ship the payload uncompressed.
         "--onefile-no-compression",
+        # MSVC link-time codegen (/LTCG) exhausts RAM on low-memory machines
+        # (C1002 "out of heap space in pass 2"); disable LTO and compile
+        # serially to cap peak memory usage.
+        "--lto=no",
+        "--jobs=1",
         f"--company-name={COMPANY}",
         f"--product-name={PRODUCT}",
         f"--file-version={FILE_VERSION}",
