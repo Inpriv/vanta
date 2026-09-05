@@ -1526,7 +1526,7 @@
         </span>
         <span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-          43.2 MB executable
+          94.6 MB executable
         </span>
       </div>
     </div>
@@ -1655,7 +1655,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>
         </div>
         <h3>Launch watchdog <span class="tag" style="background:var(--accent-soft);color:var(--accent);border:none;padding:1px 7px;border-radius:999px;font-size:10px;font-family:var(--mono);vertical-align:middle;">new in 1.7</span></h3>
-        <p>After spawning the game, Vanta polls the process every 0.5 s for up to 90 seconds and confirms the real Minecraft window actually appeared. If the game exits early, you get the exit code plus the last log lines instead of a silent hang.</p>
+        <p>After spawning the game, Vanta watches the game's own log output for up to 90 seconds and confirms startup the moment the render and audio stack come up. If the game exits early, you get the exit code plus the last log lines instead of a silent hang.</p>
       </div>
 
       <div class="feature-card">
@@ -1928,7 +1928,7 @@
         </div>
         <div class="spec-row">
           <div class="label">Executable size</div>
-          <div class="value">43.2 MB (Win)</div>
+          <div class="value">94.6 MB (Win)</div>
         </div>
         <div class="spec-row">
           <div class="label">Supported MC range</div>
@@ -1952,7 +1952,7 @@
         </div>
         <div class="spec-row">
           <div class="label">SHA256</div>
-          <div class="value" style="word-break: break-all; font-size: 11px;">7d94b3ed7780b5045e0451a2792b9368cd37a2b0d9ff9d229114ca2d8dfe9ddb</div>
+          <div class="value" style="word-break: break-all; font-size: 11px;">369ad2b5ae22f0b5c849915db3dffd2178bb4d23f91e9519f971079dde493892</div>
         </div>
       </div>
     </div>
@@ -2102,7 +2102,7 @@
 
     <div>
       <button class="hash-container" id="copyHashBtn" title="Click to copy SHA256">
-        <span class="hash-display" id="hashText">SHA256: 7d94b3ed7780b5045e0451a2792b9368cd37a2b0d9ff9d229114ca2d8dfe9ddb</span>
+        <span class="hash-display" id="hashText">SHA256: 369ad2b5ae22f0b5c849915db3dffd2178bb4d23f91e9519f971079dde493892</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" id="copyIcon">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -2548,7 +2548,7 @@
   /* ===== Copy SHA256 Hash Helper ===== */
   (function initCopyHash() {
     const btn = document.getElementById('copyHashBtn');
-    const rawHash = '7d94b3ed7780b5045e0451a2792b9368cd37a2b0d9ff9d229114ca2d8dfe9ddb';
+    const rawHash = '369ad2b5ae22f0b5c849915db3dffd2178bb4d23f91e9519f971079dde493892';
     if (!btn) return;
 
     btn.addEventListener('click', () => {
