@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Build artifacts (Nuitka + legacy PyInstaller)
+build/
+dist/
+output/
+*.build/
+*.dist/
+*.onefile-build/
+
+# Update / runtime leftovers
+*.old
+.Vanta.Update.part
+
+# Local archives & legacy trees (never commit)
+backup (do not touch)/
+abandoned (do not touch)/
