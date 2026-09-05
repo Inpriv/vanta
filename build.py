@@ -24,8 +24,8 @@ DIST_DIR = os.path.join(ROOT, "dist")
 
 COMPANY = "Inpriv Labs"
 PRODUCT = "Vanta Launcher"
-VERSION = "1.7.0"
-FILE_VERSION = "1.7.0.0"
+VERSION = "1.8.0"
+FILE_VERSION = "1.8.0.0"
 DESCRIPTION = "Vanta Minecraft Launcher"
 COPYRIGHT = "Copyright (c) 2026 Inpriv Labs"
 ICON = "icons/icon.ico"

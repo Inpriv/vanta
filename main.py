@@ -42,7 +42,7 @@ import minecraft_launcher_lib
 import minecraft_launcher_lib.runtime
 import minecraft_launcher_lib.fabric
 
-APP_VERSION = "1.7"
+APP_VERSION = "1.8"
 
 # Seconds the launch watchdog waits before considering the game confirmed running.
 STARTUP_CONFIRM_SECONDS = 90
