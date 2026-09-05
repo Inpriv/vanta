@@ -17,3 +17,6 @@ output/
 # Local archives & legacy trees (never commit)
 backup (do not touch)/
 abandoned (do not touch)/
+
+# Cloudflare
+.wrangler/

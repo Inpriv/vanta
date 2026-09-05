@@ -1,0 +1,4 @@
+# Cloudflare Pages configuration for the getvanta.xyz website (static).
+# Deploy with: npx wrangler pages deploy --project-name=getvanta
+name = "getvanta"
+pages_build_output_dir = "static"
