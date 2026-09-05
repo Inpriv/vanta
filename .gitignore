@@ -20,3 +20,8 @@ abandoned (do not touch)/
 
 # Cloudflare
 .wrangler/
+
+# Build scratch
+nuitka-crash-report.xml
+kilo-*.txt
+dist-kilo/
