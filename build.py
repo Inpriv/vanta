@@ -79,6 +79,9 @@ def build(debug: bool = False) -> int:
         # %TEMP%\\_MEIxxxx directory; cached across runs and re-extracted
         # exactly once per version.
         "--onefile-tempdir-spec={CACHE_DIR}/{PRODUCT}/{VERSION}",
+        # The onefile payload compression (zstandard) can exhaust RAM on
+        # low-memory machines mid-pack; ship the payload uncompressed.
+        "--onefile-no-compression",
         f"--company-name={COMPANY}",
         f"--product-name={PRODUCT}",
         f"--file-version={FILE_VERSION}",
