@@ -4,7 +4,9 @@ import uuid
 import json
 import subprocess
 import shutil
+import re
 import base64
+import glob
 import time
 import hashlib
 import urllib.parse
@@ -33,7 +35,7 @@ from PyQt6.QtCore import (
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QComboBox, QPushButton, QMessageBox, QFrame, QLabel,
-    QStackedWidget, QSlider, QCheckBox, QListWidget, QListWidgetItem, QProgressBar,
+    QStackedWidget, QSlider, QCheckBox, QListWidget, QListWidgetItem, QProgressBar, QScrollArea,
     QGraphicsDropShadowEffect, QDialog, QAbstractItemView, QGraphicsBlurEffect
 )
 from PyQt6.QtGui import QColor, QFont, QImage, QPainter, QBrush, QPolygon, QIcon, QPixmap, QLinearGradient, QPainterPath, QPen
@@ -42,7 +44,7 @@ import minecraft_launcher_lib
 import minecraft_launcher_lib.runtime
 import minecraft_launcher_lib.fabric
 
-APP_VERSION = "1.8"
+APP_VERSION = "1.9"
 
 # Seconds the launch watchdog waits before considering the game confirmed running.
 STARTUP_CONFIRM_SECONDS = 90
@@ -308,6 +310,119 @@ def get_expected_runtime_name(version: str) -> str:
     except Exception:
         pass
     return "jre-legacy"  # Java 8
+
+
+RUNTIME_JAVA_MAJOR = {
+    "java-runtime-delta": 21,
+    "java-runtime-gamma": 17,
+    "java-runtime-alpha": 16,
+    "jre-legacy": 8,
+}
+
+
+def _parse_java_major_version(text: str) -> Optional[int]:
+    """Extract the major Java version from `java -version` output (e.g. 21, 17, 8)."""
+    match = re.search(r'(?:openjdk|java) version "([^"]+)"', text)
+    if not match:
+        return None
+    parts = match.group(1).split(".")
+    try:
+        if parts[0] == "1" and len(parts) > 1:
+            return int(re.match(r"\d+", parts[1]).group())
+        return int(re.match(r"\d+", parts[0]).group())
+    except (ValueError, IndexError, AttributeError):
+        return None
+
+
+def probe_java_executable(java_path: str) -> Optional[int]:
+    """Return the major Java version if `java_path` actually executes, else None.
+
+    This is the ground-truth check: on Windows, `shutil.which("java")` can find
+    the Microsoft Store alias stub (a non-executable reparse point), so the only
+    reliable test is running the binary.
+    """
+    try:
+        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        result = subprocess.run(
+            [java_path, "-version"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            creationflags=creationflags,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    output = (result.stderr or "") + (result.stdout or "")
+    return _parse_java_major_version(output)
+
+
+def find_system_java(min_major: Optional[int] = None) -> Optional[str]:
+    """Locate a *working* system Java installation and return its java executable path.
+
+    Never trusts `shutil.which` alone: every candidate is probe-executed with
+    `java -version`. If `min_major` is given, only installations whose major
+    version is >= min_major are accepted. Among acceptable candidates the one
+    with the highest version wins.
+    """
+    candidates: List[str] = []
+
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        candidates.append(os.path.join(java_home, "bin", "java.exe"))
+        candidates.append(os.path.join(java_home, "bin", "java"))
+
+    for name in ("java", "javaw"):
+        found = shutil.which(name)
+        if found:
+            candidates.append(found)
+
+    program_bases = [
+        os.environ.get("ProgramFiles"),
+        os.environ.get("ProgramFiles(x86)"),
+        os.environ.get("LOCALAPPDATA"),
+        os.environ.get("ProgramData"),
+    ]
+    glob_patterns = [
+        os.path.join("Java", "*", "bin", "java.exe"),
+        os.path.join("Eclipse Adoptium", "*", "bin", "java.exe"),
+        os.path.join("Microsoft", "jdk*", "bin", "java.exe"),
+        os.path.join("Zulu", "*", "bin", "java.exe"),
+        os.path.join("Amazon Corretto", "*", "bin", "java.exe"),
+        os.path.join("BellSoft", "*", "bin", "java.exe"),
+        os.path.join("AdoptOpenJDK", "*", "bin", "java.exe"),
+        os.path.join("Programs", "Eclipse Adoptium", "*", "bin", "java.exe"),
+        os.path.join("Programs", "Java", "*", "bin", "java.exe"),
+    ]
+    for base in program_bases:
+        if not base or not os.path.isdir(base):
+            continue
+        for pattern in glob_patterns:
+            try:
+                for hit in glob.glob(os.path.join(base, pattern)):
+                    candidates.append(hit)
+            except OSError:
+                continue
+
+    best_path: Optional[str] = None
+    best_major = -1
+    seen = set()
+    for candidate in candidates:
+        normalized = os.path.normpath(candidate)
+        if normalized in seen or not os.path.exists(normalized):
+            continue
+        seen.add(normalized)
+        major = probe_java_executable(normalized)
+        if major is None:
+            continue
+        if min_major is not None and major < min_major:
+            continue
+        if major > best_major:
+            best_major = major
+            best_path = normalized
+
+    return best_path
 
 
 def matches_mod(filename: str, mod_id: str) -> bool:
@@ -857,6 +972,21 @@ class LaunchWorker(QThread):
                         if legacy_exec and os.path.exists(legacy_exec):
                             options["executablePath"] = legacy_exec
 
+            if "executablePath" not in options:
+                system_java = find_system_java()
+                if system_java:
+                    options["executablePath"] = system_java
+
+            if "executablePath" not in options:
+                self.error_occurred.emit(
+                    "Java environment not found.\n\n"
+                    "Vanta could not find a working Java installation.\n"
+                    "Start the launch again and accept the prompt to download\n"
+                    "the Java runtime automatically, or install OpenJDK 17 or 21\n"
+                    "(e.g. from https://adoptium.net)."
+                )
+                return
+
             command = minecraft_launcher_lib.command.get_minecraft_command(
                 target_version,
                 self.minecraft_dir,
@@ -914,11 +1044,13 @@ class LaunchWorker(QThread):
                 watcher.close()
                 log_file.close()
 
-        except FileNotFoundError:
+        except FileNotFoundError as file_err:
             self.error_occurred.emit(
-                "Java environment not found.\n\n"
-                "Please ensure Java (OpenJDK 17 or 21 recommended) "
-                "is installed and present in your system's PATH."
+                "A required file could not be found:\n\n"
+                f"{file_err.filename or file_err}\n\n"
+                "If this refers to Java, restart the launcher and accept the\n"
+                "prompt to download the Java runtime automatically, or install\n"
+                "OpenJDK 17 or 21 (e.g. from https://adoptium.net)."
             )
         except Exception as e:
             if not self._aborted:
@@ -3435,27 +3567,34 @@ class MinecraftLauncher(QMainWindow):
                 required_runtime, self.minecraft_dir
             )
 
-        if not java_exec or not os.path.exists(java_exec):
-            if not shutil.which("java"):
-                def on_download():
-                    self._set_ui_enabled(False)
-                    self._show_progress(True, "Downloading Java")
-                    self._java_worker = JavaDownloadWorker(required_runtime, self.minecraft_dir)
-                    self._register_worker(self._java_worker)
-                    self._java_worker.progress.connect(self._on_java_progress)
-                    self._java_worker.completed.connect(
-                        lambda: start_launch(
-                            minecraft_launcher_lib.runtime.get_executable_path(required_runtime, self.minecraft_dir)
-                        )
-                    )
-                    self._java_worker.error.connect(self._on_java_error)
-                    self._java_worker.start()
+        if java_exec and not os.path.exists(java_exec):
+            java_exec = None
 
-                if not self._prompt_java_download(required_runtime, on_download):
-                    self._launch_in_progress = False
-                return
-            else:
-                java_exec = None
+        if not java_exec:
+            min_major = RUNTIME_JAVA_MAJOR.get(required_runtime, 17)
+            java_exec = find_system_java(min_major)
+
+        if not java_exec:
+            def on_download():
+                self._set_ui_enabled(False)
+                self._show_progress(True, "Downloading Java")
+                self._java_worker = JavaDownloadWorker(required_runtime, self.minecraft_dir)
+                self._register_worker(self._java_worker)
+                self._java_worker.progress.connect(self._on_java_progress)
+                self._java_worker.completed.connect(
+                    lambda: start_launch(
+                        minecraft_launcher_lib.runtime.get_executable_path(
+                            required_runtime, self.minecraft_dir
+                        )
+                        or find_system_java()
+                    )
+                )
+                self._java_worker.error.connect(self._on_java_error)
+                self._java_worker.start()
+
+            if not self._prompt_java_download(required_runtime, on_download):
+                self._launch_in_progress = False
+            return
 
         start_launch(java_exec)
 

@@ -25,8 +25,8 @@ DIST_DIR = os.path.join(ROOT, "dist")
 
 COMPANY = "Inpriv Labs"
 PRODUCT = "Vanta Launcher"
-VERSION = "1.8.0"
-FILE_VERSION = "1.8.0.0"
+VERSION = "1.9.0"
+FILE_VERSION = "1.9.0.0"
 DESCRIPTION = "Vanta Minecraft Launcher"
 COPYRIGHT = "Copyright (c) 2026 Inpriv Labs"
 ICON = "icons/icon.ico"
@@ -125,7 +125,7 @@ def build(debug: bool = False, standalone: bool = False) -> int:
             print(f"[build] OK: {dist_folder} ({total / (1024 * 1024):.1f} MiB total)")
             print(
                 "[build] zip it for distribution: Compress-Archive -Path "
-                "dist/main.dist/* -DestinationPath dist/Vanta-1.8-standalone.zip -Force"
+                "dist/main.dist/* -DestinationPath dist/Vanta-1.9-standalone.zip -Force"
             )
         else:
             print(
