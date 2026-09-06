@@ -85,6 +85,7 @@ def build(debug: bool = False, standalone: bool = False) -> int:
         "--standalone",
         "--enable-plugin=pyqt6",
         "--include-data-dir=icons=icons",
+        "--include-package-data=minecraft_launcher_lib",
         "--assume-yes-for-downloads",
         "--output-dir=dist",
         # MSVC link-time codegen (/LTCG) exhausts RAM on low-memory machines

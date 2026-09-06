@@ -76,7 +76,7 @@ Vanta is MIT-licensed open source, contains **no telemetry**, and talks only to 
 Every release publishes its SHA-256 on the release page. Current (v1.9):
 
 ```
-5a516377fc15b5df039780dde39f5c97ee7912f63e49e69dae4499caefb1045a
+5855807d117fe2c37c8a854a6de1900c73160c9e2b7dc6f169af7b25188c7489
 ```
 
 ```powershell
@@ -86,7 +86,7 @@ Get-FileHash .\Vanta.exe -Algorithm SHA256
 The standalone ZIP (`Vanta-1.9-standalone.zip`) hashes to:
 
 ```
-d2ad50a7e85d14b0e85d3ea0d420def94e9834addffaf1e0775b8d30d9174730
+0423ead6e6544c0ae7016c3f725124af02bfcf91fb879844b1b9ea3230e973d5
 ```
 
 ## Security

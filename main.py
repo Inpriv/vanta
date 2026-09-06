@@ -2114,7 +2114,7 @@ class SplashScreen(QWidget):
         painter.drawText(
             QRect(0, 94, w, 32),
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
-            "Vanta",
+            f"Vanta v{APP_VERSION}",
         )
 
         painter.setPen(QColor("#8E8E93"))
@@ -2569,14 +2569,14 @@ class MinecraftLauncher(QMainWindow):
         if visible:
             self.play_stack.setCurrentIndex(1)
             self.progress_bar.setValue(0)
-            self.progress_bar.setFormat(f"{text} %p%" if text else "%p%")
+            self.progress_bar.setFormat(f"{text} · v{APP_VERSION} %p%" if text else f"v{APP_VERSION} %p%")
         else:
             self.play_stack.setCurrentIndex(0)
             self.play_button.setEnabled(True)
             self.play_button.setText("Play")
 
     def _init_ui(self) -> None:
-        self.setWindowTitle("Vanta Launcher")
+        self.setWindowTitle(f"Vanta Launcher v{APP_VERSION}")
 
         icon_path = os.path.join(_resource_base(), "icons", "icon.ico")
 
