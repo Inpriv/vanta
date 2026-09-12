@@ -25,11 +25,16 @@ DIST_DIR = os.path.join(ROOT, "dist")
 
 COMPANY = "Inpriv Labs"
 PRODUCT = "Vanta Launcher"
-VERSION = "1.9.0"
-FILE_VERSION = "1.9.0.0"
+VERSION = "2.0.0"
+FILE_VERSION = "2.0.0.0"
 DESCRIPTION = "Vanta Minecraft Launcher"
 COPYRIGHT = "Copyright (c) 2026 Inpriv Labs"
 ICON = "icons/icon.ico"
+# Bundled into the executable so main.py can read its own version from
+# the same place the GitHub update manifest lives. version.json stays the
+# single source of truth — bump `latest` (and `VERSION` above) together
+# at release time.
+VERSION_FILENAME = "version.json"
 
 BUILD_DEPS = ("nuitka", "zstandard")
 
@@ -85,6 +90,11 @@ def build(debug: bool = False, standalone: bool = False) -> int:
         "--standalone",
         "--enable-plugin=pyqt6",
         "--include-data-dir=icons=icons",
+        # Bundle version.json so the launcher's self-reported version
+        # always matches the update manifest. main.py reads it at runtime
+        # via _resource_base()/VERSION_FILENAME; APP_VERSION in main.py is
+        # only the dev-mode fallback.
+        f"--include-data-file={VERSION_FILENAME}={VERSION_FILENAME}",
         "--include-package-data=minecraft_launcher_lib",
         "--assume-yes-for-downloads",
         "--output-dir=dist",
@@ -126,7 +136,7 @@ def build(debug: bool = False, standalone: bool = False) -> int:
             print(f"[build] OK: {dist_folder} ({total / (1024 * 1024):.1f} MiB total)")
             print(
                 "[build] zip it for distribution: Compress-Archive -Path "
-                "dist/main.dist/* -DestinationPath dist/Vanta-1.9-standalone.zip -Force"
+                f"dist/main.dist/* -DestinationPath dist/Vanta-{VERSION}-standalone.zip -Force"
             )
         else:
             print(

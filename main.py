@@ -36,7 +36,8 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QComboBox, QPushButton, QMessageBox, QFrame, QLabel,
     QStackedWidget, QSlider, QCheckBox, QListWidget, QListWidgetItem, QProgressBar, QScrollArea,
-    QGraphicsDropShadowEffect, QDialog, QAbstractItemView, QGraphicsBlurEffect
+    QGraphicsDropShadowEffect, QDialog, QAbstractItemView, QGraphicsBlurEffect,
+    QGraphicsOpacityEffect
 )
 from PyQt6.QtGui import QColor, QFont, QImage, QPainter, QBrush, QPolygon, QIcon, QPixmap, QLinearGradient, QPainterPath, QPen
 
@@ -44,13 +45,45 @@ import minecraft_launcher_lib
 import minecraft_launcher_lib.runtime
 import minecraft_launcher_lib.fabric
 
-APP_VERSION = "1.9"
+APP_VERSION = "2.0"
+
+# version.json is the single source of truth for the launcher's version.
+# It's bundled into the executable by build.py (--include-data-file) and
+# read at startup so the displayed version always matches the update
+# manifest's `latest` field. APP_VERSION above is only the dev-mode fallback
+# when running from source (version.json next to main.py).
+VERSION_FILENAME = "version.json"
+
+
+def _load_bundled_version() -> str:
+    """Read the launcher's own version from the bundled version.json.
+
+    Falls back to APP_VERSION if the file can't be read (dev runs, broken
+    bundle, etc.) so the launcher never ends up with an empty version
+    string in the UI.
+    """
+    try:
+        import json as _json
+        # _resource_base() resolves the bundled-data path in both source
+        # and frozen/onefile modes.
+        path = os.path.join(_resource_base(), VERSION_FILENAME)
+        with open(path, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+        latest = data.get("latest", "")
+        # `latest` is stored as "vX.Y"; strip the "v" so it matches the
+        # shape APP_VERSION expects (just the version digits).
+        return str(latest).lstrip("v") or APP_VERSION
+    except Exception:
+        return APP_VERSION
+
+
+APP_VERSION_RUNTIME = _load_bundled_version()
 
 # Seconds the launch watchdog waits before considering the game confirmed running.
 STARTUP_CONFIRM_SECONDS = 90
 
 API_HEADERS = {
-    "User-Agent": f"VantaLauncher/{APP_VERSION} (+https://github.com/inpriv/vanta; support@getvanta.xyz)"
+    "User-Agent": f"VantaLauncher/{APP_VERSION_RUNTIME} (+https://github.com/inpriv/vanta; support@getvanta.xyz)"
 }
 
 UPDATE_MANIFEST_URL = "https://raw.githubusercontent.com/inpriv/vanta/refs/heads/main/version.json"
@@ -318,6 +351,42 @@ RUNTIME_JAVA_MAJOR = {
     "java-runtime-alpha": 16,
     "jre-legacy": 8,
 }
+
+# Mojang shipped the native Vulkan renderer in Minecraft 26.2 "Chaos Cubed"
+# (released June 16, 2026, alongside the "Vibrant Visuals" transition). Older
+# versions only have an OpenGL path in the official client, so this switch is
+# meaningful from 26.2 onward. The launcher enables it by writing the new
+# `preferredGraphicsBackend:vulkan` line into options.txt; Mojang's renderer
+# loads its own LWJGL3 Vulkan bindings, so no special JVM flag is needed.
+NATIVE_VULKAN_MIN_VERSION = (26, 2, 0)
+
+# Default version selected when there's no saved preference (fresh
+# install, cleared settings, etc.). 26.2 is Mojang's current stable
+# release and the first version with the native Vulkan renderer.
+_DEFAULT_VERSION = "26.2"
+
+
+def is_native_vulkan_compatible(version: str) -> bool:
+    """True if the vanilla client for `version` ships the native Vulkan renderer.
+
+    Handles both legacy "1.21.4" versioning and the new year-based "26.2"
+    scheme Mojang adopted in 2026. Fabric-loader wrappers like
+    "fabric-loader-0.16.5-26.2" are reduced to "26.2" before comparison.
+    """
+    if not version:
+        return False
+    try:
+        if version.startswith("fabric-loader-"):
+            version = version.split("-")[-1]
+        core = version.split("-")[0]
+        parts = [int(p) for p in core.split(".") if p.isdigit()]
+        if len(parts) < 2:
+            return False
+        # Compare against the configured minimum. Missing patch -> 0.
+        parsed = (parts[0], parts[1], parts[2] if len(parts) > 2 else 0)
+        return parsed >= NATIVE_VULKAN_MIN_VERSION
+    except (ValueError, IndexError):
+        return False
 
 
 def _parse_java_major_version(text: str) -> Optional[int]:
@@ -618,7 +687,7 @@ class UpdateCheckWorker(QThread):
             latest = str(data.get("latest", "")).strip()
             if not latest:
                 raise ValueError("version.json is missing the 'latest' field.")
-            if _parse_version_tag(latest) > _parse_version_tag(APP_VERSION):
+            if _parse_version_tag(latest) > _parse_version_tag(APP_VERSION_RUNTIME):
                 url = str(data.get("download_url", "")).strip()
                 if not url:
                     raise ValueError("version.json is missing 'download_url'.")
@@ -729,7 +798,8 @@ class LaunchWorker(QThread):
     mods_missing = pyqtSignal(str)
 
     def __init__(self, username: str, version: str, minecraft_dir: str,
-                 ram_gb: int, performance_mode: bool, java_path: Optional[str] = None):
+                 ram_gb: int, performance_mode: bool,
+                 java_path: Optional[str] = None, use_native_vulkan: bool = False):
         super().__init__()
         self.username = username
         self.version = version
@@ -737,6 +807,7 @@ class LaunchWorker(QThread):
         self.ram_gb = ram_gb
         self.performance_mode = performance_mode
         self.java_path = java_path
+        self.use_native_vulkan = bool(use_native_vulkan) and is_native_vulkan_compatible(version)
         self._max_val = 0
         self.process = None
         self._aborted = False
@@ -756,6 +827,42 @@ class LaunchWorker(QThread):
             self.minecraft_dir, "versions", fabric_id, fabric_id + ".json"
         )
         return os.path.exists(json_path) and os.path.getsize(json_path) > 2
+
+    def _set_native_vulkan_option(self, instance_dir: str) -> None:
+        """Pre-set ``preferredGraphicsBackend:vulkan`` in instance options.txt.
+
+        As of Minecraft 26.2 "Chaos Cubed", the graphics API lives in
+        ``options.txt`` under the key ``preferredGraphicsBackend`` (with
+        lowercase values ``default``, ``opengl`` or ``vulkan``). Setting it
+        to ``vulkan`` is equivalent to picking "Prefer Vulkan (Experimental)"
+        in Options > Video Settings > Graphics API. We only flip this one
+        key and leave every other option (FOV, render distance, etc.)
+        alone so the user's previous choices are preserved.
+        """
+        options_path = os.path.join(instance_dir, "options.txt")
+        try:
+            os.makedirs(instance_dir, exist_ok=True)
+            existing: List[str] = []
+            if os.path.exists(options_path):
+                try:
+                    with open(options_path, "r", encoding="utf-8", errors="replace") as f:
+                        existing = f.readlines()
+                except OSError:
+                    existing = []
+            replaced = False
+            for i, line in enumerate(existing):
+                if line.startswith("preferredGraphicsBackend:"):
+                    existing[i] = "preferredGraphicsBackend:vulkan\n"
+                    replaced = True
+                    break
+            if not replaced:
+                existing.append("preferredGraphicsBackend:vulkan\n")
+            with open(options_path, "w", encoding="utf-8") as f:
+                f.writelines(existing)
+        except OSError as e:
+            # Failing to pre-write the graphics API line is non-fatal: the
+            # user can pick Vulkan manually in video settings.
+            sys.stderr.write(f"Could not pre-set Vulkan graphics API option: {e}\n")
 
     def run(self) -> None:
         try:
@@ -917,7 +1024,7 @@ class LaunchWorker(QThread):
                 "uuid": offline_uuid,
                 "token": "",
                 "launcherName": "Vanta",
-                "launcherVersion": APP_VERSION,
+                "launcherVersion": APP_VERSION_RUNTIME,
                 "gameDirectory": instance_dir,
                 "jvmArguments": [
                     heap_max,
@@ -941,6 +1048,13 @@ class LaunchWorker(QThread):
                     "-XX:MaxTenuringThreshold=1"
                 ]
             }
+
+            # Native Vulkan renderer (Mojang, 26.2+) is enabled entirely via
+            # the `preferredGraphicsBackend` option in options.txt; the
+            # client loads its own LWJGL3 Vulkan bindings when the option
+            # selects Vulkan, so no JVM flag is needed.
+            if self.use_native_vulkan:
+                self._set_native_vulkan_option(instance_dir)
 
             if self.java_path and os.path.exists(self.java_path):
                 options["executablePath"] = self.java_path
@@ -1017,6 +1131,7 @@ class LaunchWorker(QThread):
                     if self.process.poll() is not None:
                         try:
                             log_file.flush()
+                            os.fsync(log_file.fileno())
                         except Exception:
                             pass
                         tail = _read_log_tail(log_path)
@@ -1037,7 +1152,10 @@ class LaunchWorker(QThread):
                     return
 
                 self.game_confirmed.emit()
-                self.process.wait()
+                try:
+                    self.process.wait()
+                except Exception:
+                    pass
                 if not self._aborted:
                     self.game_exited.emit()
             finally:
@@ -1416,6 +1534,103 @@ class SmoothButton(QPushButton):
         super().changeEvent(e)
 
 
+class ToggleSwitch(QCheckBox):
+    """iOS-style pill-shaped on/off switch.
+
+    Subclasses QCheckBox so the rest of the codebase keeps using the
+    standard ``isChecked()`` / ``setChecked()`` / ``toggled`` API. The
+    default QCheckBox::indicator styling is replaced by a custom paint
+    that draws a rounded track plus a sliding handle, animated between
+    on and off so the transition reads as a physical switch instead of
+    a checkbox tick.
+
+    The whole row is clickable (see ``hitButton``), so users don't have
+    to aim at the 38x22 track - the label area also toggles.
+    """
+
+    _TRACK_W = 38
+    _TRACK_H = 22
+    _TRACK_PAD = 2
+
+    def __init__(self, text: str = "", parent: Optional[QWidget] = None) -> None:
+        super().__init__(text, parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        # Hide the default indicator entirely; we draw everything ourselves.
+        self.setStyleSheet(
+            "QCheckBox { background: transparent; }"
+            "QCheckBox::indicator { width: 0; height: 0; }"
+        )
+        self.setMinimumHeight(self._TRACK_H + 4)
+        self._handle_pos: float = 1.0 if self.isChecked() else 0.0
+        self._anim = QVariantAnimation(self)
+        self._anim.setDuration(140)
+        self._anim.valueChanged.connect(self._on_anim)
+        self.stateChanged.connect(self._on_state)
+
+    def _on_state(self, _state: int) -> None:
+        target = 1.0 if self.isChecked() else 0.0
+        self._anim.stop()
+        self._anim.setStartValue(self._handle_pos)
+        self._anim.setEndValue(target)
+        self._anim.start()
+
+    def _on_anim(self, v: float) -> None:
+        self._handle_pos = v
+        self.update()
+
+    def hitButton(self, pos: QPoint) -> bool:  # type: ignore[override]
+        """Make the entire row clickable, not just the track rectangle."""
+        return self.rect().contains(pos)
+
+    def paintEvent(self, event) -> None:  # type: ignore[override]
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Label on the left (if any). Right-aligned track consumes the
+        # right edge so the text gets the full left half.
+        text = self.text()
+        if text:
+            text_color = QColor("#FFFFFF") if self.isEnabled() else QColor("#6A6A6E")
+            painter.setPen(text_color)
+            painter.setFont(self.font())
+            text_w = self._TRACK_W + 8
+            text_rect = QRect(0, 0, max(0, self.width() - text_w), self.height())
+            painter.drawText(
+                text_rect,
+                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                text,
+            )
+
+        # Track on the right.
+        track_x = self.width() - self._TRACK_W - self._TRACK_PAD
+        track_y = (self.height() - self._TRACK_H) // 2
+
+        if self.isChecked():
+            track_color = QColor("#30D158") if self.isEnabled() else QColor("#1F5C2F")
+        else:
+            track_color = QColor("#3A3A3C") if self.isEnabled() else QColor("#2A2A2C")
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(track_color)
+        painter.drawRoundedRect(
+            track_x, track_y, self._TRACK_W, self._TRACK_H,
+            self._TRACK_H // 2, self._TRACK_H // 2,
+        )
+
+        # Handle (the moving circle).
+        handle_size = self._TRACK_H - 4
+        handle_max = self._TRACK_W - self._TRACK_H
+        handle_x = int(round(track_x + 2 + self._handle_pos * handle_max))
+        handle_y = track_y + 2
+
+        # Subtle shadow under the handle for depth.
+        shadow = QColor(0, 0, 0, 50)
+        painter.setBrush(shadow)
+        painter.drawEllipse(int(handle_x), int(handle_y + 1), int(handle_size), int(handle_size))
+
+        painter.setBrush(QColor("#FFFFFF") if self.isEnabled() else QColor("#98989D"))
+        painter.drawEllipse(int(handle_x), int(handle_y), int(handle_size), int(handle_size))
+
+
 class EaseAnimator(QObject):
     """Drives a value from start to end at a precise 60 FPS with ease-out cubic interpolation."""
     valueChanged = pyqtSignal(float)
@@ -1471,7 +1686,13 @@ class EaseAnimator(QObject):
 
 
 class VantaDialog(QDialog):
-    """Dark, launcher-styled replacement for native QMessageBox."""
+    """Dark, launcher-styled replacement for native QMessageBox.
+
+    Supports long messages by splitting them into a primary summary and a
+    collapsible "Details" section. The details pane uses a monospace font so
+    log tails and stack traces stay readable. An optional log-folder path can
+    be passed to expose an "Open log folder" button for crash triage.
+    """
 
     _STYLE = """
         #dialogCard {{
@@ -1527,7 +1748,7 @@ class VantaDialog(QDialog):
             background-color: #3A3A3C;
             color: #FFFFFF;
         }}
-        #dialogCopyBtn {{
+        #dialogCopyBtn, #dialogDetailsBtn, #dialogLogBtn {{
             background-color: transparent;
             border: 1px solid #3A3A3C;
             border-radius: 8px;
@@ -1537,9 +1758,17 @@ class VantaDialog(QDialog):
             font-weight: bold;
             padding: 8px 0;
         }}
-        #dialogCopyBtn:hover {{
+        #dialogCopyBtn:hover, #dialogDetailsBtn:hover, #dialogLogBtn:hover {{
             border-color: #0A84FF;
             color: #FFFFFF;
+        }}
+        #dialogDetailsPane {{
+            background-color: #161618;
+            border: 1px solid #2C2C2E;
+            border-radius: 8px;
+            color: #B0B0B5;
+            font-family: 'Consolas', 'Cascadia Mono', 'Courier New', monospace;
+            font-size: 11px;
         }}
         #dialogScroll {{
             background: transparent;
@@ -1573,7 +1802,15 @@ class VantaDialog(QDialog):
                  "accent_fg": "#0A84FF", "btn_bg": "#0A84FF", "btn_hover": "#0069D9"},
     }
 
-    def __init__(self, parent, kind: str, title: str, message: str, buttons) -> None:
+    # When the message is long enough, everything after the first line break
+    # block is shown as collapsible "Details" with a monospace font. Tuned so
+    # short user-facing errors stay one-card while real crash dumps still fit.
+    _DETAILS_TRIGGER_LEN = 200
+    _MAX_PRIMARY_LEN = 480
+
+    def __init__(self, parent, kind: str, title: str, message: str, buttons,
+                 details: Optional[str] = None,
+                 log_dir: Optional[str] = None) -> None:
         super().__init__(parent)
         self.setWindowFlags(
             Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
@@ -1581,12 +1818,28 @@ class VantaDialog(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
         self.result_choice = None
+        self._log_dir = log_dir
+        # Stash the accept button's result so Enter can replay it without
+        # scanning the original `buttons` tuple from the closure.
+        self._accept_result = next(
+            (r for _, is_accept, r in buttons if is_accept), None
+        )
 
         k = self._KIND.get(kind, self._KIND["info"])
         self.setStyleSheet(self._STYLE.format(**k))
 
+        # Split the incoming message into a primary summary (user-friendly
+        # prose) and the verbose tail (log lines, stack traces). The split
+        # is the first blank line, falling back to the first paragraph break.
+        primary, auto_details = self._split_message(message)
+        if details is not None:
+            full_details = auto_details + ("\n" + details if auto_details else details)
+        else:
+            full_details = auto_details
+
         card = QFrame(self, objectName="dialogCard")
-        card.setFixedWidth(360)
+        card.setMinimumWidth(360)
+        card.setMaximumWidth(560)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 22)
         layout.setSpacing(12)
@@ -1602,9 +1855,10 @@ class VantaDialog(QDialog):
         header.addWidget(title_lbl, 1)
         layout.addLayout(header)
 
-        msg_lbl = QLabel(message, objectName="dialogMessage")
+        msg_lbl = QLabel(primary, objectName="dialogMessage")
         msg_lbl.setWordWrap(True)
-        if len(message) > 260:
+        msg_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        if len(primary) > 260:
             scroll = QScrollArea(objectName="dialogScroll")
             scroll.setWidgetResizable(True)
             scroll.setWidget(msg_lbl)
@@ -1614,17 +1868,45 @@ class VantaDialog(QDialog):
         else:
             layout.addWidget(msg_lbl)
 
+        self._details_pane: Optional[QScrollArea] = None
+        self._details_toggle: Optional[QPushButton] = None
+        if full_details:
+            self._details_toggle = QPushButton("Show details", objectName="dialogDetailsBtn")
+            self._details_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+            self._details_toggle.setFixedHeight(28)
+            self._details_toggle.clicked.connect(self._toggle_details)
+            layout.addWidget(self._details_toggle)
+
+            details_view = QLabel(full_details.rstrip(), objectName="dialogDetailsPane")
+            details_view.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            details_view.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+            details_view.setWordWrap(True)
+            details_view.setContentsMargins(10, 8, 10, 8)
+
+            self._details_pane = QScrollArea(objectName="dialogScroll")
+            self._details_pane.setWidgetResizable(True)
+            self._details_pane.setWidget(details_view)
+            self._details_pane.setFixedHeight(160)
+            self._details_pane.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            self._details_pane.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            self._details_pane.hide()
+            layout.addWidget(self._details_pane)
+
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
-        if len(message) > 120:
+        if len(message) > 120 or full_details:
             copy_btn = QPushButton("Copy", objectName="dialogCopyBtn")
             copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             copy_btn.setFixedHeight(32)
             copy_btn.setFixedWidth(72)
-            copy_btn.setToolTip("Copy error details to clipboard")
+            copy_btn.setToolTip("Copy full details to clipboard")
 
             def _copy_details() -> None:
-                QApplication.clipboard().setText(f"{title}\n\n{message}")
+                if full_details:
+                    payload = f"{title}\n\n{primary}\n\n--- Details ---\n{full_details}"
+                else:
+                    payload = f"{title}\n\n{primary}"
+                QApplication.clipboard().setText(payload)
                 copy_btn.setText("Copied!")
                 copy_btn.setStyleSheet("color: #30D158; border-color: #30D158;")
                 QTimer.singleShot(1600, lambda: (
@@ -1634,6 +1916,16 @@ class VantaDialog(QDialog):
 
             copy_btn.clicked.connect(_copy_details)
             btn_row.addWidget(copy_btn)
+
+        if log_dir and os.path.isdir(log_dir):
+            log_btn = QPushButton("Open logs", objectName="dialogLogBtn")
+            log_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            log_btn.setFixedHeight(32)
+            log_btn.setFixedWidth(90)
+            log_btn.setToolTip(f"Open the logs folder ({log_dir})")
+            log_btn.clicked.connect(lambda: self._open_log_dir(log_dir))
+            btn_row.addWidget(log_btn)
+
         btn_row.addStretch(1)
         for text, is_accept, result in buttons:
             name = "dialogYesBtn" if is_accept and len(buttons) > 1 else (
@@ -1657,7 +1949,8 @@ class VantaDialog(QDialog):
         outer.setContentsMargins(20, 20, 20, 20)
         outer.addWidget(card)
 
-        self.setFixedWidth(400)
+        self.setMinimumWidth(400)
+        self.setMaximumWidth(600)
         self.adjustSize()
 
         if parent is not None:
@@ -1667,6 +1960,56 @@ class VantaDialog(QDialog):
                 max(pg.y() + 20, pg.y() + (pg.height() - self.height()) // 3),
             )
 
+    @staticmethod
+    def _split_message(message: str) -> tuple:
+        """Return (primary, details) pair.
+
+        The primary is the user-facing summary. Anything past the first blank
+        line, "Last log lines:" marker, or first long block becomes the
+        collapsible details. Short messages stay single-section.
+        """
+        if not message:
+            return "", ""
+        if len(message) <= VantaDialog._DETAILS_TRIGGER_LEN:
+            return message, ""
+
+        markers = ("\n\nLast log lines:", "\nLast log lines:\n",
+                   "\n\nTraceback ", "\n\nDetails:\n")
+        for marker in markers:
+            idx = message.find(marker)
+            if idx > 0:
+                head = message[:idx].rstrip()
+                tail = message[idx + (2 if marker.startswith("\n\n") else 1):]
+                if tail.strip():
+                    return head, tail
+                break
+
+        # Fallback: cut at the longest run of paragraph breaks near 60% length.
+        break_idx = message.find("\n\n")
+        if break_idx > 0 and break_idx < len(message) * 0.85:
+            return message[:break_idx].rstrip(), message[break_idx + 2:].lstrip()
+
+        return message, ""
+
+    def _toggle_details(self) -> None:
+        if self._details_pane is None or self._details_toggle is None:
+            return
+        visible = not self._details_pane.isVisible()
+        self._details_pane.setVisible(visible)
+        self._details_toggle.setText("Hide details" if visible else "Show details")
+        self.adjustSize()
+
+    def _open_log_dir(self, path: str) -> None:
+        try:
+            if sys.platform == "win32":
+                os.startfile(path)  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", path])
+            else:
+                subprocess.Popen(["xdg-open", path])
+        except OSError as e:
+            sys.stderr.write(f"Could not open log dir {path}: {e}\n")
+
     def _finish(self, result) -> None:
         self.result_choice = result
         self.accept()
@@ -1675,11 +2018,20 @@ class VantaDialog(QDialog):
         if event.key() == Qt.Key.Key_Escape:
             self._finish(None)
             return
+        # Enter accepts the dialog (only when focus is not on a text input,
+        # so we don't fight with copy/paste in the monospace details pane).
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            focus = self.focusWidget()
+            if not isinstance(focus, QLineEdit):
+                self._finish(self._accept_result if self._accept_result is not None else True)
+                return
         super().keyPressEvent(event)
 
     @staticmethod
-    def _show(parent, kind: str, title: str, message: str, buttons):
-        dlg = VantaDialog(parent, kind, title, message, buttons)
+    def _show(parent, kind: str, title: str, message: str, buttons,
+              details: Optional[str] = None, log_dir: Optional[str] = None):
+        dlg = VantaDialog(parent, kind, title, message, buttons,
+                          details=details, log_dir=log_dir)
         dlg.setWindowOpacity(0.0)
         fade = QVariantAnimation(dlg)
         fade.setDuration(170)
@@ -1692,22 +2044,30 @@ class VantaDialog(QDialog):
         return dlg.result_choice
 
     @staticmethod
-    def error(parent, title: str, message: str) -> None:
-        VantaDialog._show(parent, "error", title, message, [("OK", True, "ok")])
+    def error(parent, title: str, message: str,
+              details: Optional[str] = None, log_dir: Optional[str] = None) -> None:
+        VantaDialog._show(parent, "error", title, message, [("OK", True, "ok")],
+                          details=details, log_dir=log_dir)
 
     @staticmethod
-    def warning(parent, title: str, message: str) -> None:
-        VantaDialog._show(parent, "warning", title, message, [("OK", True, "ok")])
+    def warning(parent, title: str, message: str,
+                details: Optional[str] = None, log_dir: Optional[str] = None) -> None:
+        VantaDialog._show(parent, "warning", title, message, [("OK", True, "ok")],
+                          details=details, log_dir=log_dir)
 
     @staticmethod
-    def info(parent, title: str, message: str) -> None:
-        VantaDialog._show(parent, "info", title, message, [("OK", True, "ok")])
+    def info(parent, title: str, message: str,
+             details: Optional[str] = None, log_dir: Optional[str] = None) -> None:
+        VantaDialog._show(parent, "info", title, message, [("OK", True, "ok")],
+                          details=details, log_dir=log_dir)
 
     @staticmethod
-    def question(parent, title: str, message: str, default_yes: bool = False) -> bool:
+    def question(parent, title: str, message: str, default_yes: bool = False,
+                 details: Optional[str] = None, log_dir: Optional[str] = None) -> bool:
         result = VantaDialog._show(
             parent, "info", title, message,
             [("Yes", True, True), ("No", False, False)],
+            details=details, log_dir=log_dir,
         )
         return bool(result) if result is not None else default_yes
 
@@ -1781,10 +2141,14 @@ class ComboPopup(QWidget):
             }
         """)
 
+        # Soft, symmetric drop shadow. yOffset is left at 0 so the shadow
+        # blooms evenly around the card instead of pooling on one side.
+        # Opacity is dialled down so the popup doesn't look like it's
+        # floating in tar against the launcher background.
         shadow = QGraphicsDropShadowEffect(self.card)
-        shadow.setBlurRadius(14)
-        shadow.setYOffset(3)
-        shadow.setColor(QColor(0, 0, 0, 160))
+        shadow.setBlurRadius(16)
+        shadow.setOffset(0, 0)
+        shadow.setColor(QColor(0, 0, 0, 70))
         self.card.setGraphicsEffect(shadow)
 
         card_layout = QVBoxLayout(self.card)
@@ -1813,13 +2177,15 @@ class ComboPopup(QWidget):
 
     def _on_item_selected(self, item: QListWidgetItem) -> None:
         text = item.text()
-        self.hide()
+        # Route through the combobox's animated close so the popup fades
+        # out instead of disappearing instantly when a version is picked.
         if text != self.combo.currentText():
             self.combo.setCurrentText(text)
+        self.combo.hidePopup()
 
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_Escape:
-            self.hide()
+            self.combo.hidePopup()
             event.accept()
             return
         super().keyPressEvent(event)
@@ -1829,19 +2195,114 @@ class ComboPopup(QWidget):
         super().hideEvent(event)
 
 
+class _ComboOutsideClickFilter(QObject):
+    """Routes outside clicks on a ComboPopup through the animated close.
+
+    Qt.WindowType.Popup auto-hides the popup the moment the user clicks
+    anywhere outside it, which would skip ``AnchoredComboBox.hidePopup()``
+    and its close animation. This filter is installed on the QApplication
+    while a popup is visible and intercepts the first outside click so
+    that the close animation runs regardless of how the popup is closed.
+    """
+
+    def __init__(self, combo: "AnchoredComboBox") -> None:
+        super().__init__()
+        # Hold a weak reference so the filter doesn't keep the combobox
+        # alive after the launcher is destroyed.
+        self._combo_ref = combo
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # type: ignore[override]
+        if event.type() != QEvent.Type.MouseButtonPress:
+            return super().eventFilter(obj, event)
+
+        combo = self._combo_ref
+        popup = combo._popup if combo is not None else None
+        if popup is None or not popup.isVisible():
+            return super().eventFilter(obj, event)
+
+        # Resolve the click's global position. PyQt6 exposes globalPosition()
+        # on QMouseEvent; older code paths fall back to globalPos().
+        try:
+            gp = event.globalPosition().toPoint()
+        except AttributeError:
+            gp = event.globalPos()
+
+        # Clicks inside the popup must pass through to the popup's own
+        # handlers (item selection, scrolling, etc.).
+        if popup.geometry().contains(gp):
+            return super().eventFilter(obj, event)
+
+        # Outside click: trigger the animated close and swallow the event
+        # so Qt never gets the chance to hide the popup itself.
+        event.accept()
+        combo.hidePopup()
+        return True
+
+
 class AnchoredComboBox(QComboBox):
-    """Custom combobox with a floating frameless popup list."""
+    """Custom combobox with a floating frameless popup list.
+
+    The popup opens with a smooth animation that combines an opacity fade
+    and a height expansion anchored at the edge closest to the combobox
+    (top for downward growth, bottom for upward growth when there's no
+    room below). Closing mirrors the animation in reverse before the
+    popup is actually hidden.
+    """
+
+    _OPEN_DURATION_MS = 170
+    _CLOSE_DURATION_MS = 130
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._popup: Optional[ComboPopup] = None
         self._last_hide_time = 0.0
+        self._popup_anim: Optional[QParallelAnimationGroup] = None
+        self._grow_upward = False
 
     def _ensure_popup(self) -> ComboPopup:
         if self._popup is None:
             self._popup = ComboPopup(self)
         return self._popup
+
+    def _stop_popup_animation(self) -> None:
+        """Cancel any in-flight open/close animation on the popup."""
+        if self._popup_anim is not None:
+            try:
+                self._popup_anim.stop()
+            except RuntimeError:
+                # Animation or its target was already destroyed.
+                pass
+            self._popup_anim = None
+
+    def _install_outside_click_filter(self) -> None:
+        """Watch for outside mouse presses while the popup is visible.
+
+        Qt.WindowType.Popup auto-closes the popup the instant the user
+        clicks outside it, which would bypass our animated close. This
+        filter intercepts those clicks and routes them through
+        ``hidePopup()`` instead, so every close path runs the animation.
+        """
+        if getattr(self, "_outside_filter_installed", False):
+            return
+        app = QApplication.instance()
+        if app is None:
+            return
+        self._outside_filter = _ComboOutsideClickFilter(self)
+        app.installEventFilter(self._outside_filter)
+        self._outside_filter_installed = True
+
+    def _remove_outside_click_filter(self) -> None:
+        if not getattr(self, "_outside_filter_installed", False):
+            return
+        app = QApplication.instance()
+        if app is not None and getattr(self, "_outside_filter", None) is not None:
+            try:
+                app.removeEventFilter(self._outside_filter)
+            except RuntimeError:
+                pass
+        self._outside_filter = None
+        self._outside_filter_installed = False
 
     def showPopup(self) -> None:
         if self.count() == 0 or not self.isEnabled():
@@ -1859,23 +2320,99 @@ class AnchoredComboBox(QComboBox):
         global_pos = self.mapToGlobal(QPoint(-16, self.height() - 10))
 
         screen = self.screen() or QApplication.primaryScreen()
+        grow_upward = False
         if screen is not None:
             avail = screen.availableGeometry()
             if global_pos.y() + total_h > avail.bottom():
+                grow_upward = True
                 global_pos.setY(self.mapToGlobal(QPoint(0, 0)).y() - total_h + 16)
             if global_pos.x() + total_w > avail.right():
                 global_pos.setX(avail.right() - total_w)
             if global_pos.x() < avail.left():
                 global_pos.setX(avail.left())
 
-        popup.setGeometry(global_pos.x(), global_pos.y(), total_w, total_h)
+        target_x = global_pos.x()
+        target_y = global_pos.y()
+        self._grow_upward = grow_upward
+
+        # Start state: zero-height sliver anchored at the edge near the
+        # combobox. Downward growth keeps the top at target_y; upward
+        # growth keeps the bottom (= target_y + total_h) fixed.
+        start_h = 1
+        if grow_upward:
+            start_y = target_y + total_h - start_h
+        else:
+            start_y = target_y
+
+        self._stop_popup_animation()
+        popup.setWindowOpacity(0.0)
+        popup.setGeometry(target_x, start_y, total_w, start_h)
         popup.show()
         popup.raise_()
         popup.list_widget.setFocus()
+        self._install_outside_click_filter()
+
+        # Build the open animation: opacity fade + height expansion in
+        # parallel, both using OutCubic so the popup feels snappy.
+        self._popup_anim = QParallelAnimationGroup(popup)
+        geom = QPropertyAnimation(popup, b"geometry")
+        geom.setDuration(self._OPEN_DURATION_MS)
+        geom.setStartValue(QRect(target_x, start_y, total_w, start_h))
+        geom.setEndValue(QRect(target_x, target_y, total_w, total_h))
+        geom.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._popup_anim.addAnimation(geom)
+
+        op = QPropertyAnimation(popup, b"windowOpacity")
+        op.setDuration(self._OPEN_DURATION_MS)
+        op.setStartValue(0.0)
+        op.setEndValue(1.0)
+        op.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._popup_anim.addAnimation(op)
+        self._popup_anim.start()
 
     def hidePopup(self) -> None:
-        if self._popup is not None and self._popup.isVisible():
-            self._popup.hide()
+        if self._popup is None or not self._popup.isVisible():
+            return
+
+        popup = self._popup
+        self._stop_popup_animation()
+
+        cur_geo = popup.geometry()
+        end_h = 1
+        if self._grow_upward:
+            end_y = cur_geo.y() + cur_geo.height() - end_h
+        else:
+            end_y = cur_geo.y()
+
+        self._popup_anim = QParallelAnimationGroup(popup)
+        geom = QPropertyAnimation(popup, b"geometry")
+        geom.setDuration(self._CLOSE_DURATION_MS)
+        geom.setStartValue(cur_geo)
+        geom.setEndValue(QRect(cur_geo.x(), end_y, cur_geo.width(), end_h))
+        geom.setEasingCurve(QEasingCurve.Type.InCubic)
+        self._popup_anim.addAnimation(geom)
+
+        op = QPropertyAnimation(popup, b"windowOpacity")
+        op.setDuration(self._CLOSE_DURATION_MS)
+        op.setStartValue(popup.windowOpacity())
+        op.setEndValue(0.0)
+        op.setEasingCurve(QEasingCurve.Type.InCubic)
+        self._popup_anim.addAnimation(op)
+
+        def _on_close_finished() -> None:
+            # Reset opacity so the next open starts cleanly. The animation
+            # group may already have been torn down if hidePopup was called
+            # twice in quick succession; guard against that.
+            try:
+                if popup.isVisible():
+                    popup.hide()
+                popup.setWindowOpacity(1.0)
+            except RuntimeError:
+                pass
+            self._remove_outside_click_filter()
+
+        self._popup_anim.finished.connect(_on_close_finished)
+        self._popup_anim.start()
 
     def mousePressEvent(self, event) -> None:
         if not self.isEnabled():
@@ -2114,7 +2651,7 @@ class SplashScreen(QWidget):
         painter.drawText(
             QRect(0, 94, w, 32),
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
-            f"Vanta v{APP_VERSION}",
+            f"Vanta v{APP_VERSION_RUNTIME}",
         )
 
         painter.setPen(QColor("#8E8E93"))
@@ -2480,6 +3017,17 @@ class MinecraftLauncher(QMainWindow):
                     event.ignore()
                     return
 
+            # Persist whatever the user picked (version, username, RAM,
+            # toggles) before the window tears down. Without this, selecting
+            # a version and closing the launcher without launching means
+            # the version is lost and the user has to pick again next time.
+            try:
+                self._save_settings()
+            except Exception:
+                # QSettings can throw if the platform backend is unavailable
+                # mid-shutdown; not worth blocking the close for that.
+                pass
+
             self._is_closing = True
             event.ignore()
 
@@ -2569,14 +3117,14 @@ class MinecraftLauncher(QMainWindow):
         if visible:
             self.play_stack.setCurrentIndex(1)
             self.progress_bar.setValue(0)
-            self.progress_bar.setFormat(f"{text} · v{APP_VERSION} %p%" if text else f"v{APP_VERSION} %p%")
+            self.progress_bar.setFormat(f"{text} · v{APP_VERSION_RUNTIME} %p%" if text else f"v{APP_VERSION_RUNTIME} %p%")
         else:
             self.play_stack.setCurrentIndex(0)
             self.play_button.setEnabled(True)
             self.play_button.setText("Play")
 
     def _init_ui(self) -> None:
-        self.setWindowTitle(f"Vanta Launcher v{APP_VERSION}")
+        self.setWindowTitle(f"Vanta Launcher v{APP_VERSION_RUNTIME}")
 
         icon_path = os.path.join(_resource_base(), "icons", "icon.ico")
 
@@ -2588,6 +3136,9 @@ class MinecraftLauncher(QMainWindow):
 
         self._CLOSED_WIDTH = 364
         self._OPEN_WIDTH = 704
+        # Closed = compact "card-only" launcher. Open = drawer slides out
+        # next to the card; both panels share the same height so the
+        # layout stays visually balanced (mirror look).
         self.setFixedSize(self._CLOSED_WIDTH, 214)
 
         screen = QApplication.primaryScreen()
@@ -2677,6 +3228,18 @@ class MinecraftLauncher(QMainWindow):
         self.version_combo.currentTextChanged.connect(self._on_version_changed)
         card_layout.addWidget(self.version_combo)
 
+        # Compact meta-line under the version picker. Shows the expected Java
+        # runtime ("Java 21"), the native-Vulkan availability, and total RAM
+        # on the machine so the user has the most important context without
+        # opening the drawer.
+        self.meta_label = QLabel()
+        self.meta_label.setStyleSheet(
+            "color: #8E8E93; font-family: 'Segoe UI', -apple-system, sans-serif;"
+            " font-size: 10px; background: transparent; padding: 0 2px;"
+        )
+        self.meta_label.setMinimumHeight(14)
+        card_layout.addWidget(self.meta_label)
+
         self.play_stack = QStackedWidget()
         self.play_stack.setFixedHeight(42)
 
@@ -2695,6 +3258,8 @@ class MinecraftLauncher(QMainWindow):
         card_layout.addWidget(self.play_stack)
 
         self.drawer = QFrame(central, objectName="drawer")
+        # Drawer mirrors the card in size so the two panels balance visually
+        # when the drawer slides out to the right.
         self.drawer.setGeometry(12, 12, 340, 190)
         self.drawer.stackUnder(self.card)
 
@@ -2708,6 +3273,9 @@ class MinecraftLauncher(QMainWindow):
         self.mods_tab_btn = QPushButton("Mods Manager", objectName="tabBtn")
         self.settings_tab_btn.setCheckable(True)
         self.mods_tab_btn.setCheckable(True)
+        # Settings is the default tab; show its checked styling on launch
+        # so the active state is visible before the first click.
+        self.settings_tab_btn.setChecked(True)
         self.settings_tab_btn.clicked.connect(self._on_tab_clicked)
         self.mods_tab_btn.clicked.connect(self._on_tab_clicked)
         nav_layout.addWidget(self.settings_tab_btn)
@@ -2718,33 +3286,67 @@ class MinecraftLauncher(QMainWindow):
         drawer_layout.addWidget(self.drawer_stack)
 
         settings_widget = QWidget()
+        # Tight spacing so the RAM row + 3 toggles fit inside the drawer's
+        # 190 px height without clipping. The previous header-above-slider
+        # layout pushed everything below by ~30 px.
         settings_layout = QVBoxLayout(settings_widget)
         settings_layout.setContentsMargins(0, 0, 0, 0)
-        settings_layout.setSpacing(10)
+        settings_layout.setSpacing(6)
 
-        ram_header_layout = QHBoxLayout()
-        ram_lbl = QLabel("Allocated RAM:")
-        ram_lbl.setStyleSheet("color: #FFFFFF; font-family: 'Segoe UI', sans-serif; font-size: 12px;")
+        # RAM on a single row: [RAM] [slider.............] [4 GB]
+        ram_row = QHBoxLayout()
+        ram_row.setContentsMargins(0, 0, 0, 0)
+        ram_row.setSpacing(8)
+        ram_lbl = QLabel("RAM")
+        ram_lbl.setStyleSheet(
+            "color: #FFFFFF; font-family: 'Segoe UI', sans-serif; font-size: 11px;"
+        )
         self.ram_val_lbl = QLabel("4 GB")
         self.ram_val_lbl.setStyleSheet(
-            "color: #0A84FF; font-family: 'Segoe UI', sans-serif; font-size: 12px; font-weight: bold;"
+            "color: #0A84FF; font-family: 'Segoe UI', sans-serif;"
+            " font-size: 11px; font-weight: bold;"
         )
-        ram_header_layout.addWidget(ram_lbl)
-        ram_header_layout.addStretch(1)
-        ram_header_layout.addWidget(self.ram_val_lbl)
-        settings_layout.addLayout(ram_header_layout)
-
+        # Swim-tracker state for the RAM label. A timer lerps the
+        # displayed value toward the target so the readout glides
+        # smoothly instead of snapping between whole-GB positions.
+        self._ram_swim_timer = QTimer(self)
+        self._ram_swim_timer.setInterval(16)  # ~60 fps
+        self._ram_swim_timer.timeout.connect(self._tick_ram_swim)
+        self._ram_swim_displayed = 4.0
+        self._ram_swim_target = 4.0
         self.ram_slider = QSlider(Qt.Orientation.Horizontal)
+        # Whole-GB steps (1..16). 16 positions is enough — the smooth
+        # "swim" between values is what makes the drag feel continuous,
+        # not adding more discrete positions.
         self.ram_slider.setMinimum(1)
         self.ram_slider.setMaximum(16)
+        self.ram_slider.setSingleStep(1)
+        self.ram_slider.setPageStep(1)
         self.ram_slider.setValue(4)
         self.ram_slider.valueChanged.connect(self._on_ram_slider_changed)
-        settings_layout.addWidget(self.ram_slider)
+        ram_row.addWidget(ram_lbl)
+        ram_row.addWidget(self.ram_slider, 1)
+        ram_row.addWidget(self.ram_val_lbl)
+        settings_layout.addLayout(ram_row)
 
-        self.perf_checkbox = QCheckBox("Performance Mode (Fabric + Optimization Mods)")
+        self.perf_checkbox = ToggleSwitch("Performance Mode")
         self.perf_checkbox.setChecked(True)
         self.perf_checkbox.toggled.connect(self._on_perf_toggled)
+        self.perf_checkbox.setToolTip(
+            "Performance Mode installs Fabric and downloads Sodium, Lithium,"
+            " Ferrite-Core and EntityCulling for better FPS."
+        )
         settings_layout.addWidget(self.perf_checkbox)
+
+        self.vulkan_checkbox = QCheckBox("Native Vulkan (Mojang)")
+        self.vulkan_checkbox.setChecked(False)
+        self.vulkan_checkbox.toggled.connect(self._on_vulkan_toggled)
+        self.vulkan_checkbox.setEnabled(False)
+        self.vulkan_checkbox.setToolTip(
+            "Requires Minecraft 26.2 or newer.\n"
+            "Uses Mojang's official Vulkan backend (not VulkanMod)."
+        )
+        settings_layout.addWidget(self.vulkan_checkbox)
 
         self.rpc_checkbox = QCheckBox("Discord Rich Presence")
         self.rpc_checkbox.setChecked(True)
@@ -2757,7 +3359,7 @@ class MinecraftLauncher(QMainWindow):
         mods_widget = QWidget()
         mods_layout = QVBoxLayout(mods_widget)
         mods_layout.setContentsMargins(0, 0, 0, 0)
-        mods_layout.setSpacing(6)
+        mods_layout.setSpacing(4)
 
         search_layout = QHBoxLayout()
         search_layout.setContentsMargins(0, 0, 0, 0)
@@ -2766,7 +3368,11 @@ class MinecraftLauncher(QMainWindow):
         self.mod_search_input = QLineEdit()
         self.mod_search_input.setPlaceholderText("Search Modrinth...")
         self.mod_search_input.setFixedHeight(26)
-        self.mod_search_input.setStyleSheet("padding: 2px 8px; font-size: 11px;")
+        self.mod_search_input.setStyleSheet(
+            "padding: 0px 10px; font-size: 11px;"
+            " background-color: #2C2C2E; border: 1px solid #38383A;"
+            " border-radius: 6px; color: #FFFFFF;"
+        )
 
         self._search_timer = QTimer()
         self._search_timer.setSingleShot(True)
@@ -2778,7 +3384,8 @@ class MinecraftLauncher(QMainWindow):
         mods_layout.addLayout(search_layout)
 
         self.mods_list = QListWidget()
-        mods_layout.addWidget(self.mods_list)
+        self.mods_list.setSpacing(0)
+        mods_layout.addWidget(self.mods_list, 1)
 
         mod_action_layout = QHBoxLayout()
         self.mod_action_btn = QPushButton("Install", objectName="modActionBtn")
@@ -2798,19 +3405,100 @@ class MinecraftLauncher(QMainWindow):
         self._avatar_timer.timeout.connect(self._fetch_avatar)
         self.nick_input.textChanged.connect(self._on_nick_changed)
 
+        # Enter launches whenever focus is on the username field or the
+        # version picker; we deliberately ignore Enter from text inputs
+        # elsewhere to avoid hijacking copy/paste. The combo is non-editable
+        # so it has no lineEdit; its popup handles Enter for selection.
+        self.nick_input.returnPressed.connect(self._launch_game)
+
         for btn in self.findChildren(QPushButton):
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def _init_ram_slider(self) -> None:
         total_ram = self._get_total_ram_gb()
+        # Cap the slider at (system RAM - 1 GB) so the OS always keeps at
+        # least 1 GB while Minecraft is running.
         max_ram = max(2, total_ram - 1)
         self.ram_slider.setMaximum(max_ram)
+        self.ram_slider.setToolTip(
+            f"Auto-configured to your system.\n"
+            f"System RAM: {total_ram} GB\n"
+            f"Maximum allocatable to Minecraft: {max_ram} GB"
+        )
+        # Apply any saved value now that the slider range is final.
+        self._apply_saved_ram()
+
+    def _apply_saved_ram(self) -> None:
+        """Restore the saved RAM value (whole-GB units)."""
+        try:
+            saved = int(self.settings.value("ram_gb", "4"))
+        except (ValueError, TypeError):
+            saved = 4
+        if saved < 1:
+            saved = 4
+        lo = self.ram_slider.minimum()
+        hi = self.ram_slider.maximum()
+        saved = max(lo, min(hi, saved))
+        self.ram_slider.blockSignals(True)
+        self.ram_slider.setValue(saved)
+        self.ram_slider.blockSignals(False)
+        self.ram_val_lbl.setText(f"{saved} GB")
+        # Seed the swim tracker so the very first drag animates from the
+        # loaded value (not from a stale 0).
+        self._ram_swim_displayed = float(saved)
+        self._ram_swim_target = float(saved)
 
     def _on_tab_clicked(self) -> None:
         is_settings = self.sender() is self.settings_tab_btn
-        self.drawer_stack.setCurrentIndex(0 if is_settings else 1)
+        target_index = 0 if is_settings else 1
+
+        # The button is checkable, so clicking the already-active tab has
+        # already toggled its setChecked state to False before this slot
+        # fires. Sync the button visuals to the actual active page so the
+        # user always sees the correct highlighted tab, even on a no-op
+        # click. (Same line below after the page-switch handles the
+        # normal cross-tab click.)
         self.settings_tab_btn.setChecked(is_settings)
         self.mods_tab_btn.setChecked(not is_settings)
+
+        if self.drawer_stack.currentIndex() == target_index:
+            return  # already on this tab
+
+        # Switch immediately so the new page is laid out, then fade it
+        # in from 0 opacity. Each tab page gets its own
+        # QGraphicsOpacityEffect on first use so we don't have to add them
+        # at construction time (which would interfere with the initial
+        # render). The old page keeps its final opacity (1.0) so flipping
+        # back to it later just shows it instantly.
+        new_widget = self.drawer_stack.widget(target_index)
+        opacity = getattr(new_widget, "_tab_opacity_effect", None)
+        if opacity is None:
+            opacity = QGraphicsOpacityEffect(new_widget)
+            opacity.setOpacity(0.0)
+            new_widget.setGraphicsEffect(opacity)
+            new_widget._tab_opacity_effect = opacity
+        else:
+            opacity.setOpacity(0.0)
+
+        # Cancel any in-flight fade so back-to-back clicks don't queue.
+        prev_anim = getattr(new_widget, "_tab_fade_anim", None)
+        if prev_anim is not None:
+            try:
+                prev_anim.stop()
+            except RuntimeError:
+                pass
+
+        self.drawer_stack.setCurrentIndex(target_index)
+        # setChecked calls already happened at the top of this method;
+        # no need to repeat them here.
+
+        anim = QPropertyAnimation(opacity, b"opacity")
+        anim.setDuration(220)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        new_widget._tab_fade_anim = anim
+        anim.start()
 
     def _toggle_drawer(self) -> None:
         if hasattr(self, "version_combo") and hasattr(self.version_combo, "hidePopup"):
@@ -2875,13 +3563,51 @@ class MinecraftLauncher(QMainWindow):
         self._window_animator.start(0.0, 1.0)
 
     def _on_ram_slider_changed(self, value: int) -> None:
-        self.ram_val_lbl.setText(f"{value} GB")
+        # The slider snaps between whole-GB positions, but the displayed
+        # text smoothly tracks the target via a timer-based, spring-damped
+        # animator instead of a QVariantAnimation. That avoids the
+        # "rubberband" effect of restarting an animation on every tick
+        # (which reads as jumping forward and back when the user wobbles
+        # the slider or drags fast across several positions).
+        self._ram_swim_target = float(value)
+        if not self._ram_swim_timer.isActive():
+            self._ram_swim_timer.start()
         self.settings.setValue("ram_gb", value)
+
+    def _render_ram_value(self, gb: float) -> None:
+        # Live update of the RAM label during the swim animation.
+        if gb == int(gb):
+            text = f"{int(gb)} GB"
+        else:
+            text = f"{gb:.1f} GB"
+        self.ram_val_lbl.setText(text)
+
+    def _tick_ram_swim(self) -> None:
+        # One frame of the swim tracker. Lerp toward the target by 20%
+        # per frame (≈ 60 fps) and snap when close enough. The 20%
+        # coefficient gives a critically-damped feel — no overshoot, no
+        # abrupt velocity changes when the target jumps.
+        delta = self._ram_swim_target - self._ram_swim_displayed
+        if abs(delta) < 0.02:
+            self._ram_swim_displayed = self._ram_swim_target
+            self._render_ram_value(self._ram_swim_displayed)
+            self._ram_swim_timer.stop()
+            return
+        self._ram_swim_displayed += delta * 0.20
+        self._render_ram_value(self._ram_swim_displayed)
 
     def _on_perf_toggled(self, checked: bool) -> None:
         version = self.version_combo.currentText()
         if is_fabric_compatible(version):
             self.settings.setValue("performance_mode", "true" if checked else "false")
+
+    def _on_vulkan_toggled(self, checked: bool) -> None:
+        version = self.version_combo.currentText()
+        # Only persist when the current version actually supports it; this
+        # avoids the preference being clobbered if the user toggles while
+        # a compatible version briefly loses focus during selection.
+        if is_native_vulkan_compatible(version):
+            self.settings.setValue("native_vulkan", "true" if checked else "false")
 
     def _on_rpc_state_changed(self, state: int) -> None:
         enabled = state == 2
@@ -2936,7 +3662,53 @@ class MinecraftLauncher(QMainWindow):
         else:
             self.perf_checkbox.setToolTip("")
             self.perf_checkbox.setChecked(_to_bool(self.settings.value("performance_mode", "true")))
+
+        vulkan_ok = is_native_vulkan_compatible(version)
+        self.vulkan_checkbox.blockSignals(True)
+        self.vulkan_checkbox.setEnabled(vulkan_ok)
+        if not vulkan_ok:
+            self.vulkan_checkbox.setChecked(False)
+            self.vulkan_checkbox.setToolTip(
+                "Requires Minecraft 26.2 or newer.\n"
+                "Uses Mojang's official Vulkan backend (not VulkanMod)."
+            )
+        else:
+            self.vulkan_checkbox.setToolTip(
+                "Launches Minecraft with Mojang's native Vulkan renderer.\n"
+                "Equivalent to picking Vulkan in the video settings menu."
+            )
+            self.vulkan_checkbox.setChecked(
+                _to_bool(self.settings.value("native_vulkan", "false"))
+            )
+        self.vulkan_checkbox.blockSignals(False)
+
+        self._refresh_meta_label()
         self._refresh_installed_mods()
+
+    def _refresh_meta_label(self) -> None:
+        """Update the small meta-line under the version picker."""
+        if not hasattr(self, "meta_label"):
+            return
+        version = self.version_combo.currentText()
+        if not version or version == "Loading versions...":
+            self.meta_label.setText("")
+            return
+
+        runtime = get_expected_runtime_name(version)
+        major = RUNTIME_JAVA_MAJOR.get(runtime, "?")
+        bits = [f"Java {major}"]
+
+        if is_native_vulkan_compatible(version):
+            bits.append("Vulkan ready")
+        else:
+            bits.append("OpenGL only")
+
+        try:
+            bits.append(f"{self._get_total_ram_gb()} GB system RAM")
+        except Exception:
+            pass
+
+        self.meta_label.setText("  ·  ".join(bits))
 
     def _on_mod_search(self) -> None:
         query = self.mod_search_input.text().strip()
@@ -2960,8 +3732,10 @@ class MinecraftLauncher(QMainWindow):
         self.mod_action_btn.setText("Install")
         self.mod_action_btn.setProperty("mode", "install")
         for hit in hits:
-            item = QListWidgetItem(f"{hit.get('title', 'Unknown')} ({hit.get('slug', '')})")
-            item.setData(Qt.ItemDataRole.UserRole, (hit.get('project_id', ''), hit.get('slug', '')))
+            title = hit.get("title", "Unknown") or "Unknown"
+            item = QListWidgetItem(title)
+            item.setData(Qt.ItemDataRole.UserRole, (hit.get("project_id", ""), hit.get("slug", "")))
+            item.setToolTip(title)
             self.mods_list.addItem(item)
 
     def _refresh_installed_mods(self) -> None:
@@ -2978,8 +3752,12 @@ class MinecraftLauncher(QMainWindow):
             try:
                 for file in os.listdir(mods_dir):
                     if file.endswith(".jar"):
-                        item = QListWidgetItem(file)
+                        # Strip the .jar for a tidier row; tooltip keeps
+                        # the full filename for hover detail.
+                        name = file[:-4] if file.lower().endswith(".jar") else file
+                        item = QListWidgetItem(name)
                         item.setData(Qt.ItemDataRole.UserRole, file)
+                        item.setToolTip(file)
                         self.mods_list.addItem(item)
             except OSError:
                 pass
@@ -3255,8 +4033,23 @@ class MinecraftLauncher(QMainWindow):
                 background-color: #0A84FF;
                 border-color: #0A84FF;
             }}
+            /* Visibly dimmed state for checkboxes that aren't applicable
+               to the selected version (e.g. Native Vulkan on <26.2). The
+               text fades to a soft grey and the indicator loses its border
+               so it reads as "off / unavailable" at a glance. */
+            QCheckBox:disabled {{
+                color: #5A5A5E;
+            }}
+            QCheckBox::indicator:disabled {{
+                border: 2px solid #2A2A2C;
+                background: #1C1C1E;
+            }}
+            QCheckBox::indicator:checked:disabled {{
+                background-color: #2C4D7A;
+                border-color: #2C4D7A;
+            }}
             QListWidget {{
-                background-color: #2C2C2E;
+                background-color: #232325;
                 border: 1px solid #3A3A3C;
                 border-radius: 8px;
                 color: #FFFFFF;
@@ -3264,10 +4057,10 @@ class MinecraftLauncher(QMainWindow):
                 font-size: 11px;
             }}
             QListWidget::item {{
-                padding: 4px;
+                padding: 2px 8px;
                 border: none;
-                border-radius: 6px;
-                margin: 1px 3px;
+                border-radius: 4px;
+                margin: 0 2px;
             }}
             QListWidget::item:hover {{
                 background-color: #323234;
@@ -3278,9 +4071,16 @@ class MinecraftLauncher(QMainWindow):
             }}
             #modActionBtn, #modDeleteBtn {{
                 font-size: 11px;
-                padding: 0px 8px;
-                height: 22px;
-                border-radius: 6px;
+                padding: 0px 10px;
+                height: 24px;
+                border-radius: 5px;
+                font-weight: 600;
+            }}
+            #modActionBtn {{
+                background-color: #0A84FF;
+            }}
+            #modActionBtn:hover {{
+                background-color: #2F95FF;
             }}
             #modDeleteBtn {{
                 background-color: #FF5F56;
@@ -3297,10 +4097,18 @@ class MinecraftLauncher(QMainWindow):
         self.nick_input.blockSignals(False)
 
         try:
-            saved_ram = int(self.settings.value("ram_gb", 4))
+            saved_ram = int(self.settings.value("ram_gb", "4"))
         except (ValueError, TypeError):
             saved_ram = 4
-        self.ram_slider.setValue(max(self.ram_slider.minimum(), min(saved_ram, self.ram_slider.maximum())))
+        if saved_ram < 1:
+            saved_ram = 4
+        lo = self.ram_slider.minimum()
+        hi = self.ram_slider.maximum()
+        saved_ram = max(lo, min(hi, saved_ram))
+        self.ram_slider.blockSignals(True)
+        self.ram_slider.setValue(saved_ram)
+        self.ram_slider.blockSignals(False)
+        self.ram_val_lbl.setText(f"{saved_ram} GB")
 
         self.perf_checkbox.blockSignals(True)
         self.perf_checkbox.setChecked(_to_bool(self.settings.value("performance_mode", "true")))
@@ -3315,6 +4123,7 @@ class MinecraftLauncher(QMainWindow):
         self.settings.setValue("username", self.nick_input.text().strip())
         self.settings.setValue("version", self.version_combo.currentText())
         self.settings.setValue("performance_mode", "true" if self.perf_checkbox.isChecked() else "false")
+        self.settings.setValue("native_vulkan", "true" if self.vulkan_checkbox.isChecked() else "false")
         self.settings.setValue("ram_gb", self.ram_slider.value())
 
     def _fetch_versions(self) -> None:
@@ -3336,8 +4145,13 @@ class MinecraftLauncher(QMainWindow):
         self.version_combo.addItems(versions)
         self.version_combo.setEnabled(True)
 
+        # Selection priority: saved > default (26.2) > whatever was already
+        # selected > first item in the list. A previously-saved version is
+        # always honoured so existing users don't get bumped on upgrade.
         if saved_version in versions:
             self.version_combo.setCurrentText(saved_version)
+        elif _DEFAULT_VERSION in versions:
+            self.version_combo.setCurrentText(_DEFAULT_VERSION)
         elif current in versions:
             self.version_combo.setCurrentText(current)
         self.version_combo.blockSignals(False)
@@ -3345,7 +4159,9 @@ class MinecraftLauncher(QMainWindow):
         self._on_version_changed(self.version_combo.currentText())
 
     def _on_versions_fetch_failed(self, _error_message: str) -> None:
-        fallback = ["1.21.4", "1.21.1", "1.20.4", "1.19.4", "1.16.5", "1.8.9"]
+        # 26.2 leads the offline fallback list so the default-version
+        # logic below can still find it when the manifest is unreachable.
+        fallback = ["26.2", "1.21.4", "1.21.1", "1.20.4", "1.19.4", "1.16.5", "1.8.9"]
         try:
             installed = [
                 v.get("id", "") for v in minecraft_launcher_lib.utils.get_installed_versions(
@@ -3365,9 +4181,20 @@ class MinecraftLauncher(QMainWindow):
 
         if saved_version in combined:
             self.version_combo.setCurrentText(saved_version)
+        elif _DEFAULT_VERSION in combined:
+            self.version_combo.setCurrentText(_DEFAULT_VERSION)
         self.version_combo.blockSignals(False)
 
         self._on_version_changed(self.version_combo.currentText())
+        # Tell the user the list came from cache + fallback so they don't
+        # think the launcher just doesn't have the latest versions.
+        VantaDialog.warning(
+            self,
+            "Offline Mode",
+            "Could not reach the Mojang version manifest.\n\n"
+            "Showing your installed versions plus a recent fallback list. "
+            "Reconnect to the internet and the launcher will refresh the list.",
+        )
 
     def _start_update_check(self) -> None:
         if self._is_closing or self._update_in_progress or self._pending_update:
@@ -3407,7 +4234,7 @@ class MinecraftLauncher(QMainWindow):
         reply = VantaDialog.question(
             self,
             "Update Available",
-            f"Vanta {latest_tag} is available (you are running v{APP_VERSION}).\n\n"
+            f"Vanta {latest_tag} is available (you are running v{APP_VERSION_RUNTIME}).\n\n"
             "Download and install it now?",
             default_yes=True,
         )
@@ -3543,13 +4370,15 @@ class MinecraftLauncher(QMainWindow):
         def start_launch(java_exec: Optional[str] = None):
             self._set_ui_enabled(False)
             self._show_progress(True, "Preparing")
-            ram = self.ram_slider.value()
+            ram_gb = self.ram_slider.value()
             perf = self.perf_checkbox.isChecked() and is_fabric_compatible(version)
+            use_vulkan = self.vulkan_checkbox.isChecked() and is_native_vulkan_compatible(version)
 
             self._update_rpc(state="In-Game", details=f"Playing Minecraft {version}")
 
             self._launch_worker = LaunchWorker(username, version, self.minecraft_dir,
-                                               ram, perf, java_path=java_exec)
+                                               ram_gb, perf, java_path=java_exec,
+                                               use_native_vulkan=use_vulkan)
             self._register_worker(self._launch_worker)
             self._launch_worker.progress_updated.connect(self._on_launch_progress)
             self._launch_worker.launch_success.connect(self._on_launch_success)
@@ -3648,7 +4477,16 @@ class MinecraftLauncher(QMainWindow):
         self.play_button.setText("Play")
         self.show()
         self.setWindowOpacity(1.0)
-        VantaDialog.error(self, "Launch Failed", message)
+        # Split message: human-readable summary up top, log-tail into the
+        # collapsible "Details" section so the dialog stays compact while
+        # still preserving every line of the Minecraft log.
+        version = self.version_combo.currentText()
+        instance_dir = os.path.join(self.vanta_dir, "instances", safe_instance_name(version))
+        VantaDialog.error(
+            self, "Launch Failed", message,
+            details=_read_log_tail(os.path.join(instance_dir, "latest.log"), max_lines=80, max_chars=8000),
+            log_dir=instance_dir,
+        )
         self._update_rpc(state="Free Non-Premium Launcher", details="Playing Minecraft")
 
     def _on_game_exited(self) -> None:
@@ -3669,10 +4507,14 @@ class MinecraftLauncher(QMainWindow):
         self._set_ui_enabled(True)
         self._show_progress(False)
         self.play_button.setText("Play")
+        version = self.version_combo.currentText()
+        instance_dir = os.path.join(self.vanta_dir, "instances", safe_instance_name(version))
         VantaDialog.error(
             self,
             "Launch Error",
             f"An error occurred while launching Minecraft:\n\n{error_message}",
+            details=_read_log_tail(os.path.join(instance_dir, "latest.log"), max_lines=80, max_chars=8000),
+            log_dir=instance_dir,
         )
         self._update_rpc(state="Free Non-Premium Launcher", details="Playing Minecraft")
 
@@ -3687,7 +4529,7 @@ if __name__ == "__main__":
     # SetCurrentProcessExplicitAppUserModelID call was removed as part of
     # the antivirus-heuristic cleanup.
     QApplication.setApplicationName("Vanta Launcher")
-    QApplication.setApplicationVersion(APP_VERSION)
+    QApplication.setApplicationVersion(APP_VERSION_RUNTIME)
     QApplication.setOrganizationName("Vanta")
     QApplication.setOrganizationDomain("getvanta.xyz")
 
