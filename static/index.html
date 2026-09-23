@@ -219,13 +219,14 @@
   }
   .nav-inner { max-width: var(--maxw-wide); margin: 0 auto; padding: 0 24px; height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
   .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 700; font-size: 17px; font-family: var(--display); letter-spacing: -0.01em; }
-  .brand-mark { width: 22px; height: 22px; background: var(--accent); -webkit-mask: url('/icons/favicon.svg') center/contain no-repeat; mask: url('/icons/favicon.svg') center/contain no-repeat; }
+  .brand-mark { width: 28px; height: 28px; display: block; }
   .nav-links { display: flex; gap: 24px; align-items: center; }
   .nav-link { color: var(--text-muted); text-decoration: none; font-size: 14px; transition: color 0.15s; }
   .nav-link:hover { color: var(--text); }
   .nav-actions { display: flex; gap: 12px; align-items: center; }
-  .nav-cta { padding: 10px 18px; background: linear-gradient(180deg, var(--accent), var(--accent-deep)); color: #FFFFFF; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; transition: filter 0.15s, transform 0.15s; box-shadow: 0 4px 14px -4px rgba(255,122,46,0.4); }
+  .nav-cta { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: linear-gradient(180deg, var(--accent), var(--accent-deep)); color: #FFFFFF; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; transition: filter 0.15s, transform 0.15s; box-shadow: 0 4px 14px -4px rgba(255,122,46,0.4); }
   .nav-cta:hover { filter: brightness(1.05); transform: translateY(-1px); }
+  .nav-cta svg { width: 15px; height: 15px; flex-shrink: 0; }
   .nav-github { color: var(--text-muted); text-decoration: none; font-size: 14px; }
   .nav-github:hover { color: var(--text); }
 
@@ -402,7 +403,7 @@
 <nav class="nav" aria-label="Primary">
   <div class="nav-inner">
     <a href="#" class="brand" aria-label="Vanta Home">
-      <div class="brand-mark" role="img" aria-hidden="true"></div>
+      <img src="/icons/icon-bg.png" alt="" class="brand-mark" width="28" height="28">
       <span>Vanta</span>
     </a>
     
@@ -414,7 +415,8 @@
 
     <div class="nav-actions">
       <a href="#download" class="nav-cta vanta-download-link" aria-label="Download Vanta Launcher">
-        Download
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Download</span>
       </a>
     </div>
   </div>
