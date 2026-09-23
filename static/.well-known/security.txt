@@ -1,0 +1,7 @@
+Contact: https://github.com/inpriv/vanta/issues
+Contact: mailto:vanta@inpriv.xyz
+Expires: 2027-12-31T23:59:59z
+Preferred-Languages: en, pl
+Canonical: https://getvanta.xyz/.well-known/security.txt
+Policy: https://github.com/inpriv/vanta/security/advisories
+Acknowledgments: https://github.com/inpriv/vanta/security/advisories

@@ -11,57 +11,379 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Vanta — A cleaner Minecraft launcher</title>
-<meta name="description" content="Free, open-source Minecraft launcher with built-in Fabric mod support, automatic performance mods, and a beautiful interface. No account required.">
-<link rel="canonical" href="https://getvanta.xyz/">
+<meta name="theme-color" content="#0A84FF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#08080A" media="(prefers-color-scheme: dark)">
 
-<!-- Open Graph / Social Media Meta (Discord, X/Twitter, iMessage, etc.) -->
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Vanta">
-<meta property="og:title" content="Vanta — A cleaner Minecraft launcher">
-<meta property="og:description" content="A free, open-source Minecraft launcher with built-in Fabric mod support, automatic performance mods, and a beautifully simple interface.">
-<meta property="og:url" content="https://getvanta.xyz/">
-<meta property="og:image" content="/icons/icon-bg.png">
-<meta property="og:image:type" content="image/png">
-<meta property="og:image:width" content="512">
-<meta property="og:image:height" content="512">
-<meta property="og:image:alt" content="Vanta logo — a white hand-drawn V on a black background">
-<meta property="og:locale" content="en_US">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Vanta — A cleaner Minecraft launcher">
-<meta name="twitter:description" content="A free, open-source Minecraft launcher with built-in Fabric mod support, automatic performance mods, and a beautifully simple interface.">
-<meta name="twitter:image" content="/icons/icon-bg.png">
-<meta name="twitter:image:alt" content="Vanta logo — a white hand-drawn V on a black background">
-<meta name="theme-color" content="#0A84FF">
-<meta name="robots" content="index, follow">
+<title>Vanta — A Cleaner, Free, Open-Source Minecraft Launcher</title>
+<meta name="title" content="Vanta — A Cleaner, Free, Open-Source Minecraft Launcher">
+<meta name="description" content="Vanta is a free, open-source Minecraft Java launcher with built-in Fabric mod support, automatic performance mods (Lithium, Sodium, FerriteCore, Starlight), one-click Modrinth browsing, and stable UUIDs — no Microsoft account required. MIT licensed.">
+<meta name="keywords" content="minecraft launcher, free minecraft launcher, open source minecraft launcher, fabric launcher, fabric mod support, minecraft java launcher, sodium, lithium, ferritecore, starlight, modrinth launcher, offline minecraft launcher, no account minecraft launcher, lightweight minecraft launcher, minecraft launcher windows, minecraft launcher linux, vanta launcher">
 <meta name="author" content="inpriv">
 <meta name="application-name" content="Vanta">
+<meta name="generator" content="Vanta static site">
+<meta name="rating" content="general">
+<meta name="distribution" content="global">
+<meta name="copyright" content="(c) 2026 inpriv">
+<meta name="language" content="English">
+<meta name="revisit-after" content="3 days">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1, googlebot:index, googlebot:follow">
+<meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="format-detection" content="telephone=no">
+<meta name="HandheldFriendly" content="true">
+<meta name="MobileOptimized" content="width">
 
-<!-- Icons -->
-<link rel="apple-touch-icon" href="/icons/icon-bg.png">
+<link rel="canonical" href="https://getvanta.xyz/">
+<link rel="alternate" hreflang="en" href="https://getvanta.xyz/">
+<link rel="alternate" hreflang="x-default" href="https://getvanta.xyz/">
+<link rel="manifest" href="/site.webmanifest">
+
+<!-- Icons (SVG favicon first for SERP crispness, then PNG fallbacks) -->
+<link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
 <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon.png">
 <link rel="icon" type="image/x-icon" href="/icons/icon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
+<link rel="mask-icon" href="/icons/favicon.svg" color="#0A84FF">
+<meta name="msapplication-TileColor" content="#08080A">
+<meta name="msapplication-TileImage" content="/icons/icon-bg.png">
+<meta name="msapplication-config" content="none">
+
+<!-- Open Graph (Facebook, Discord, LinkedIn, Slack, WhatsApp) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Vanta">
+<meta property="og:title" content="Vanta — A Cleaner Minecraft Launcher">
+<meta property="og:description" content="Free, open-source Minecraft Java launcher with one-click Fabric mod support and automatic performance mods. No Microsoft account required. MIT licensed.">
+<meta property="og:url" content="https://getvanta.xyz/">
+<meta property="og:image" content="https://getvanta.xyz/icons/og-1200x630.png">
+<meta property="og:image:secure_url" content="https://getvanta.xyz/icons/og-1200x630.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Vanta — A cleaner Minecraft launcher. Free, open source, Fabric ready.">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="pl_PL">
+<meta property="og:determiner" content="">
+<meta property="og:see_also" content="https://github.com/inpriv/vanta">
+<meta property="og:see_also" content="https://github.com/inpriv/vanta/releases">
+<meta property="og:updated_time" content="2026-09-23">
+
+<!-- Twitter / X Cards -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@vanta_launcher">
+<meta name="twitter:creator" content="@inpriv">
+<meta name="twitter:title" content="Vanta — A Cleaner Minecraft Launcher">
+<meta name="twitter:description" content="Free, open-source Minecraft Java launcher with one-click Fabric mod support and automatic performance mods. No Microsoft account required.">
+<meta name="twitter:image" content="https://getvanta.xyz/icons/og-1200x630.png">
+<meta name="twitter:image:src" content="https://getvanta.xyz/icons/og-1200x630.png">
+<meta name="twitter:image:alt" content="Vanta — A cleaner Minecraft launcher. Free, open source, Fabric ready.">
+<meta name="twitter:domain" content="getvanta.xyz">
+<meta name="twitter:url" content="https://getvanta.xyz/">
+<meta name="twitter:label1" content="Price">
+<meta name="twitter:data1" content="Free">
+<meta name="twitter:label2" content="License">
+<meta name="twitter:data2" content="MIT">
+
+<!-- Article / publisher (helps some search engines + link previews) -->
+<meta property="article:author" content="inpriv">
+<meta property="article:publisher" content="https://github.com/inpriv/vanta">
+<meta property="article:modified_time" content="2026-09-23">
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="dns-prefetch" href="https://minotar.net">
+<link rel="dns-prefetch" href="https://github.com">
+<link rel="dns-prefetch" href="https://api.github.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<!-- Structured data for search engines -->
+<!-- Dublin Core metadata (legacy + library search engines) -->
+<meta name="DC.title" content="Vanta — A Cleaner Minecraft Launcher">
+<meta name="DC.creator" content="inpriv">
+<meta name="DC.subject" content="Minecraft launcher; free; open source; Fabric mods; performance mods; Modrinth">
+<meta name="DC.description" content="Vanta is a free, open-source Minecraft Java launcher with built-in Fabric mod support, automatic performance mods, and a beautifully simple interface.">
+<meta name="DC.publisher" content="inpriv">
+<meta name="DC.contributor" content="Mojang AB; FabricMC; Modrinth; Aikar (Paper)">
+<meta name="DC.date" content="2026-09-23">
+<meta name="DC.type" content="Software">
+<meta name="DC.format" content="text/html">
+<meta name="DC.identifier" content="https://getvanta.xyz/">
+<meta name="DC.language" content="en">
+<meta name="DC.rights" content="MIT License">
+
+<!-- Structured data: SoftwareApplication (primary) -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "Vanta",
+  "alternateName": "Vanta Launcher",
   "url": "https://getvanta.xyz/",
-  "image": "/icons/icon-bg.png",
+  "image": [
+    "https://getvanta.xyz/icons/icon-bg.png",
+    "https://getvanta.xyz/icons/og-1200x630.png"
+  ],
+  "logo": "https://getvanta.xyz/icons/favicon.svg",
   "applicationCategory": "GameApplication",
-  "operatingSystem": "Windows, Linux",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "applicationSubCategory": "Minecraft Launcher",
+  "operatingSystem": "Windows 10, Windows 11, Linux (via Proton/Wine)",
+  "softwareVersion": "1.9",
+  "fileSize": "94.7MB",
+  "downloadUrl": "https://github.com/inpriv/vanta/releases/latest",
+  "softwareRequirements": "Java 8+ (auto-downloaded per Minecraft version)",
+  "memoryRequirements": "2 GB RAM minimum",
+  "storageRequirements": "500 MB + Minecraft instances",
+  "processorRequirements": "Any x86_64 CPU",
+  "screenshot": "https://getvanta.xyz/icons/og-1200x630.png",
+  "featureList": [
+    "Built-in Fabric mod loader (automatic install)",
+    "Automatic performance mods (Sodium, Lithium, FerriteCore, Starlight)",
+    "Modrinth mod browser",
+    "Multi-version support (Beta 1.7.3 through latest 1.21.x and snapshots)",
+    "Stable offline UUIDs (no Microsoft account)",
+    "Tuned JVM arguments per version",
+    "Auto Java runtime downloader",
+    "Offline (no telemetry, no analytics)",
+    "MIT licensed, fully open source"
+  ],
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "https://github.com/inpriv/vanta/releases/latest"
+  },
   "license": "https://opensource.org/licenses/MIT",
-  "author": { "@type": "Person", "name": "inpriv" },
+  "author": {
+    "@type": "Organization",
+    "name": "inpriv",
+    "url": "https://github.com/inpriv"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "inpriv",
+    "url": "https://github.com/inpriv"
+  },
+  "creator": {
+    "@type": "Organization",
+    "name": "inpriv",
+    "url": "https://github.com/inpriv"
+  },
+  "maintainer": {
+    "@type": "Organization",
+    "name": "inpriv",
+    "url": "https://github.com/inpriv"
+  },
+  "codeRepository": "https://github.com/inpriv/vanta",
+  "codeSampleType": "application/x-msdownload",
+  "programmingLanguage": "Python 3.12, PyQt6",
+  "runtimePlatform": "Windows, Linux",
+  "targetProduct": "Minecraft Java Edition",
+  "audience": {
+    "@type": "PeopleAudience",
+    "suggestedMinAge": 8,
+    "audienceType": "Minecraft players"
+  },
+  "isAccessibleForFree": true,
+  "inLanguage": "en",
+  "dateModified": "2026-09-23",
+  "datePublished": "2026-09-06",
   "description": "Free, open-source Minecraft launcher with built-in Fabric mod support, automatic performance mods, and a beautiful interface. No account required."
+}
+</script>
+
+<!-- Structured data: WebSite (sitelinks search box) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Vanta",
+  "alternateName": "Vanta Launcher",
+  "url": "https://getvanta.xyz/",
+  "inLanguage": "en",
+  "publisher": {
+    "@type": "Organization",
+    "name": "inpriv",
+    "url": "https://github.com/inpriv"
+  },
+  "potentialAction": {
+    "@type": "DownloadAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "https://github.com/inpriv/vanta/releases/latest"
+    },
+    "name": "Download Vanta Launcher"
+  }
+}
+</script>
+
+<!-- Structured data: Organization (Knowledge Panel signal) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://github.com/inpriv#organization",
+  "name": "inpriv",
+  "alternateName": "inpriv Labs",
+  "url": "https://github.com/inpriv",
+  "logo": "https://getvanta.xyz/icons/favicon.svg",
+  "sameAs": [
+    "https://github.com/inpriv",
+    "https://github.com/inpriv/vanta"
+  ]
+}
+</script>
+
+<!-- Structured data: BreadcrumbList (for SERP breadcrumbs) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://getvanta.xyz/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Download",
+      "item": "https://getvanta.xyz/#download"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "FAQ",
+      "item": "https://getvanta.xyz/#faq"
+    }
+  ]
+}
+</script>
+
+<!-- Structured data: FAQPage (rich SERP FAQ snippets) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is Vanta really free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Vanta is MIT-licensed open source on GitHub. There are no ads, no premium tiers, no telemetry, and no plans to add any. If you ever paid for this, you were scammed."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need a Microsoft account?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Vanta derives a stable UUID from your username using the same scheme as vanilla offline mode, so your identity (whitelists, stats, playerdata) persists across launches. You can use any username you like — skins are pulled from minotar.net based on the name you enter."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which Minecraft versions are supported?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Vanta supports the entire history of Java Edition. From 26.2 and updates like 1.21 (Tricky Trials), all the way back to Beta, Alpha, Infdev, Indev, Classic, and Pre-Classic (2009). Performance Mode and automatic Fabric installation require Minecraft 1.14 or newer."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to install Java separately?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Vanta detects the exact Java runtime Mojang specifies for the version you've chosen and downloads it into the Minecraft runtime directory on first launch. No admin rights, no PATH fiddling."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Where are my worlds and mods stored?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Each version gets an isolated instance directory at %APPDATA%\\.Vanta\\instances\\{version}\\ on Windows. Drop mods into the mods folder, or use the built-in Modrinth browser in the launcher."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is this safe to use?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The full source is on GitHub — every line is auditable. Vanta only talks to Mojang's servers, the Modrinth API, and minotar.net for skins. No telemetry or hidden tracking calls."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Windows flagged Vanta — is it safe?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Defender's machine-learning heuristic occasionally flags unsigned single-file executables. Vanta is MIT-licensed open source — every line is auditable on GitHub — it contains no telemetry, and it only talks to Mojang, Modrinth, and minotar.net. Verify your download against the SHA-256 published on the release page, or grab the standalone ZIP, and report a false positive to Microsoft if it persists."
+      }
+    }
+  ]
+}
+</script>
+
+<!-- Structured data: HowTo (rich SERP 'How to install Minecraft launcher') -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to install and run Vanta Minecraft Launcher",
+  "description": "Install and play Minecraft with the free, open-source Vanta launcher in under a minute.",
+  "totalTime": "PT1M",
+  "estimatedCost": {
+    "@type": "MonetaryAmount",
+    "currency": "USD",
+    "value": "0"
+  },
+  "tool": [
+    {"@type": "HowToTool", "name": "Windows 10 or 11 (64-bit)"},
+    {"@type": "HowToTool", "name": "Vanta Launcher executable"}
+  ],
+  "step": [
+    {
+      "@type": "HowToStep",
+      "position": 1,
+      "name": "Download Vanta",
+      "text": "Download the latest Vanta.exe from the official GitHub releases page.",
+      "url": "https://github.com/inpriv/vanta/releases/latest"
+    },
+    {
+      "@type": "HowToStep",
+      "position": 2,
+      "name": "Verify the SHA-256",
+      "text": "Compare the file's SHA-256 against the value published on the release page to confirm the download is authentic."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 3,
+      "name": "Run Vanta.exe",
+      "text": "Double-click Vanta.exe. No installer, no admin rights required."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 4,
+      "name": "Pick your Minecraft version",
+      "text": "Choose any Java Edition version, from the latest snapshot to Pre-Classic 2009."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 5,
+      "name": "Enable Performance Mode (optional)",
+      "text": "Toggle Performance Mode to automatically install Sodium, Lithium, FerriteCore, and Starlight for 2-4x FPS gains."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 6,
+      "name": "Play",
+      "text": "Click Play. Vanta downloads the exact Java runtime Mojang specifies for your chosen version and launches the game."
+    }
+  ]
 }
 </script>
 

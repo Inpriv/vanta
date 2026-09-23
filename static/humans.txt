@@ -1,0 +1,32 @@
+/* TEAM */
+Vanta Launcher is built and maintained by inpriv.
+Author / maintainer: inpriv (https://github.com/inpriv)
+Project page: https://getvanta.xyz
+Source repository: https://github.com/inpriv/vanta
+
+/* SITE */
+Last update: 2026-09-23
+Standards: HTML5, CSS3, ES2022, Schema.org JSON-LD, Open Graph, Twitter Cards
+Components: Cloudflare Pages, Python 3.12 (Nuitka-built launcher binary)
+Software: PyQt6, minecraft_launcher_lib, Modrinth API, Mojang session API, minotar.net
+
+/* THANKS */
+Mojang AB — for Minecraft and the version manifest API
+FabricMC — for the Fabric loader and Yarn mappings
+The Fabric modding community — Sodium, Lithium, FerriteCore, Starlight, Mod Menu, Cloth Config
+JellySquid (author of Sodium/Lithium)
+shedaniel (author of Starlight)
+malte0811 (author of FerriteCore)
+ Hayden Sewell / 2lstudios / modmuss / ohnokay (Fabric Loader contributors)
+The Modrinth team — for the clean mod API and distribution platform
+Aikar / aadnk — for the Aikar's Flags JVM tuning guide
+JetBrains — for PyCharm and the Python ecosystem
+Cloudflare — for Pages hosting
+All open-source contributors whose work is shipped inside Vanta
+
+/* NO TRACKING */
+This site does not run analytics, ad networks, tracking pixels, or fingerprinting scripts.
+No cookies. No localStorage fingerprinting. The only network calls from this page are:
+  - fonts.googleapis.com / fonts.gstatic.com (webfonts)
+  - minotar.net (when displaying skin thumbnails)
+  - github.com / api.github.com (download redirect on click)

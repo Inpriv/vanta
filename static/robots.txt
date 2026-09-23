@@ -1,4 +1,58 @@
 User-agent: *
 Allow: /
+Disallow: /icons/og-1200x630.png$
+
+# Crawl-delay (relaxed for Google/Bing; polite for everyone else)
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 1
+
+User-agent: YandexBot
+Allow: /
+Crawl-delay: 1
+
+# AI training crawlers - explicitly ALLOWED with attribution
+User-agent: GPTBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# Aggressive scrapers / bandwidth wasters
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
 
 Sitemap: https://getvanta.xyz/sitemap.xml
+Host: https://getvanta.xyz

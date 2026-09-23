@@ -1,0 +1,74 @@
+{
+  "name": "Vanta — Minecraft Launcher",
+  "short_name": "Vanta",
+  "description": "Free, open-source Minecraft Java launcher with built-in Fabric mod support and automatic performance mods.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#08080A",
+  "theme_color": "#0A84FF",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["games", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/apple-touch-icon-180.png",
+      "type": "image/png",
+      "sizes": "180x180",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-bg.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/og-1200x630.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Vanta Launcher — Free, open source, Fabric ready"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Download Vanta",
+      "short_name": "Download",
+      "description": "Download the latest Vanta.exe",
+      "url": "/#download",
+      "icons": [{ "src": "/icons/icon-bg.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "GitHub",
+      "short_name": "GitHub",
+      "description": "View the Vanta source on GitHub",
+      "url": "https://github.com/inpriv/vanta",
+      "icons": [{ "src": "/icons/icon-bg.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "FAQ",
+      "short_name": "FAQ",
+      "description": "Common questions about Vanta",
+      "url": "/#faq",
+      "icons": [{ "src": "/icons/icon-bg.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
