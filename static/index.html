@@ -237,18 +237,19 @@
   .hero-eyebrow {
     display: inline-block;
     color: var(--text-muted);
-    font-size: 12px;
-    letter-spacing: 0.04em;
+    font-size: 13px;
+    letter-spacing: 0.08em;
     margin: 0 0 20px 0;
     font-family: var(--mono);
     line-height: 1;
+    text-transform: uppercase;
   }
   .hero-title {
     font-family: var(--display);
     font-weight: 900;
-    font-size: clamp(44px, 13vw, 116px);
-    line-height: 0.92;
-    letter-spacing: -0.04em;
+    font-size: clamp(40px, 6.5vw, 80px);
+    line-height: 0.95;
+    letter-spacing: -0.035em;
     margin-bottom: 24px;
   }
   .hero-title .line { display: block; }
@@ -423,10 +424,10 @@
     .nav-cta { padding: 13px 22px; font-size: 15px; gap: 10px; box-shadow: 0 6px 20px -6px rgba(10, 132, 255, 0.55); }
     .nav-cta svg { width: 17px; height: 17px; }
     .nav-cta:hover { box-shadow: 0 10px 24px -6px rgba(10, 132, 255, 0.7); }
-    .hero { padding: calc(var(--header-total) + 0px) 24px 40px; }
-    .hero-eyebrow { margin-bottom: 28px; }
-    .hero-title { font-size: clamp(48px, 8.5vw, 116px); margin-bottom: 32px; }
-    .hero-sub { font-size: clamp(16px, 1.8vw, 19px); margin-bottom: 36px; }
+    .hero { padding: calc(var(--header-total) + 16px) 24px 56px; }
+    .hero-eyebrow { margin-bottom: 24px; }
+    .hero-title { font-size: clamp(40px, 5.5vw, 72px); margin-bottom: 28px; }
+    .hero-sub { font-size: clamp(16px, 1.6vw, 19px); margin-bottom: 32px; max-width: 560px; }
     .hero-cta { gap: 18px; }
   }
 </style>
@@ -486,10 +487,6 @@
       </a>
     </div>
   </div>
-
-  <figure class="hero-figure reveal">
-    <img src="/icons/og-1200x630.png" alt="Screenshot of the Vanta launcher running on Windows" loading="eager" fetchpriority="high" width="1200" height="630">
-  </figure>
 </section>
 
 <!-- ===== DOWNLOAD ===== -->
