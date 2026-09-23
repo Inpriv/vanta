@@ -11,8 +11,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#08080A" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FF7A2E" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
 <title>Vanta — A Cleaner, Free, Open-Source Minecraft Launcher</title>
 <meta name="title" content="Vanta — A Cleaner, Free, Open-Source Minecraft Launcher">
@@ -95,7 +95,7 @@
 <link rel="dns-prefetch" href="https://minotar.net">
 <link rel="dns-prefetch" href="https://github.com">
 <link rel="dns-prefetch" href="https://api.github.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <!-- Dublin Core metadata (legacy + library search engines) -->
 <meta name="DC.title" content="Vanta — A Cleaner Minecraft Launcher">
@@ -165,20 +165,24 @@
 
 <style>
   :root {
-    --bg: #08080A;
-    --text: #F5F5F7;
-    --text-muted: #98989D;
+    --bg: #000000;
+    --bg-2: #0A0A0A;
+    --text: #FFFFFF;
+    --text-muted: #A8A8AD;
     --text-dim: #6E6E73;
-    --border: #2C2C2E;
-    --border-strong: #3A3A3C;
-    --accent: #F5F5F7;
-    --accent-hover: #FFFFFF;
-    --radius: 8px;
-    --maxw: 720px;
-    --maxw-wide: 980px;
+    --accent: #FF7A2E;
+    --accent-hover: #FF8A42;
+    --accent-deep: #E5631A;
+    --accent-soft: rgba(255, 122, 46, 0.18);
+    --border: #1F1F22;
+    --border-strong: #2E2E32;
+    --radius: 14px;
+    --maxw: 980px;
+    --maxw-wide: 1180px;
     --font: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    --display: 'Archivo Black', 'Space Grotesk', system-ui, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, monospace;
-    --header-height: 64px;
+    --header-height: 72px;
     --header-total: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   }
 
@@ -214,93 +218,125 @@
     border-bottom: 1px solid var(--border); z-index: 100; padding-top: env(safe-area-inset-top);
   }
   .nav-inner { max-width: var(--maxw-wide); margin: 0 auto; padding: 0 24px; height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 600; font-size: 16px; }
-  .brand-mark { width: 22px; height: 22px; background: var(--text); -webkit-mask: url('/icons/favicon.svg') center/contain no-repeat; mask: url('/icons/favicon.svg') center/contain no-repeat; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 700; font-size: 17px; font-family: var(--display); letter-spacing: -0.01em; }
+  .brand-mark { width: 22px; height: 22px; background: var(--accent); -webkit-mask: url('/icons/favicon.svg') center/contain no-repeat; mask: url('/icons/favicon.svg') center/contain no-repeat; }
   .nav-links { display: flex; gap: 24px; align-items: center; }
   .nav-link { color: var(--text-muted); text-decoration: none; font-size: 14px; transition: color 0.15s; }
   .nav-link:hover { color: var(--text); }
   .nav-actions { display: flex; gap: 12px; align-items: center; }
-  .nav-cta { padding: 8px 16px; background: var(--text); color: #08080A; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; transition: background 0.15s; }
-  .nav-cta:hover { background: var(--accent-hover); }
+  .nav-cta { padding: 10px 18px; background: linear-gradient(180deg, var(--accent), var(--accent-deep)); color: #FFFFFF; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; transition: filter 0.15s, transform 0.15s; box-shadow: 0 4px 14px -4px rgba(255,122,46,0.4); }
+  .nav-cta:hover { filter: brightness(1.05); transform: translateY(-1px); }
   .nav-github { color: var(--text-muted); text-decoration: none; font-size: 14px; }
   .nav-github:hover { color: var(--text); }
 
   /* ===== HERO ===== */
-  .hero { position: relative; padding: calc(var(--header-total) + 80px) 24px 96px; }
-  .hero-inner { max-width: var(--maxw); margin: 0 auto; }
+  .hero { position: relative; padding: calc(var(--header-total) + 48px) 24px 64px; max-width: var(--maxw-wide); margin: 0 auto; }
+  .hero-inner { max-width: var(--maxw-wide); margin: 0 auto 48px; }
   .hero-eyebrow {
     display: inline-block;
     color: var(--text-muted);
     font-size: 13px;
     letter-spacing: 0.04em;
-    margin-bottom: 32px;
+    margin-bottom: 28px;
     font-family: var(--mono);
   }
-  .hero h1 {
-    font-size: clamp(40px, 6vw, 72px);
-    font-weight: 600;
-    line-height: 1.05;
-    letter-spacing: -0.035em;
-    margin-bottom: 28px;
+  .hero-title {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(48px, 8.5vw, 116px);
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    margin-bottom: 32px;
   }
-  .hero h1 .accent { color: var(--accent); font-weight: 500; }
-  .hero h1 .strike { position: relative; color: var(--text-dim); font-weight: 300; white-space: nowrap; }
-  .hero h1 .strike::after {
-    content: ''; position: absolute; left: -2%; right: -2%; top: 55%; height: 3px;
-    background: var(--text-dim); transform: rotate(-2deg); border-radius: 2px;
-  }
+  .hero-title .line { display: block; }
+  .hero-title .accent { color: var(--accent); }
   .hero-sub {
-    font-size: clamp(16px, 2vw, 19px);
+    font-size: clamp(16px, 1.8vw, 19px);
     color: var(--text-muted);
-    max-width: 620px;
-    margin-bottom: 40px;
-    line-height: 1.6;
+    max-width: 640px;
+    margin-bottom: 36px;
+    line-height: 1.55;
   }
-  .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 0; }
+  .hero-cta { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+  .hero-secondary { color: var(--text-muted); text-decoration: none; font-size: 15px; font-weight: 500; padding: 13px 4px; transition: color 0.15s; }
+  .hero-secondary:hover { color: var(--text); }
+
+  /* Hero screenshot */
+  .hero-figure {
+    max-width: var(--maxw-wide);
+    margin: 0 auto;
+    padding: 0 4px;
+  }
+  .hero-figure img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6);
+  }
 
   /* ===== BUTTONS ===== */
   .btn-primary {
-    display: inline-flex; align-items: center; gap: 10px;
-    padding: 13px 22px; background: var(--accent); color: #08080A;
-    border-radius: var(--radius); font-size: 15px; font-weight: 600;
-    text-decoration: none; transition: transform 0.15s, background 0.2s;
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 18px 26px;
+    background:
+      linear-gradient(rgba(255,255,255,0.06), rgba(0,0,0,0.10)),
+      repeating-linear-gradient(
+        135deg,
+        transparent 0,
+        transparent 14px,
+        rgba(255,255,255,0.04) 14px,
+        rgba(255,255,255,0.04) 16px
+      ),
+      linear-gradient(180deg, var(--accent), var(--accent-deep));
+    color: #FFFFFF;
+    border-radius: var(--radius);
+    font-size: 16px; font-weight: 600; letter-spacing: -0.005em;
+    text-decoration: none;
+    transition: transform 0.15s, filter 0.2s, box-shadow 0.2s;
+    box-shadow: 0 8px 24px -6px rgba(255, 122, 46, 0.45), inset 0 1px 0 rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.08);
   }
-  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
-  .btn-primary svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .btn-primary:hover {
+    background:
+      linear-gradient(rgba(255,255,255,0.10), rgba(0,0,0,0.05)),
+      repeating-linear-gradient(
+        135deg,
+        transparent 0,
+        transparent 14px,
+        rgba(255,255,255,0.05) 14px,
+        rgba(255,255,255,0.05) 16px
+      ),
+      linear-gradient(180deg, var(--accent-hover), var(--accent));
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow: 0 12px 32px -6px rgba(255, 122, 46, 0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+  .btn-primary svg { width: 18px; height: 18px; flex-shrink: 0; }
   .btn-secondary {
     display: inline-flex; align-items: center; gap: 10px;
-    padding: 13px 22px; background: transparent; color: var(--text);
+    padding: 17px 22px; background: transparent; color: var(--text);
     border: 1px solid var(--border-strong); border-radius: var(--radius);
     font-size: 15px; font-weight: 500; text-decoration: none; transition: border-color 0.15s, color 0.15s;
   }
   .btn-secondary:hover { border-color: var(--text); }
 
-  /* ===== PROSE / ABOUT ===== */
-  .prose-section { padding: 0 24px 96px; }
-  .prose-inner { max-width: var(--maxw); margin: 0 auto; }
-  .prose-section h2 {
-    font-size: clamp(22px, 2.6vw, 28px);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: 24px;
-  }
-  .prose-section p { color: var(--text-muted); margin-bottom: 18px; font-size: 17px; line-height: 1.7; }
-  .prose-section p:last-child { margin-bottom: 0; }
-
   /* ===== DOWNLOAD / CTA ===== */
   .cta-section { padding: 0 24px 96px; }
   .cta-box {
-    max-width: var(--maxw); margin: 0 auto;
-    padding: 48px 0; border-top: 1px solid var(--border);
+    max-width: var(--maxw-wide); margin: 0 auto;
+    padding: 56px 0 0; border-top: 1px solid var(--border);
   }
   .cta-box h2 {
-    font-size: clamp(28px, 3.4vw, 36px);
-    font-weight: 600; letter-spacing: -0.025em; line-height: 1.15;
-    margin-bottom: 14px;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(36px, 5vw, 56px);
+    letter-spacing: -0.03em; line-height: 1.0;
+    margin-bottom: 18px;
   }
   .cta-box p {
-    color: var(--text-muted); margin-bottom: 28px;
-    font-size: 17px; max-width: 560px;
+    color: var(--text-muted); margin-bottom: 32px;
+    font-size: 17px; max-width: 580px; line-height: 1.55;
   }
   .cta-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
   .hash-container {
@@ -312,6 +348,24 @@
   }
   .hash-container:hover { border-color: var(--border-strong); color: var(--text); }
   .hash-display { font-family: var(--mono); }
+
+  /* ===== FLOATING SUPPORT BUTTON ===== */
+  .floating-support {
+    position: fixed;
+    right: 24px; bottom: 24px;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 18px 12px 14px;
+    background: rgba(20, 20, 22, 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    color: var(--text); text-decoration: none;
+    font-size: 14px; font-weight: 500;
+    box-shadow: 0 10px 30px -8px rgba(0,0,0,0.6);
+    transition: transform 0.15s, border-color 0.15s;
+    z-index: 90;
+  }
+  .floating-support:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .floating-support svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
 
   /* ===== REVEAL ANIMATION ===== */
   .reveal { opacity: 0; transform: translateY(8px); transition: opacity 0.6s ease, transform 0.6s ease; }
@@ -330,17 +384,19 @@
   @media (max-width: 720px) {
     .nav-links { display: none; }
     .nav-github { display: none; }
-    .nav-cta { padding: 7px 14px; font-size: 12px; }
-    .hero { padding: calc(var(--header-total) + 48px) 20px 64px; }
-    .hero-cta { width: 100%; flex-direction: column; }
+    .nav-cta { padding: 8px 14px; font-size: 12px; }
+    .hero { padding: calc(var(--header-total) + 32px) 20px 48px; }
+    .hero-cta { width: 100%; flex-direction: column; align-items: stretch; gap: 12px; }
     .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
-    .prose-section, .cta-section { padding-left: 20px; padding-right: 20px; }
+    .hero-secondary { text-align: center; }
+    .cta-section { padding-left: 20px; padding-right: 20px; }
+    .floating-support { right: 16px; bottom: 16px; padding: 10px 14px 10px 12px; font-size: 13px; }
   }
 </style>
 </head>
 <body>
 
-<a class="skip-link" href="#about">Skip to content</a>
+<a class="skip-link" href="#download">Skip to content</a>
 
 <!-- ===== NAV ===== -->
 <nav class="nav" aria-label="Primary">
@@ -351,9 +407,9 @@
     </a>
     
     <div class="nav-links">
-      <a href="#about" class="nav-link">About</a>
       <a href="#download" class="nav-link">Download</a>
       <a href="https://github.com/inpriv/vanta" class="nav-link" target="_blank" rel="noopener">Source</a>
+      <a href="mailto:vanta@inpriv.xyz" class="nav-link">Support</a>
     </div>
 
     <div class="nav-actions">
@@ -371,44 +427,34 @@
       <span>Open source · MIT licensed</span>
     </div>
 
-    <h1 class="reveal">
-      Minecraft,<br>
-      <span class="strike">rebloated.</span>
-      <span class="accent">distilled.</span>
+    <h1 class="hero-title reveal">
+      <span class="line">The</span>
+      <span class="line"><span class="accent">#1 free</span></span>
+      <span class="line">Minecraft</span>
+      <span class="line">launcher.</span>
     </h1>
 
     <p class="hero-sub reveal">
-      A small, free Minecraft launcher for Windows. MIT-licensed, around a hundred megabytes, no Microsoft account, no telemetry. Built because every other launcher I tried eventually wanted to be a game store.
+      Vanta is the launcher that gets out of your way. Pick a version, pick a name, press play. Built for people who are tired of launchers that want to be game stores.
     </p>
 
     <div class="hero-cta reveal">
       <a href="#download" class="btn-primary vanta-download-link" aria-label="Download for Windows">
+        <span>Choose your desktop download</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download for Windows
       </a>
-      <a href="https://github.com/inpriv/vanta" target="_blank" rel="noopener" class="btn-secondary" aria-label="View source on GitHub">
-        View source on GitHub
+      <a href="https://github.com/inpriv/vanta/releases" target="_blank" rel="noopener" class="hero-secondary">
+        Other platforms <span aria-hidden="true">↗</span>
       </a>
     </div>
   </div>
+
+  <figure class="hero-figure reveal">
+    <img src="/icons/og-1200x630.png" alt="Screenshot of the Vanta launcher running on Windows" loading="lazy" width="1200" height="630">
+  </figure>
 </section>
 
-<!-- ===== WHAT IT DOES ===== -->
-<section id="about" class="prose-section">
-  <div class="prose-inner reveal">
-    <h2>What it is</h2>
-    <p>
-      Vanta is a launcher that gets out of your way. You pick a username and a Minecraft version and you press play. No installer wizard, no account migration, no "free trial" that needs your credit card.
-    </p>
-    <p>
-      Each Minecraft version lives in its own folder under <code>.Vanta/instances/</code>, so saves and mods don't fight each other. Fabric is set up automatically the first time you launch a version that supports it, and the <em>Performance</em> toggle adds Sodium, Lithium, Ferritecore and Mod Menu without you having to know what those are.
-    </p>
-    <p>
-      The launcher writes nothing outside its own folder. No Microsoft token, no telemetry, no analytics endpoint. You can grep the whole codebase on GitHub — it's a single Python file around ten thousand lines.
-    </p>
-  </div>
-</section>
-
+<!-- ===== DOWNLOAD ===== -->
 <section id="download" class="cta-section">
   <div class="cta-box reveal">
     <h2>Get the launcher</h2>
@@ -433,6 +479,12 @@
     </div>
   </div>
 </section>
+
+<!-- Floating support button -->
+<a class="floating-support" href="mailto:vanta@inpriv.xyz" aria-label="Contact support">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span>Support</span>
+</a>
 
 <!-- ===== FOOTER ===== -->
 <footer>
