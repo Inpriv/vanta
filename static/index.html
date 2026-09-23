@@ -11,7 +11,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0A84FF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#08080A" media="(prefers-color-scheme: dark)">
 
 <title>Vanta — A Cleaner, Free, Open-Source Minecraft Launcher</title>
@@ -44,7 +44,7 @@
 <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon.png">
 <link rel="icon" type="image/x-icon" href="/icons/icon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
-<link rel="mask-icon" href="/icons/favicon.svg" color="#0A84FF">
+<link rel="mask-icon" href="/icons/favicon.svg" color="#F5F5F7">
 <meta name="msapplication-TileColor" content="#08080A">
 <meta name="msapplication-TileImage" content="/icons/icon-bg.png">
 <meta name="msapplication-config" content="none">
@@ -399,14 +399,14 @@
     --text: #F5F5F7;
     --text-muted: #98989D;
     --text-dim: #6E6E73;
-    --accent: #0A84FF;
-    --accent-hover: #007AFF;
-    --accent-soft: rgba(10, 132, 255, 0.12);
-    --accent-glow: rgba(10, 132, 255, 0.35);
-    --warn: #FF9F0A;
-    --warn-soft: rgba(255, 159, 10, 0.12);
-    --success: #30D158;
-    --danger: #FF453A;
+    --accent: #F5F5F7;
+    --accent-hover: #FFFFFF;
+    --accent-soft: rgba(245, 245, 247, 0.10);
+    --accent-glow: rgba(245, 245, 247, 0.18);
+    --warn: #E5E5EA;
+    --warn-soft: rgba(229, 229, 234, 0.10);
+    --success: #D1D1D6;
+    --danger: #D1D1D6;
     --radius-sm: 8px;
     --radius: 14px;
     --radius-lg: 22px;
@@ -694,7 +694,7 @@
     transform: translateX(-50%);
     width: 800px;
     height: 800px;
-    background: radial-gradient(circle, rgba(10, 132, 255, 0.18) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(245, 245, 247, 0.06) 0%, transparent 60%);
     filter: blur(40px);
   }
   .hero-glow-2 {
@@ -703,7 +703,7 @@
     left: -200px;
     width: 500px;
     height: 500px;
-    background: radial-gradient(circle, rgba(255, 159, 10, 0.06) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(245, 245, 247, 0.04) 0%, transparent 60%);
     filter: blur(60px);
   }
   .hero-grid {
@@ -817,18 +817,18 @@
     gap: 10px;
     padding: 14px 22px;
     background: var(--accent);
-    color: #fff;
+    color: #08080A;
     border-radius: 12px;
     font-size: 15px;
     font-weight: 600;
     min-height: 48px;
     transition: transform 0.15s, background 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 16px rgba(10, 132, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+    box-shadow: 0 4px 16px rgba(245, 245, 247, 0.08), inset 0 1px 0 rgba(255,255,255,0.15);
   }
   .btn-primary:hover {
     background: var(--accent-hover);
     transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(10, 132, 255, 0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    box-shadow: 0 10px 30px rgba(245, 245, 247, 0.15), inset 0 1px 0 rgba(255,255,255,0.2);
   }
   .btn-primary:active { transform: scale(0.98); }
   .btn-primary svg { width: 16px; height: 16px; flex-shrink: 0; }
@@ -948,8 +948,8 @@
     width: 12px; height: 12px;
     border-radius: 50%;
   }
-  .lc-min { background: #27C93F; }
-  .lc-close { background: #FF5F56; }
+  .lc-min { background: #D1D1D6; }
+  .lc-close { background: #6E6E73; }
 
   .lc-nick-row {
     display: flex;
@@ -1061,13 +1061,13 @@
     align-items: center;
   }
   .lc-version-item:hover, .lc-version-item:active { background: #2C2C2E; color: #fff; }
-  .lc-version-item.active { background: #0A84FF; color: #fff; }
+  .lc-version-item.active { background: #F5F5F7; color: #08080A; }
 
   .lc-play {
     width: 100%;
     height: 42px;
-    background: #0A84FF;
-    color: #fff;
+    background: #F5F5F7;
+    color: #08080A;
     border: none;
     border-radius: 10px;
     font-family: inherit;
@@ -1079,8 +1079,8 @@
     position: relative;
     overflow: hidden;
   }
-  .lc-play:hover { background: #007AFF; }
-  .lc-play:active { background: #0056B3; transform: scale(0.98); }
+  .lc-play:hover { background: #FFFFFF; }
+  .lc-play:active { background: #D1D1D6; transform: scale(0.98); }
 
   /* Determinate progress bar — same unified shimmer as ShimmerProgressBar in main.py */
   .lc-stack {
@@ -1100,7 +1100,7 @@
     position: absolute;
     top: 0; left: 0; bottom: 0;
     width: 0%;
-    background: linear-gradient(90deg, #0A84FF, #2F95FF);
+    background: linear-gradient(90deg, #F5F5F7, #D1D1D6);
     border-radius: 9px;
     overflow: hidden;
   }
@@ -1350,7 +1350,7 @@
     border-radius: 8px;
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 1;
-    box-shadow: 0 2px 8px rgba(10, 132, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(245, 245, 247, 0.12);
   }
   .perf-toggle.right .perf-toggle-slider { transform: translateX(100%); }
 
@@ -1440,7 +1440,7 @@
 
   /* ===== SPECS / TECHNICAL ===== */
   .specs-section {
-    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(10, 132, 255, 0.06), transparent 60%), var(--bg);
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245, 245, 247, 0.04), transparent 60%), var(--bg);
     border-top: 1px solid var(--border);
   }
   .specs-grid {
@@ -1468,9 +1468,9 @@
     border-bottom: 1px solid var(--border);
   }
   .code-window-bar .dot { width: 11px; height: 11px; border-radius: 50%; }
-  .code-window-bar .dot.r { background: #FF5F56; }
-  .code-window-bar .dot.y { background: #FFBD2E; }
-  .code-window-bar .dot.g { background: #27C93F; }
+  .code-window-bar .dot.r { background: #6E6E73; }
+  .code-window-bar .dot.y { background: #98989D; }
+  .code-window-bar .dot.g { background: #D1D1D6; }
   .code-window-title {
     margin-left: 10px;
     font-family: var(--mono);
@@ -1486,9 +1486,9 @@
     -webkit-overflow-scrolling: touch;
   }
   .code-window-body .ln { display: block; color: var(--text-muted); }
-  .code-window-body .key { color: #FF7AB2; }
-  .code-window-body .val { color: #6BD3FF; }
-  .code-window-body .num { color: #FF9F0A; }
+  .code-window-body .key { color: #F5F5F7; }
+  .code-window-body .val { color: #98989D; }
+  .code-window-body .num { color: #6E6E73; }
   .code-window-body .cmt { color: var(--text-dim); font-style: italic; }
 
   .specs-list { display: flex; flex-direction: column; gap: 16px; }
@@ -1563,7 +1563,7 @@
     max-width: var(--maxw);
     margin: 0 auto;
     padding: 70px 40px;
-    background: radial-gradient(ellipse 60% 80% at 50% 0%, rgba(10, 132, 255, 0.15), transparent 70%), var(--surface-2);
+    background: radial-gradient(ellipse 60% 80% at 50% 0%, rgba(245, 245, 247, 0.05), transparent 70%), var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     text-align: center;
@@ -1823,7 +1823,7 @@
       </h1>
 
       <p class="hero-sub reveal">
-        A free, open-source Minecraft launcher with built-in Fabric mod support, automatic performance mods, and a beautifully simple interface. No account, no ads, no nonsense.
+        Free, open-source. Fabric built in, performance mods automatic. No account, no ads.
       </p>
 
       <div class="hero-cta reveal">
@@ -2616,7 +2616,7 @@
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot);
         ctx.globalAlpha = p.opacity;
-        ctx.fillStyle = '#0A84FF';
+        ctx.fillStyle = '#F5F5F7';
         const s = p.size;
         ctx.fillRect(-s/2, -s/2, s, s);
         ctx.globalAlpha = p.opacity * 0.5;
@@ -2726,7 +2726,7 @@
       if (launching) return;
       if (!input.value.trim()) {
         input.focus();
-        input.style.borderColor = '#FF453A';
+        input.style.borderColor = '#D1D1D6';
         setTimeout(() => { input.style.borderColor = ''; }, 1200);
         return;
       }
