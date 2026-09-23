@@ -232,15 +232,16 @@
   .nav-github:hover { color: var(--text); }
 
   /* ===== HERO (mobile-first) ===== */
-  .hero { position: relative; padding: calc(var(--header-total) + 16px) 20px 32px; max-width: var(--maxw-wide); margin: 0 auto; }
+  .hero { position: relative; padding: calc(var(--header-total) + 0px) 20px 32px; max-width: var(--maxw-wide); margin: 0 auto; line-height: 1.2; }
   .hero-inner { max-width: var(--maxw-wide); margin: 0 auto 28px; }
   .hero-eyebrow {
     display: inline-block;
     color: var(--text-muted);
     font-size: 12px;
     letter-spacing: 0.04em;
-    margin-bottom: 20px;
+    margin: 0 0 20px 0;
     font-family: var(--mono);
+    line-height: 1;
   }
   .hero-title {
     font-family: var(--display);
@@ -396,7 +397,7 @@
     .brand-text { display: inline; }
     .nav-cta { padding: 11px 18px; font-size: 14px; gap: 9px; }
     .nav-cta svg { width: 15px; height: 15px; }
-    .hero { padding: calc(var(--header-total) + 24px) 24px 40px; }
+    .hero { padding: calc(var(--header-total) + 8px) 24px 40px; }
     .hero-inner { margin-bottom: 32px; }
     .hero-eyebrow { font-size: 13px; margin-bottom: 24px; }
     .hero-sub { font-size: 17px; margin-bottom: 32px; }
@@ -421,7 +422,7 @@
     .nav-cta { padding: 13px 22px; font-size: 15px; gap: 10px; box-shadow: 0 6px 20px -6px rgba(255,122,46,0.55); }
     .nav-cta svg { width: 17px; height: 17px; }
     .nav-cta:hover { box-shadow: 0 10px 24px -6px rgba(255,122,46,0.7); }
-    .hero { padding: calc(var(--header-total) + 16px) 24px 40px; }
+    .hero { padding: calc(var(--header-total) + 0px) 24px 40px; }
     .hero-eyebrow { margin-bottom: 28px; }
     .hero-title { font-size: clamp(48px, 8.5vw, 116px); margin-bottom: 32px; }
     .hero-sub { font-size: clamp(16px, 1.8vw, 19px); margin-bottom: 36px; }
