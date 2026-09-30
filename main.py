@@ -9,6 +9,7 @@ import base64
 import glob
 import time
 import hashlib
+import math
 import urllib.parse
 import webbrowser
 import zipfile
@@ -39,13 +40,16 @@ from PyQt6.QtWidgets import (
     QGraphicsDropShadowEffect, QDialog, QAbstractItemView, QGraphicsBlurEffect,
     QGraphicsOpacityEffect
 )
-from PyQt6.QtGui import QColor, QFont, QImage, QPainter, QBrush, QPolygon, QIcon, QPixmap, QLinearGradient, QPainterPath, QPen
+from PyQt6.QtGui import (
+    QColor, QFont, QFontMetrics, QImage, QPainter, QBrush, QPolygon, QIcon, QPixmap,
+    QLinearGradient, QPainterPath, QPen
+)
 
 import minecraft_launcher_lib
 import minecraft_launcher_lib.runtime
 import minecraft_launcher_lib.fabric
 
-APP_VERSION = "2.0"
+APP_VERSION = "2.1"
 
 # version.json is the single source of truth for the launcher's version.
 # It's bundled into the executable by build.py (--include-data-file) and
@@ -89,6 +93,32 @@ API_HEADERS = {
 UPDATE_MANIFEST_URL = "https://raw.githubusercontent.com/inpriv/vanta/refs/heads/main/version.json"
 UPDATE_CHECK_DELAY_MS = 3000
 UPDATE_CHECK_RETRY_MS = 30000
+
+
+def _build_http_session() -> requests.Session:
+    """Shared keep-alive session for every HTTP call the launcher makes.
+
+    Reusing pooled TLS connections avoids a fresh DNS + TCP + TLS handshake
+    per request, which is the dominant cost of the small Modrinth API calls
+    (search, version lookups, icons). urllib3's pool is thread-safe, so the
+    QThread workers and the icon thread pool can all share it.
+    """
+    session = requests.Session()
+    session.headers.update(API_HEADERS)
+    try:
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        retry = Retry(total=2, connect=2, read=1, backoff_factor=0.3,
+                      status_forcelist=(502, 503, 504), allowed_methods=None)
+        adapter = HTTPAdapter(pool_connections=8, pool_maxsize=16, max_retries=retry)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+    except Exception:
+        pass
+    return session
+
+
+HTTP = _build_http_session()
 
 
 def _patch_natives_extraction() -> None:
@@ -334,7 +364,9 @@ def get_expected_runtime_name(version: str) -> str:
         if len(parts) >= 2:
             major, minor = parts[0], parts[1]
             patch = parts[2] if len(parts) > 2 else 0
-            if major > 1 or (major == 1 and (minor > 20 or (minor == 20 and patch >= 5))):
+            if major > 1:
+                return "java-runtime-epsilon"  # Java 25 (year-based 26.x+)
+            if major == 1 and (minor > 20 or (minor == 20 and patch >= 5)):
                 return "java-runtime-delta"  # Java 21
             if major == 1 and minor >= 18:
                 return "java-runtime-gamma"  # Java 17
@@ -346,6 +378,7 @@ def get_expected_runtime_name(version: str) -> str:
 
 
 RUNTIME_JAVA_MAJOR = {
+    "java-runtime-epsilon": 25,
     "java-runtime-delta": 21,
     "java-runtime-gamma": 17,
     "java-runtime-alpha": 16,
@@ -403,13 +436,36 @@ def _parse_java_major_version(text: str) -> Optional[int]:
         return None
 
 
+_JAVA_PROBE_CACHE: dict = {}
+_JAVA_PROBE_LOCK = threading.Lock()
+
+
 def probe_java_executable(java_path: str) -> Optional[int]:
     """Return the major Java version if `java_path` actually executes, else None.
 
     This is the ground-truth check: on Windows, `shutil.which("java")` can find
     the Microsoft Store alias stub (a non-executable reparse point), so the only
     reliable test is running the binary.
+
+    Results are memoised per (path, mtime, size): spawning a JVM costs
+    100-500 ms, and a second Play click would otherwise re-probe every
+    candidate. A replaced/updated binary changes mtime and is re-probed.
     """
+    try:
+        st = os.stat(java_path)
+        key = (os.path.normcase(os.path.abspath(java_path)), st.st_mtime_ns, st.st_size)
+    except OSError:
+        return None
+    with _JAVA_PROBE_LOCK:
+        if key in _JAVA_PROBE_CACHE:
+            return _JAVA_PROBE_CACHE[key]
+    result = _probe_java_uncached(java_path)
+    with _JAVA_PROBE_LOCK:
+        _JAVA_PROBE_CACHE[key] = result
+    return result
+
+
+def _probe_java_uncached(java_path: str) -> Optional[int]:
     try:
         creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         result = subprocess.run(
@@ -538,21 +594,31 @@ def sanitize_mod_filename(filename: str) -> Optional[str]:
     return name
 
 
-def download_mod_file(url: str, expected_sha1: Optional[str], dest_path: str) -> None:
-    """Stream a mod jar to disk atomically, verifying its SHA-1 hash."""
+def download_mod_file(url: str, expected_sha1: Optional[str], dest_path: str,
+                      on_progress=None) -> None:
+    """Stream a mod jar to disk atomically, verifying its SHA-1 hash.
+
+    ``on_progress(done_bytes, total_bytes)`` is called per chunk when given
+    (total is 0 if the server sent no Content-Length).
+    """
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme != "https":
         raise ValueError(f"Refusing non-HTTPS download URL: {url}")
     tmp_path = dest_path + ".part"
     sha1 = hashlib.sha1()
     try:
-        with requests.get(url, headers=API_HEADERS, stream=True, timeout=(5, 60)) as r:
+        with HTTP.get(url, headers=API_HEADERS, stream=True, timeout=(5, 60)) as r:
             r.raise_for_status()
+            total = int(r.headers.get("Content-Length", 0) or 0)
+            done = 0
             with open(tmp_path, "wb") as out:
                 for chunk in r.iter_content(chunk_size=65536):
                     if chunk:
                         sha1.update(chunk)
                         out.write(chunk)
+                        done += len(chunk)
+                        if on_progress is not None:
+                            on_progress(done, total)
         if expected_sha1 and sha1.hexdigest().lower() != expected_sha1.lower():
             raise ValueError(f"SHA-1 mismatch for {os.path.basename(dest_path)}")
         os.replace(tmp_path, dest_path)
@@ -604,6 +670,22 @@ def _generate_settings_image() -> QPixmap:
 
     painter.end()
     return QPixmap.fromImage(image)
+
+
+def _generate_search_icon() -> QPixmap:
+    """Small magnifier glyph for the mod search field (in-memory)."""
+    image = QImage(32, 32, QImage.Format.Format_ARGB32)
+    image.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(image)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(QPen(QColor("#8E8E93"), 3.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+    painter.drawEllipse(QRectF(6, 6, 15, 15))
+    painter.drawLine(19, 19, 26, 26)
+    painter.end()
+    pixmap = QPixmap.fromImage(image)
+    pixmap.setDevicePixelRatio(2.0)
+    return pixmap
 
 
 class VersionFetchWorker(QThread):
@@ -680,7 +762,7 @@ class UpdateCheckWorker(QThread):
 
     def run(self) -> None:
         try:
-            r = requests.get(UPDATE_MANIFEST_URL, headers=API_HEADERS, timeout=(5, 10))
+            r = HTTP.get(UPDATE_MANIFEST_URL, headers=API_HEADERS, timeout=(5, 10))
             if r.status_code != 200:
                 raise ValueError(f"Update check failed (HTTP {r.status_code}).")
             data = r.json()
@@ -722,7 +804,8 @@ class UpdateDownloadWorker(QThread):
                 pass
 
             done = 0
-            with requests.get(self.url, headers=API_HEADERS, stream=True, timeout=(5, 60)) as r:
+            last_pct = -1
+            with HTTP.get(self.url, headers=API_HEADERS, stream=True, timeout=(5, 60)) as r:
                 r.raise_for_status()
                 total = int(r.headers.get("Content-Length", 0) or 0)
                 with open(tmp_path, "wb") as out:
@@ -732,7 +815,10 @@ class UpdateDownloadWorker(QThread):
                         out.write(chunk)
                         done += len(chunk)
                         if total > 0:
-                            self.progress.emit(min(100, int(done * 100 / total)))
+                            pct = min(100, int(done * 100 / total))
+                            if pct != last_pct:
+                                last_pct = pct
+                                self.progress.emit(pct)
 
             with open(tmp_path, "rb") as f:
                 if f.read(2) != b"MZ":
@@ -768,10 +854,14 @@ class JavaDownloadWorker(QThread):
             def set_max(val: int) -> None:
                 self._max_val = val
 
+            last_pct = {"v": -1}
+
             def set_progress(val: int) -> None:
                 if self._max_val > 0:
                     percent = max(0, min(100, int((val / self._max_val) * 100)))
-                    self.progress.emit("Downloading Java...", percent)
+                    if percent != last_pct["v"]:
+                        last_pct["v"] = percent
+                        self.progress.emit("Downloading Java...", percent)
 
             callbacks = {
                 "setStatus": set_status,
@@ -820,6 +910,92 @@ class LaunchWorker(QThread):
                 proc.terminate()
             except Exception:
                 pass
+
+    def _resolve_java(self) -> Optional[str]:
+        """Pick the Java executable for this launch (also used for the Fabric installer).
+
+        Order: the path chosen by the UI, the Mojang runtime the version
+        json asks for, the runtime we expect for this version, then a
+        probe-verified system Java that is new enough. Never plain "java"
+        from PATH (it can be a dead shim - AGENTS.md rule 3).
+        """
+        if self.java_path and os.path.exists(self.java_path):
+            return self.java_path
+        try:
+            runtime_info = minecraft_launcher_lib.runtime.get_version_runtime_information(
+                self.version, self.minecraft_dir
+            )
+            if runtime_info and runtime_info.get("name"):
+                java_exec = minecraft_launcher_lib.runtime.get_executable_path(
+                    runtime_info["name"], self.minecraft_dir
+                )
+                if java_exec and os.path.exists(java_exec):
+                    return java_exec
+        except Exception:
+            pass
+        expected = get_expected_runtime_name(self.version)
+        try:
+            expected_exec = minecraft_launcher_lib.runtime.get_executable_path(expected, self.minecraft_dir)
+            if expected_exec and os.path.exists(expected_exec):
+                return expected_exec
+        except Exception:
+            pass
+        return find_system_java(RUNTIME_JAVA_MAJOR.get(expected))
+
+    @staticmethod
+    def _console_free_java(java_exec: str) -> str:
+        """javaw.exe next to java.exe, so the Fabric installer doesn't flash a console window."""
+        if sys.platform == "win32" and java_exec.lower().endswith("java.exe"):
+            javaw = java_exec[:-len("java.exe")] + "javaw.exe"
+            if os.path.exists(javaw):
+                return javaw
+        return java_exec
+
+    def _latest_stable_loader(self) -> Optional[str]:
+        """Newest stable Fabric loader for this Minecraft version (None if offline)."""
+        try:
+            url = f"https://meta.fabricmc.net/v2/versions/loader/{urllib.parse.quote(self.version)}"
+            r = HTTP.get(url, timeout=(4, 8))
+            if r.status_code != 200:
+                return None
+            entries = r.json() or []
+            for entry in entries:
+                loader = entry.get("loader") or {}
+                if loader.get("stable") and loader.get("version"):
+                    return str(loader["version"])
+            if entries:
+                return (entries[0].get("loader") or {}).get("version")
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _new_crash_report(instance_dir: str, since: float) -> str:
+        """Summary of a crash report written after `since` (epoch seconds), or ''."""
+        folder = os.path.join(instance_dir, "crash-reports")
+        try:
+            reports = [
+                os.path.join(folder, f) for f in os.listdir(folder)
+                if f.endswith(".txt") and os.path.getmtime(os.path.join(folder, f)) >= since - 2
+            ]
+        except OSError:
+            return ""
+        if not reports:
+            return ""
+        newest = max(reports, key=os.path.getmtime)
+        try:
+            with open(newest, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.read().splitlines()
+        except OSError:
+            return ""
+        description = next((l.split(":", 1)[1].strip() for l in lines if l.startswith("Description:")), "")
+        try:
+            start = next(i for i, l in enumerate(lines) if l.startswith("Description:")) + 1
+        except StopIteration:
+            start = 0
+        trace = [l for l in lines[start:start + 20] if l.strip()][:14]
+        summary = f"Reason: {description}" if description else "Minecraft wrote a crash report."
+        return (f"{summary}\nReport: {newest}\n\nDetails:\n" + "\n".join(trace)).rstrip()
 
     def _fabric_version_valid(self, fabric_id: str) -> bool:
         """A fabric version is usable only if its version json exists."""
@@ -874,10 +1050,17 @@ class LaunchWorker(QThread):
             def set_max(val: int) -> None:
                 self._max_val = val
 
+            last_pct = {"v": -1}
+
             def set_progress(val: int) -> None:
+                # minecraft_launcher_lib calls this once per file (thousands
+                # of assets); only cross the thread boundary when the visible
+                # percentage actually changes.
                 if self._max_val > 0:
                     percent = max(0, min(100, int((val / self._max_val) * 100)))
-                    self.progress_updated.emit("Installing...", percent)
+                    if percent != last_pct["v"]:
+                        last_pct["v"] = percent
+                        self.progress_updated.emit("Installing...", percent)
 
             callbacks = {
                 "setStatus": set_status,
@@ -915,6 +1098,17 @@ class LaunchWorker(QThread):
 
             self.progress_updated.emit("Preparing launch...", 100)
 
+            java_exec = self._resolve_java()
+            if not java_exec:
+                self.error_occurred.emit(
+                    "Java environment not found.\n\n"
+                    "Vanta could not find a working Java installation.\n"
+                    "Start the launch again and accept the prompt to download\n"
+                    "the Java runtime automatically, or install OpenJDK 17 or 21\n"
+                    "(e.g. from https://adoptium.net)."
+                )
+                return
+
             vanta_dir = get_vanta_dir()
             instance_dir = os.path.join(vanta_dir, "instances", instance_subname)
             os.makedirs(instance_dir, exist_ok=True)
@@ -936,53 +1130,71 @@ class LaunchWorker(QThread):
             use_fabric = (self.performance_mode or mods_dir_has_custom_jars()) and is_fabric_compatible(self.version)
 
             if use_fabric:
-                found = next(
-                    (v for v in installed if v.startswith("fabric-loader-") and v.endswith(self.version)),
-                    None
-                )
-                if found is not None and not self._fabric_version_valid(found):
-                    sys.stderr.write(f"Removing broken Fabric installation: {found}\n")
+                suffix = "-" + self.version
+
+                def loader_key(version_id: str) -> tuple:
+                    core = version_id[len("fabric-loader-"):-len(suffix)]
+                    return tuple(int(p) if p.isdigit() else 0 for p in re.split(r"[.+-]", core))
+
+                def valid_loaders(ids) -> list:
+                    return sorted(
+                        (v for v in ids if v.startswith("fabric-loader-") and v.endswith(suffix)
+                         and self._fabric_version_valid(v)),
+                        key=loader_key,
+                    )
+
+                for broken in (v for v in installed if v.startswith("fabric-loader-") and v.endswith(suffix)
+                               and not self._fabric_version_valid(v)):
+                    sys.stderr.write(f"Removing broken Fabric installation: {broken}\n")
                     try:
-                        shutil.rmtree(os.path.join(self.minecraft_dir, "versions", found))
+                        shutil.rmtree(os.path.join(self.minecraft_dir, "versions", broken))
                     except OSError as rm_err:
                         sys.stderr.write(f"Could not remove broken Fabric dir: {rm_err}\n")
-                    found = None
 
-                if found is not None:
-                    target_version = found
+                cached = valid_loaders(installed)
+                latest_loader = self._latest_stable_loader()
+                wanted = f"fabric-loader-{latest_loader}{suffix}" if latest_loader else None
+                target_version = None
+                install_error = None
+
+                if wanted and wanted in cached:
+                    target_version = wanted
                     self.progress_updated.emit("Fabric loader (cached)...", 10)
-                else:
-                    install_error = None
+                elif wanted or not cached:
                     try:
-                        self.progress_updated.emit("Installing Fabric...", 10)
-                        minecraft_launcher_lib.fabric.install_fabric(self.version, self.minecraft_dir, callback=callbacks)
+                        self.progress_updated.emit(
+                            "Updating Fabric loader..." if cached else "Installing Fabric...", 10
+                        )
+                        minecraft_launcher_lib.fabric.install_fabric(
+                            self.version, self.minecraft_dir,
+                            loader_version=latest_loader,
+                            callback=callbacks,
+                            java=self._console_free_java(java_exec),
+                        )
+                        after = valid_loaders(
+                            v.get("id", "") for v in minecraft_launcher_lib.utils.get_installed_versions(self.minecraft_dir)
+                        )
+                        if wanted and wanted in after:
+                            target_version = wanted
+                        elif after:
+                            target_version = after[-1]
                     except Exception as e:
                         install_error = str(e)
                         sys.stderr.write(f"Fabric installation failed: {e}\n")
 
-                    target_version = None
-                    try:
-                        installed_after = [
-                            v.get("id", "") for v in minecraft_launcher_lib.utils.get_installed_versions(self.minecraft_dir)
-                        ]
-                        matching = [
-                            v for v in installed_after
-                            if v.startswith("fabric-loader-") and v.endswith(self.version)
-                            and self._fabric_version_valid(v)
-                        ]
-                        if matching:
-                            target_version = matching[-1]
-                    except Exception as e:
-                        sys.stderr.write(f"Cannot list installed versions ({e})\n")
+                if target_version is None and cached:
+                    # Offline or the update failed: the newest cached loader still works.
+                    target_version = cached[-1]
+                    self.progress_updated.emit("Fabric loader (cached)...", 10)
 
-                    if target_version is None:
-                        self.error_occurred.emit(
-                            "Fabric loader could not be installed.\n\n"
-                            "Performance Mode (and Fabric mods) require a working Fabric installation.\n"
-                            "Please check your internet connection and try again.\n\n"
-                            + (f"Details: {install_error}" if install_error else "No valid Fabric installation was found.")
-                        )
-                        return
+                if target_version is None:
+                    self.error_occurred.emit(
+                        "Fabric loader could not be installed.\n\n"
+                        "Performance Mode (and Fabric mods) require a working Fabric installation.\n"
+                        "Please check your internet connection and try again.\n\n"
+                        + (f"Details: {install_error}" if install_error else "No valid Fabric installation was found.")
+                    )
+                    return
 
                 # The Fabric game provider needs the vanilla jar on disk.
                 vanilla_jar = os.path.join(self.minecraft_dir, "versions", self.version, self.version + ".jar")
@@ -1056,50 +1268,7 @@ class LaunchWorker(QThread):
             if self.use_native_vulkan:
                 self._set_native_vulkan_option(instance_dir)
 
-            if self.java_path and os.path.exists(self.java_path):
-                options["executablePath"] = self.java_path
-            else:
-                try:
-                    runtime_info = minecraft_launcher_lib.runtime.get_version_runtime_information(
-                        self.version, self.minecraft_dir
-                    )
-                    if runtime_info and runtime_info.get("name"):
-                        java_exec = minecraft_launcher_lib.runtime.get_executable_path(
-                            runtime_info["name"], self.minecraft_dir
-                        )
-                        if java_exec and os.path.exists(java_exec):
-                            options["executablePath"] = java_exec
-                except Exception:
-                    pass
-
-                if "executablePath" not in options:
-                    expected = get_expected_runtime_name(self.version)
-                    expected_exec = minecraft_launcher_lib.runtime.get_executable_path(
-                        expected, self.minecraft_dir
-                    )
-                    if expected_exec and os.path.exists(expected_exec):
-                        options["executablePath"] = expected_exec
-                    else:
-                        legacy_exec = minecraft_launcher_lib.runtime.get_executable_path(
-                            "jre-legacy", self.minecraft_dir
-                        )
-                        if legacy_exec and os.path.exists(legacy_exec):
-                            options["executablePath"] = legacy_exec
-
-            if "executablePath" not in options:
-                system_java = find_system_java()
-                if system_java:
-                    options["executablePath"] = system_java
-
-            if "executablePath" not in options:
-                self.error_occurred.emit(
-                    "Java environment not found.\n\n"
-                    "Vanta could not find a working Java installation.\n"
-                    "Start the launch again and accept the prompt to download\n"
-                    "the Java runtime automatically, or install OpenJDK 17 or 21\n"
-                    "(e.g. from https://adoptium.net)."
-                )
-                return
+            options["executablePath"] = java_exec
 
             command = minecraft_launcher_lib.command.get_minecraft_command(
                 target_version,
@@ -1111,6 +1280,7 @@ class LaunchWorker(QThread):
 
             log_path = os.path.join(instance_dir, "latest.log")
             log_file = open(log_path, "w", encoding="utf-8")
+            launch_wall_time = time.time()
             watcher = GameStartupWatcher(log_path)
             try:
                 self.process = subprocess.Popen(
@@ -1137,10 +1307,16 @@ class LaunchWorker(QThread):
                         tail = _read_log_tail(log_path)
                         code = self.process.returncode
                         if code != 0:
-                            self.launch_failed.emit(
-                                f"Minecraft exited during startup (exit code {code}).\n\n"
-                                f"Last log lines:\n{tail if tail else '(log is empty)'}"
-                            )
+                            crash = self._new_crash_report(instance_dir, launch_wall_time)
+                            if crash:
+                                self.launch_failed.emit(
+                                    f"Minecraft crashed during startup (exit code {code}).\n{crash}"
+                                )
+                            else:
+                                self.launch_failed.emit(
+                                    f"Minecraft exited during startup (exit code {code}).\n\n"
+                                    f"Last log lines:\n{tail if tail else '(log is empty)'}"
+                                )
                         else:
                             self.game_exited.emit()
                         return
@@ -1157,7 +1333,12 @@ class LaunchWorker(QThread):
                 except Exception:
                     pass
                 if not self._aborted:
-                    self.game_exited.emit()
+                    code = self.process.returncode
+                    crash = self._new_crash_report(instance_dir, launch_wall_time) if code else ""
+                    if crash:
+                        self.launch_failed.emit(f"Minecraft crashed (exit code {code}).\n{crash}")
+                    else:
+                        self.game_exited.emit()
             finally:
                 watcher.close()
                 log_file.close()
@@ -1211,14 +1392,14 @@ class LaunchWorker(QThread):
                 "game_versions": json.dumps([self.version]),
             }
             url = f"https://api.modrinth.com/v2/project/{mod}/version"
-            r = requests.get(url, headers=API_HEADERS, params=params, timeout=(5, 15))
+            r = HTTP.get(url, headers=API_HEADERS, params=params, timeout=(5, 15))
             if r.status_code == 200:
                 info = _pick(r.json())
                 if info:
                     return info, None
 
             # Fallback: query without the game-version filter and match client-side.
-            r = requests.get(
+            r = HTTP.get(
                 url,
                 headers=API_HEADERS,
                 params={"loaders": json.dumps(["fabric"])},
@@ -1329,7 +1510,7 @@ class AvatarLoaderWorker(QThread):
             return
         try:
             url = f"https://minotar.net/helm/{self.username}/128.png"
-            r = requests.get(url, headers=API_HEADERS, timeout=(3, 5))
+            r = HTTP.get(url, headers=API_HEADERS, timeout=(3, 5))
             if r.status_code == 200:
                 image = QImage()
                 image.loadFromData(r.content)
@@ -1339,32 +1520,217 @@ class AvatarLoaderWorker(QThread):
             pass
 
 
-class ModSearchWorker(QThread):
-    results_ready = pyqtSignal(list)
+MODRINTH_API = "https://api.modrinth.com/v2"
+MOD_PAGE_SIZE = 20
+FABRIC_API_PROJECT_ID = "P7dR8mSH"
 
-    def __init__(self, query: str):
+
+def _format_count(n) -> str:
+    """12345678 -> '12.3M' (compact download counter for mod cards)."""
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return "0"
+    for div, suffix in ((1_000_000_000, "B"), (1_000_000, "M"), (1_000, "K")):
+        if n >= div:
+            return f"{n / div:.1f}".rstrip("0").rstrip(".") + suffix
+    return str(n)
+
+
+def _format_size(num_bytes: int) -> str:
+    if num_bytes >= 1024 * 1024:
+        return f"{num_bytes / (1024 * 1024):.1f} MB"
+    return f"{max(1, num_bytes // 1024)} KB"
+
+
+def _pretty_jar_name(filename: str) -> str:
+    """Best-effort human name from a jar filename when Modrinth can't identify it.
+
+    'sodium-fabric-0.5.8+mc1.20.4.jar' -> 'Sodium Fabric'
+    """
+    stem = filename[:-4] if filename.lower().endswith(".jar") else filename
+    parts = re.split(r"[-_ ]+", stem)
+    words = []
+    for part in parts:
+        if not part or re.match(r"^(v?\d|mc\d|\d)", part, re.IGNORECASE):
+            break
+        words.append(part)
+    name = " ".join(words) or stem
+    return name[:1].upper() + name[1:]
+
+
+_SHA1_CACHE: dict = {}
+_SHA1_LOCK = threading.Lock()
+
+
+def cached_file_sha1(path: str) -> Optional[str]:
+    """SHA-1 of a file, memoised per (path, mtime, size)."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    key = (os.path.normcase(path), st.st_mtime_ns, st.st_size)
+    with _SHA1_LOCK:
+        if key in _SHA1_CACHE:
+            return _SHA1_CACHE[key]
+    h = hashlib.sha1()
+    try:
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+    except OSError:
+        return None
+    digest = h.hexdigest()
+    with _SHA1_LOCK:
+        _SHA1_CACHE[key] = digest
+    return digest
+
+
+# sha1 -> {"project_id", "slug", "title", "icon_url", "version"}; None means
+# Modrinth answered and does not know the file (e.g. a hand-copied jar).
+_MOD_META_CACHE: dict = {}
+_MOD_META_LOCK = threading.Lock()
+
+
+def identify_installed_mods(mods_dir: str) -> dict:
+    """Map installed jar filenames to Modrinth project metadata.
+
+    Uses Modrinth's exact hash lookup (one POST for all jars plus one GET
+    for the project titles/icons), so it is immune to the filename
+    guesswork that `matches_mod` relies on. Results are cached per hash,
+    so re-opening the Mods tab or switching versions costs no requests.
+    """
+    try:
+        names = [f for f in os.listdir(mods_dir) if f.lower().endswith(".jar")]
+    except OSError:
+        return {}
+    hashes = {}
+    for name in names:
+        digest = cached_file_sha1(os.path.join(mods_dir, name))
+        if digest:
+            hashes[name] = digest
+
+    with _MOD_META_LOCK:
+        unknown = sorted({h for h in hashes.values() if h not in _MOD_META_CACHE})
+    if unknown:
+        try:
+            r = HTTP.post(f"{MODRINTH_API}/version_files",
+                          json={"hashes": unknown, "algorithm": "sha1"}, timeout=(5, 10))
+            if r.status_code == 200:
+                versions = r.json() or {}
+                project_ids = sorted({v.get("project_id") for v in versions.values() if v.get("project_id")})
+                projects = {}
+                if project_ids:
+                    r2 = HTTP.get(f"{MODRINTH_API}/projects",
+                                  params={"ids": json.dumps(project_ids)}, timeout=(5, 10))
+                    if r2.status_code == 200:
+                        projects = {p.get("id"): p for p in (r2.json() or [])}
+                with _MOD_META_LOCK:
+                    for digest in unknown:
+                        v = versions.get(digest)
+                        p = projects.get(v.get("project_id")) if v else None
+                        if p:
+                            _MOD_META_CACHE[digest] = {
+                                "project_id": p.get("id", ""),
+                                "slug": p.get("slug", "") or "",
+                                "title": p.get("title", "") or "",
+                                "icon_url": p.get("icon_url", "") or "",
+                                "version": v.get("version_number", "") or "",
+                            }
+                        elif not v:
+                            _MOD_META_CACHE[digest] = None
+        except Exception:
+            # Offline / API hiccup: don't cache, just fall back to filenames.
+            pass
+
+    result = {}
+    with _MOD_META_LOCK:
+        for name, digest in hashes.items():
+            meta = _MOD_META_CACHE.get(digest)
+            if meta:
+                result[name] = meta
+    return result
+
+
+def _pick_mod_version(versions: list) -> Optional[dict]:
+    """Newest *release* build with files; falls back to the newest build of any type."""
+    if not versions or not isinstance(versions, list):
+        return None
+    for v in versions:
+        if v.get("version_type") == "release" and v.get("files"):
+            return v
+    for v in versions:
+        if v.get("files"):
+            return v
+    return None
+
+
+def _primary_file(version: dict) -> Optional[dict]:
+    files = version.get("files") or []
+    for f in files:
+        if f.get("primary"):
+            return f
+    return files[0] if files else None
+
+
+class ModSearchWorker(QThread):
+    results_ready = pyqtSignal(int, int, list, int)  # token, offset, hits, total_hits
+    failed = pyqtSignal(int, str)
+
+    def __init__(self, token: int, query: str, mc_version: str, offset: int = 0):
         super().__init__()
+        self.token = token
         self.query = query
+        self.mc_version = mc_version
+        self.offset = offset
+
+    def run(self) -> None:
+        facets = [["categories:fabric"], ["project_type:mod"]]
+        if self.mc_version:
+            # Only show mods that actually have a build for the selected
+            # version, so every "Install" button is guaranteed to work.
+            facets.append([f"versions:{self.mc_version}"])
+        params = {
+            "query": self.query,
+            "facets": json.dumps(facets),
+            "limit": MOD_PAGE_SIZE,
+            "offset": self.offset,
+            "index": "relevance" if self.query else "downloads",
+        }
+        try:
+            r = HTTP.get(f"{MODRINTH_API}/search", params=params, timeout=(5, 10))
+            if r.status_code != 200:
+                raise ValueError(f"Modrinth returned HTTP {r.status_code}.")
+            data = r.json() or {}
+            self.results_ready.emit(self.token, self.offset,
+                                    list(data.get("hits") or []),
+                                    int(data.get("total_hits") or 0))
+        except Exception as e:
+            self.failed.emit(self.token, str(e))
+
+
+class InstalledModsWorker(QThread):
+    identified = pyqtSignal(str, dict)  # mods_dir, {filename: meta}
+
+    def __init__(self, mods_dir: str):
+        super().__init__()
+        self.mods_dir = mods_dir
 
     def run(self) -> None:
         try:
-            params = {
-                "query": self.query,
-                "facets": json.dumps([["categories:fabric"], ["project_type:mod"]])
-            }
-            r = requests.get("https://api.modrinth.com/v2/search",
-                             headers=API_HEADERS, params=params, timeout=(5, 10))
-            if r.status_code == 200:
-                hits = r.json().get("hits", [])
-                self.results_ready.emit(hits)
+            result = identify_installed_mods(self.mods_dir)
         except Exception:
-            self.results_ready.emit([])
+            result = {}
+        self.identified.emit(self.mods_dir, result)
 
 
 class ModInstallWorker(QThread):
-    progress = pyqtSignal(str)
-    completed = pyqtSignal()
-    error = pyqtSignal(str)
+    """Install one Modrinth project plus its required dependencies."""
+    progress = pyqtSignal(str, float)   # key, fraction 0..1 (-1 = indeterminate)
+    completed = pyqtSignal(str, list)   # key, installed filenames
+    error = pyqtSignal(str, str)        # key, message
+
+    _MAX_DEP_DEPTH = 4
 
     def __init__(self, project_id: str, slug: str, mc_version: str, instance_dir: str):
         super().__init__()
@@ -1372,121 +1738,351 @@ class ModInstallWorker(QThread):
         self.slug = slug or project_id
         self.mc_version = mc_version
         self.instance_dir = instance_dir
+        self._installed_projects: dict = {}
+
+    def _fetch_versions(self, project_id: str) -> list:
+        params = {
+            "loaders": json.dumps(["fabric"]),
+            "game_versions": json.dumps([self.mc_version]),
+        }
+        r = HTTP.get(f"{MODRINTH_API}/project/{project_id}/version", params=params, timeout=(5, 15))
+        if r.status_code == 404:
+            return []
+        if r.status_code != 200:
+            raise ValueError(f"Modrinth API error (HTTP {r.status_code}).")
+        data = r.json()
+        return data if isinstance(data, list) else []
+
+    def _resolve(self, project_id: str, plan: list, visited: set, depth: int, is_main: bool) -> None:
+        if project_id in visited or depth > self._MAX_DEP_DEPTH:
+            return
+        visited.add(project_id)
+        # Dependencies are resolved even when already installed: a new mod
+        # often needs a newer build of its library (e.g. Fabric API, Sodium
+        # for Iris), and an outdated one makes Fabric refuse to start. An
+        # up-to-date copy is simply skipped at download time.
+        version = _pick_mod_version(self._fetch_versions(project_id))
+        if version is None:
+            if is_main:
+                raise ValueError(f"No Fabric build of this mod supports Minecraft {self.mc_version}.")
+            return
+        file_info = _primary_file(version)
+        if not file_info or "url" not in file_info:
+            if is_main:
+                raise ValueError("No downloadable file found for this mod version.")
+            return
+        plan.append((project_id, file_info, is_main))
+        for dep in version.get("dependencies") or []:
+            dep_id = dep.get("project_id")
+            if dep.get("dependency_type") == "required" and dep_id:
+                self._resolve(dep_id, plan, visited, depth + 1, False)
+
+    def _safe_remove(self, mods_dir: str, filename: str) -> None:
+        name = sanitize_mod_filename(filename)
+        if not name:
+            return
+        try:
+            os.remove(os.path.join(mods_dir, name))
+        except OSError:
+            pass
+
+    def run(self) -> None:
+        key = self.project_id
+        try:
+            mods_dir = os.path.join(self.instance_dir, "mods")
+            os.makedirs(mods_dir, exist_ok=True)
+            self.progress.emit(key, -1.0)
+
+            # Exact inventory of what's already installed (hash lookup), so
+            # dependencies aren't duplicated under a different filename -
+            # two copies of the same mod make Fabric refuse to start.
+            identified = identify_installed_mods(mods_dir)
+            self._installed_projects = {m["project_id"]: fn for fn, m in identified.items()}
+
+            plan: list = []
+            self._resolve(self.project_id, plan, set(), 0, True)
+
+            existing = [f for f in os.listdir(mods_dir) if f.lower().endswith(".jar")]
+            total_bytes = sum(
+                int(f.get("size") or 0) for _, f, _ in plan
+                if sanitize_mod_filename(f.get("filename", "")) not in existing
+            )
+            done_bytes = {"v": 0}
+            last_emit = {"v": -1.0}
+            installed: List[str] = []
+            new_files: List[str] = []
+            to_remove: set = set()
+
+            def is_other_project(f: str, project_id: str) -> bool:
+                other = identified.get(f)
+                return bool(other) and other.get("project_id") != project_id
+
+            try:
+                for project_id, file_info, is_main in plan:
+                    filename = sanitize_mod_filename(file_info.get("filename", ""))
+                    if filename is None:
+                        if is_main:
+                            raise ValueError("Unsafe or missing filename returned by Modrinth API.")
+                        continue
+                    dest = os.path.join(mods_dir, filename)
+
+                    if not os.path.exists(dest) or os.path.getsize(dest) == 0:
+                        base = done_bytes["v"]
+
+                        def on_progress(done: int, _total: int, base=base) -> None:
+                            if total_bytes <= 0:
+                                return
+                            frac = min(1.0, (base + done) / total_bytes)
+                            if frac - last_emit["v"] >= 0.01 or frac >= 1.0:
+                                last_emit["v"] = frac
+                                self.progress.emit(key, frac)
+
+                        expected_sha1 = (file_info.get("hashes") or {}).get("sha1")
+                        download_mod_file(file_info["url"], expected_sha1, dest, on_progress=on_progress)
+                        new_files.append(dest)
+                        done_bytes["v"] += int(file_info.get("size") or 0)
+                    installed.append(filename)
+
+                    # Older copies of this project, removed only after every
+                    # download succeeded.
+                    old = self._installed_projects.get(project_id)
+                    if old:
+                        to_remove.add(old)
+                    if project_id == FABRIC_API_PROJECT_ID or is_main:
+                        slug = "fabric-api" if project_id == FABRIC_API_PROJECT_ID else self.slug
+                        for f in existing:
+                            if not is_other_project(f, project_id) and (
+                                matches_mod(f, slug) or (is_main and matches_mod(f, self.project_id))
+                            ):
+                                to_remove.add(f)
+            except Exception:
+                # All-or-nothing: never leave a mod without its dependencies.
+                for path in new_files:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+                raise
+
+            for f in to_remove - set(installed):
+                self._safe_remove(mods_dir, f)
+
+            self.progress.emit(key, 1.0)
+            self.completed.emit(key, installed)
+        except Exception as e:
+            self.error.emit(key, str(e))
+
+
+class IconLoader(QObject):
+    """Async, disk-cached loader for Modrinth project icons.
+
+    Downloads run on a small thread pool (sharing the keep-alive HTTP
+    session); decoded + downscaled QImages are handed back to the GUI
+    thread through a queued signal and kept in an in-memory pixmap cache.
+    """
+    icon_ready = pyqtSignal(str, QPixmap)
+    _decoded = pyqtSignal(str, QImage)
+
+    _MAX_PX = 96
+
+    def __init__(self, cache_dir: str, parent=None) -> None:
+        super().__init__(parent)
+        self._cache_dir = cache_dir
+        self._pool = ThreadPoolExecutor(max_workers=6, thread_name_prefix="vanta-icon")
+        self._mem: dict = {}
+        self._pending: set = set()
+        self._decoded.connect(self._on_decoded)
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+        except OSError:
+            pass
+
+    def get(self, url: str) -> Optional[QPixmap]:
+        return self._mem.get(url)
+
+    def request(self, url: str) -> None:
+        if not url or url in self._mem or url in self._pending:
+            return
+        self._pending.add(url)
+        try:
+            self._pool.submit(self._load, url)
+        except RuntimeError:
+            self._pending.discard(url)
+
+    def shutdown(self) -> None:
+        try:
+            self._pool.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
+
+    def _load(self, url: str) -> None:
+        path = os.path.join(self._cache_dir, hashlib.sha1(url.encode("utf-8")).hexdigest() + ".img")
+        data = None
+        try:
+            if os.path.exists(path):
+                with open(path, "rb") as f:
+                    data = f.read()
+        except OSError:
+            data = None
+        if not data:
+            try:
+                r = HTTP.get(url, timeout=(4, 8))
+                if r.status_code == 200 and r.content:
+                    data = r.content
+                    tmp = path + ".part"
+                    with open(tmp, "wb") as f:
+                        f.write(data)
+                    os.replace(tmp, path)
+            except Exception:
+                pass
+        image = QImage()
+        if data:
+            image.loadFromData(data)
+        if not image.isNull() and (image.width() > self._MAX_PX or image.height() > self._MAX_PX):
+            image = image.scaled(self._MAX_PX, self._MAX_PX,
+                                 Qt.AspectRatioMode.KeepAspectRatio,
+                                 Qt.TransformationMode.SmoothTransformation)
+        try:
+            self._decoded.emit(url, image)
+        except RuntimeError:
+            pass  # loader destroyed during shutdown
+
+    def _on_decoded(self, url: str, image: QImage) -> None:
+        self._pending.discard(url)
+        if image.isNull():
+            return
+        pixmap = QPixmap.fromImage(image)
+        self._mem[url] = pixmap
+        self.icon_ready.emit(url, pixmap)
+
+
+class JavaLocateWorker(QThread):
+    """Runs find_system_java() off the GUI thread (it spawns `java -version` per candidate)."""
+    located = pyqtSignal(object)
+
+    def __init__(self, min_major: Optional[int]):
+        super().__init__()
+        self.min_major = min_major
 
     def run(self) -> None:
         try:
-            self.progress.emit("Locating version...")
-            params = {
-                "loaders": json.dumps(["fabric"]),
-                "game_versions": json.dumps([self.mc_version])
-            }
-            url = f"https://api.modrinth.com/v2/project/{self.project_id}/version"
-            r = requests.get(url, headers=API_HEADERS, params=params, timeout=(5, 15))
-            if r.status_code != 200:
-                raise ValueError(f"Modrinth API error (HTTP {r.status_code}).")
-            data = r.json()
-            if not data or not isinstance(data, list) or len(data) == 0:
-                raise ValueError(f"No compatible Fabric versions found for Minecraft {self.mc_version}.")
+            path = find_system_java(self.min_major)
+        except Exception:
+            path = None
+        self.located.emit(path)
 
-            files_list = data[0].get("files", [])
-            if not files_list:
-                raise ValueError("No compatible files found in this project version.")
 
-            file_info = files_list[0]
-            for f in files_list:
-                if f.get("primary"):
-                    file_info = f
-                    break
+def _lerp_color(a: QColor, b: QColor, t: float) -> QColor:
+    t = max(0.0, min(1.0, t))
+    return QColor(
+        round(a.red() + (b.red() - a.red()) * t),
+        round(a.green() + (b.green() - a.green()) * t),
+        round(a.blue() + (b.blue() - a.blue()) * t),
+        round(a.alpha() + (b.alpha() - a.alpha()) * t),
+    )
 
-            target_filename = sanitize_mod_filename(file_info.get("filename", ""))
-            if target_filename is None:
-                raise ValueError("Unsafe or missing filename returned by Modrinth API.")
-            self.progress.emit(f"Downloading {target_filename}...")
-            mods_dir = os.path.join(self.instance_dir, "mods")
-            dest = os.path.join(mods_dir, target_filename)
-            os.makedirs(mods_dir, exist_ok=True)
 
-            if os.path.exists(mods_dir):
-                for f in os.listdir(mods_dir):
-                    if f.endswith(".jar") and (matches_mod(f, self.slug) or matches_mod(f, self.project_id)) and f != target_filename:
-                        try:
-                            os.remove(os.path.join(mods_dir, f))
-                        except Exception:
-                            pass
+def _ui_font(px: int, weight: QFont.Weight = QFont.Weight.Normal) -> QFont:
+    font = QFont("Segoe UI")
+    font.setPixelSize(px)
+    font.setWeight(weight)
+    return font
 
-            if not os.path.exists(dest) or os.path.getsize(dest) == 0:
-                expected_sha1 = (file_info.get("hashes") or {}).get("sha1")
-                download_mod_file(file_info["url"], expected_sha1, dest)
 
-            if is_fabric_compatible(self.mc_version):
-                self._ensure_fabric_api()
-            self.completed.emit()
-        except Exception as e:
-            self.error.emit(str(e))
+class _AnimValue(QObject):
+    """One eased float that repaints its owner widget on every step."""
 
-    def _ensure_fabric_api(self) -> None:
-        mods_dir = os.path.join(self.instance_dir, "mods")
-        os.makedirs(mods_dir, exist_ok=True)
+    def __init__(self, owner: QWidget, value: float = 0.0, duration: int = 150,
+                 easing: QEasingCurve.Type = QEasingCurve.Type.OutCubic) -> None:
+        super().__init__(owner)
+        self.value = float(value)
+        self._owner = owner
+        self._target = float(value)
+        self._anim = QVariantAnimation(self)
+        self._anim.setDuration(duration)
+        self._anim.setEasingCurve(easing)
+        self._anim.valueChanged.connect(self._set)
 
+    def _set(self, v) -> None:
+        self.value = float(v)
+        self._owner.update()
+
+    def animate_to(self, target: float) -> None:
+        target = float(target)
+        if target == self._target and (
+            self._anim.state() == QVariantAnimation.State.Running or self.value == target
+        ):
+            return
+        self._target = target
+        self._anim.stop()
+        self._anim.setStartValue(self.value)
+        self._anim.setEndValue(target)
+        self._anim.start()
+
+    def set_now(self, v: float) -> None:
+        self._anim.stop()
+        self.value = self._target = float(v)
+        self._owner.update()
+
+
+class _Ticker(QObject):
+    """Shared ~30 fps heartbeat for spinners and skeleton pulses.
+
+    One timer for every animated card instead of one per card; it stops
+    itself as soon as nothing is connected.
+    """
+    tick = pyqtSignal()
+    _instance = None
+
+    @classmethod
+    def instance(cls) -> "_Ticker":
+        if cls._instance is None:
+            cls._instance = _Ticker()
+        return cls._instance
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._timer = QTimer(self)
+        self._timer.setInterval(33)
+        self._timer.timeout.connect(self._on_timeout)
+
+    def subscribe(self, slot) -> None:
+        self.tick.connect(slot)
+        if not self._timer.isActive():
+            self._timer.start()
+
+    def unsubscribe(self, slot) -> None:
         try:
-            params = {
-                "loaders": json.dumps(["fabric"]),
-                "game_versions": json.dumps([self.mc_version])
-            }
-            r = requests.get("https://api.modrinth.com/v2/project/fabric-api/version",
-                             headers=API_HEADERS, params=params, timeout=(5, 15))
+            self.tick.disconnect(slot)
+        except (TypeError, RuntimeError):
+            pass
 
-            target_filename = None
-            file_info = None
-            if r.status_code == 200:
-                data = r.json()
-                if data and isinstance(data, list) and len(data) > 0:
-                    files_list = data[0].get("files", [])
-                    if files_list:
-                        file_info = files_list[0]
-                        for f in files_list:
-                            if f.get("primary"):
-                                file_info = f
-                                break
-                        target_filename = sanitize_mod_filename(file_info.get("filename", ""))
-
-            if target_filename and file_info and "url" in file_info:
-                if os.path.exists(mods_dir):
-                    for f in os.listdir(mods_dir):
-                        if f.endswith(".jar") and matches_mod(f, "fabric-api") and f != target_filename:
-                            try:
-                                os.remove(os.path.join(mods_dir, f))
-                            except Exception:
-                                pass
-
-                dest_path = os.path.join(mods_dir, target_filename)
-                if not os.path.exists(dest_path) or os.path.getsize(dest_path) == 0:
-                    self.progress.emit("Downloading Fabric API...")
-                    expected_sha1 = (file_info.get("hashes") or {}).get("sha1")
-                    download_mod_file(file_info["url"], expected_sha1, dest_path)
-            else:
-                local_match = False
-                if os.path.exists(mods_dir):
-                    for f in os.listdir(mods_dir):
-                        f_path = os.path.join(mods_dir, f)
-                        if f.endswith(".jar") and os.path.getsize(f_path) > 0 and matches_mod(f, "fabric-api"):
-                            local_match = True
-                            break
-                if not local_match:
-                    self.progress.emit("Fabric API could not be located.")
-        except Exception as e:
-            sys.stderr.write(f"Failed to auto-download Fabric API: {e}\n")
+    def _on_timeout(self) -> None:
+        if self.receivers(self.tick) == 0:
+            self._timer.stop()
+            return
+        self.tick.emit()
 
 
 class SmoothButton(QPushButton):
-    """QPushButton with an animated background-color transition on hover/press."""
-    def __init__(self, text="", parent=None, base="#0A84FF", hover="#2F95FF", pressed="#0067C0"):
+    """Custom-painted accent button with animated hover/press colour and a press-in inset.
+
+    Painted directly instead of via setStyleSheet() per animation frame,
+    which forced a full style re-polish of the button ~60 times a second.
+    """
+
+    def __init__(self, text="", parent=None, base="#0A84FF", hover="#2F95FF", pressed="#0067C0",
+                 radius: int = 10):
         super().__init__(text, parent)
         self._base, self._hover, self._pressed = QColor(base), QColor(hover), QColor(pressed)
-        self._anim = QVariantAnimation(self)
-        self._anim.setDuration(140)
-        self._anim.valueChanged.connect(self._apply_color)
+        self._radius = radius
         self._current = QColor(base)
+        self._font = _ui_font(14, QFont.Weight.Bold)
+        self._anim = QVariantAnimation(self)
+        self._anim.setDuration(160)
+        self._anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._anim.valueChanged.connect(self._apply_color)
+        self._press = _AnimValue(self, 0.0, 110)
 
     def _target_color(self):
         if not self.isEnabled():
@@ -1506,11 +2102,32 @@ class SmoothButton(QPushButton):
 
     def _apply_color(self, color):
         self._current = QColor(color)
-        self.setStyleSheet(
-            f"QPushButton {{ background-color: {self._current.name()}; color: #FFFFFF;"
-            f" border: none; border-radius: 10px; font-weight: bold; }}"
-            f"QPushButton:disabled {{ background-color: #3A3A3C; color: #8E8E93; }}"
-        )
+        self.update()
+
+    def paintEvent(self, event) -> None:  # type: ignore[override]
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        inset = 1.5 * self._press.value
+        rect = QRectF(self.rect()).adjusted(inset, inset, -inset, -inset)
+        enabled = self.isEnabled()
+        color = self._current if enabled else QColor("#3A3A3C")
+
+        grad = QLinearGradient(0, rect.top(), 0, rect.bottom())
+        grad.setColorAt(0.0, color.lighter(114) if enabled else color)
+        grad.setColorAt(1.0, color)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(grad))
+        painter.drawRoundedRect(rect, self._radius, self._radius)
+
+        if enabled:
+            # Hairline top highlight gives the button a bit of depth.
+            painter.setPen(QPen(QColor(255, 255, 255, 38), 1))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), self._radius, self._radius)
+
+        painter.setPen(QColor("#FFFFFF") if enabled else QColor("#8E8E93"))
+        painter.setFont(self._font)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.text())
 
     def enterEvent(self, e):
         self._update_target()
@@ -1518,15 +2135,18 @@ class SmoothButton(QPushButton):
 
     def leaveEvent(self, e):
         self._update_target()
+        self._press.animate_to(0.0)
         super().leaveEvent(e)
 
     def mousePressEvent(self, e):
-        self._update_target()
         super().mousePressEvent(e)
+        self._update_target()
+        self._press.animate_to(1.0)
 
     def mouseReleaseEvent(self, e):
-        self._update_target()
         super().mouseReleaseEvent(e)
+        self._update_target()
+        self._press.animate_to(0.0)
 
     def changeEvent(self, e):
         if e.type() == QEvent.Type.EnabledChange:
@@ -1540,9 +2160,9 @@ class ToggleSwitch(QCheckBox):
     Subclasses QCheckBox so the rest of the codebase keeps using the
     standard ``isChecked()`` / ``setChecked()`` / ``toggled`` API. The
     default QCheckBox::indicator styling is replaced by a custom paint
-    that draws a rounded track plus a sliding handle, animated between
-    on and off so the transition reads as a physical switch instead of
-    a checkbox tick.
+    that draws a rounded track plus a sliding handle; handle position and
+    track colour are animated together so the transition reads as a
+    physical switch instead of a checkbox tick.
 
     The whole row is clickable (see ``hitButton``), so users don't have
     to aim at the 38x22 track - the label area also toggles.
@@ -1563,19 +2183,24 @@ class ToggleSwitch(QCheckBox):
         self.setMinimumHeight(self._TRACK_H + 4)
         self._handle_pos: float = 1.0 if self.isChecked() else 0.0
         self._anim = QVariantAnimation(self)
-        self._anim.setDuration(140)
+        self._anim.setDuration(200)
+        self._anim.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._anim.valueChanged.connect(self._on_anim)
         self.stateChanged.connect(self._on_state)
 
     def _on_state(self, _state: int) -> None:
         target = 1.0 if self.isChecked() else 0.0
         self._anim.stop()
+        if not self.isVisible():
+            # Programmatic changes while hidden (settings load) snap.
+            self._on_anim(target)
+            return
         self._anim.setStartValue(self._handle_pos)
         self._anim.setEndValue(target)
         self._anim.start()
 
     def _on_anim(self, v: float) -> None:
-        self._handle_pos = v
+        self._handle_pos = float(v)
         self.update()
 
     def hitButton(self, pos: QPoint) -> bool:  # type: ignore[override]
@@ -1585,13 +2210,11 @@ class ToggleSwitch(QCheckBox):
     def paintEvent(self, event) -> None:  # type: ignore[override]
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        enabled = self.isEnabled()
 
-        # Label on the left (if any). Right-aligned track consumes the
-        # right edge so the text gets the full left half.
         text = self.text()
         if text:
-            text_color = QColor("#FFFFFF") if self.isEnabled() else QColor("#6A6A6E")
-            painter.setPen(text_color)
+            painter.setPen(QColor("#FFFFFF") if enabled else QColor("#6A6A6E"))
             painter.setFont(self.font())
             text_w = self._TRACK_W + 8
             text_rect = QRect(0, 0, max(0, self.width() - text_w), self.height())
@@ -1601,34 +2224,540 @@ class ToggleSwitch(QCheckBox):
                 text,
             )
 
-        # Track on the right.
         track_x = self.width() - self._TRACK_W - self._TRACK_PAD
         track_y = (self.height() - self._TRACK_H) // 2
 
-        if self.isChecked():
-            track_color = QColor("#30D158") if self.isEnabled() else QColor("#1F5C2F")
+        if enabled:
+            off_c, on_c = QColor("#3A3A3C"), QColor("#30D158")
         else:
-            track_color = QColor("#3A3A3C") if self.isEnabled() else QColor("#2A2A2C")
+            off_c, on_c = QColor("#2A2A2C"), QColor("#1F5C2F")
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(track_color)
+        painter.setBrush(_lerp_color(off_c, on_c, self._handle_pos))
         painter.drawRoundedRect(
             track_x, track_y, self._TRACK_W, self._TRACK_H,
             self._TRACK_H // 2, self._TRACK_H // 2,
         )
 
-        # Handle (the moving circle).
         handle_size = self._TRACK_H - 4
         handle_max = self._TRACK_W - self._TRACK_H
-        handle_x = int(round(track_x + 2 + self._handle_pos * handle_max))
+        handle_x = track_x + 2 + self._handle_pos * handle_max
         handle_y = track_y + 2
 
-        # Subtle shadow under the handle for depth.
-        shadow = QColor(0, 0, 0, 50)
-        painter.setBrush(shadow)
-        painter.drawEllipse(int(handle_x), int(handle_y + 1), int(handle_size), int(handle_size))
+        painter.setBrush(QColor(0, 0, 0, 50))
+        painter.drawEllipse(QRectF(handle_x, handle_y + 1, handle_size, handle_size))
+        painter.setBrush(QColor("#FFFFFF") if enabled else QColor("#98989D"))
+        painter.drawEllipse(QRectF(handle_x, handle_y, handle_size, handle_size))
 
-        painter.setBrush(QColor("#FFFFFF") if self.isEnabled() else QColor("#98989D"))
-        painter.drawEllipse(int(handle_x), int(handle_y), int(handle_size), int(handle_size))
+
+class SegmentedControl(QWidget):
+    """Pill-style tab switcher whose highlight glides between segments."""
+    currentChanged = pyqtSignal(int)
+
+    def __init__(self, labels, parent=None, height: int = 28, font_px: int = 11) -> None:
+        super().__init__(parent)
+        self._labels = list(labels)
+        self._index = 0
+        self._hover = -1
+        self._pos = _AnimValue(self, 0.0, 260)
+        self._font = _ui_font(font_px, QFont.Weight.DemiBold)
+        self.setFixedHeight(height)
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def currentIndex(self) -> int:
+        return self._index
+
+    def setLabel(self, index: int, text: str) -> None:
+        if 0 <= index < len(self._labels) and self._labels[index] != text:
+            self._labels[index] = text
+            self.update()
+
+    def setCurrentIndex(self, index: int, animate: bool = True, emit: bool = False) -> None:
+        if index == self._index or not (0 <= index < len(self._labels)):
+            return
+        self._index = index
+        if animate and self.isVisible():
+            self._pos.animate_to(float(index))
+        else:
+            self._pos.set_now(float(index))
+        if emit:
+            self.currentChanged.emit(index)
+
+    def _segment_at(self, x: float) -> int:
+        n = max(1, len(self._labels))
+        return max(0, min(n - 1, int(x // (self.width() / n))))
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setCurrentIndex(self._segment_at(event.position().x()), emit=True)
+            event.accept()
+
+    def mouseMoveEvent(self, event) -> None:
+        seg = self._segment_at(event.position().x())
+        if seg != self._hover:
+            self._hover = seg
+            self.update()
+
+    def leaveEvent(self, event) -> None:
+        self._hover = -1
+        self.update()
+        super().leaveEvent(event)
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        n = max(1, len(self._labels))
+        w, h = self.width(), self.height()
+        seg_w = w / n
+
+        painter.setPen(QPen(QColor("#38383A"), 1))
+        painter.setBrush(QColor("#232325"))
+        painter.drawRoundedRect(QRectF(0.5, 0.5, w - 1, h - 1), 8, 8)
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        if 0 <= self._hover < n and self._hover != self._index:
+            painter.setBrush(QColor(255, 255, 255, 12))
+            painter.drawRoundedRect(QRectF(self._hover * seg_w + 3, 3, seg_w - 6, h - 6), 6, 6)
+
+        pill = QRectF(self._pos.value * seg_w + 3, 3, seg_w - 6, h - 6)
+        grad = QLinearGradient(0, pill.top(), 0, pill.bottom())
+        grad.setColorAt(0.0, QColor("#2F95FF"))
+        grad.setColorAt(1.0, QColor("#0A84FF"))
+        painter.setBrush(QBrush(grad))
+        painter.drawRoundedRect(pill, 6, 6)
+
+        painter.setFont(self._font)
+        idle, active = QColor("#98989D"), QColor("#FFFFFF")
+        for i, label in enumerate(self._labels):
+            closeness = max(0.0, 1.0 - abs(self._pos.value - i))
+            painter.setPen(_lerp_color(idle, active, closeness))
+            painter.drawText(QRectF(i * seg_w, 0, seg_w, h), Qt.AlignmentFlag.AlignCenter, label)
+
+
+class ModCard(QWidget):
+    """One row in the mod browser / installed list, fully custom-painted.
+
+    Painting the icon, text and action button in a single paintEvent keeps
+    each row to one widget (fast to create, scroll and animate) and lets
+    the whole card fade + slide in with a single painter transform.
+
+    ``state`` drives the action button:
+      install    - blue "Install"
+      queued     - grey "Queued" (hover: "Cancel")
+      installing - progress fill with percentage / spinner
+      installed  - green check (hover: red "Remove")
+      remove     - neutral "Remove" (installed tab)
+      required   - locked "Required" (Fabric API)
+      skeleton   - loading placeholder, no button
+    """
+    action_clicked = pyqtSignal(object)
+    open_requested = pyqtSignal(object)
+
+    HEIGHT = 60
+    _ICON = 38
+    _BTN_W = 86
+    _BTN_H = 28
+    _PALETTE = ("#0A84FF", "#30D158", "#FF9F0A", "#BF5AF2", "#FF375F", "#64D2FF", "#FFD60A", "#5E5CE6")
+    _fonts: dict = {}
+
+    def __init__(self, info: dict, parent=None) -> None:
+        super().__init__(parent)
+        self.info = info
+        self.state = "skeleton" if info.get("skeleton") else info.get("state", "install")
+        self.progress = -1.0
+        self.icon: Optional[QPixmap] = None
+        self._hover = _AnimValue(self, 0.0, 150)
+        self._btn_hover = _AnimValue(self, 0.0, 130)
+        self._appear = _AnimValue(self, 1.0, 360)
+        self._prog = _AnimValue(self, 0.0, 240)
+        self._flash = _AnimValue(self, 0.0, 900, QEasingCurve.Type.OutQuad)
+        self._btn_down = False
+        self._over_btn = False
+        self._ticking = False
+        self.setFixedHeight(self.HEIGHT)
+        self.setMouseTracking(True)
+        tip = info.get("tooltip")
+        if tip:
+            self.setToolTip(tip)
+        if self.state == "skeleton":
+            self._set_ticking(True)
+
+    # ---- fonts / helpers -------------------------------------------------
+    @classmethod
+    def _font(cls, name: str) -> QFont:
+        if not cls._fonts:
+            cls._fonts = {
+                "title": _ui_font(12, QFont.Weight.DemiBold),
+                "meta": _ui_font(10),
+                "btn": _ui_font(11, QFont.Weight.DemiBold),
+                "letter": _ui_font(16, QFont.Weight.Bold),
+            }
+        return cls._fonts[name]
+
+    def _btn_rect(self) -> QRectF:
+        return QRectF(self.width() - self._BTN_W - 12, (self.HEIGHT - self._BTN_H) / 2,
+                      self._BTN_W, self._BTN_H)
+
+    def _clickable(self) -> bool:
+        return self.state in ("install", "queued", "installed", "remove")
+
+    def _set_ticking(self, on: bool) -> None:
+        if on == self._ticking:
+            return
+        self._ticking = on
+        if on:
+            _Ticker.instance().subscribe(self.update)
+        else:
+            _Ticker.instance().unsubscribe(self.update)
+
+    # ---- public API ----------------------------------------------------------
+    def play_appear(self, delay_ms: int) -> None:
+        self._appear.set_now(0.0)
+        if delay_ms <= 0:
+            self._start_appear()
+        else:
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(self._start_appear)
+            timer.timeout.connect(timer.deleteLater)
+            timer.start(delay_ms)
+
+    def _start_appear(self) -> None:
+        self._appear.animate_to(1.0)
+
+    def set_icon(self, pixmap: Optional[QPixmap]) -> None:
+        self.icon = pixmap
+        self.update()
+
+    def set_state(self, state: str, progress: Optional[float] = None) -> None:
+        if progress is not None:
+            self.progress = progress
+            if progress >= 0:
+                if state == "installing" and self.state != "installing":
+                    self._prog.set_now(0.0)
+                self._prog.animate_to(progress)
+        if state != self.state:
+            if state == "installing" and self.state != "installing":
+                self._prog.set_now(max(0.0, self.progress))
+            self.state = state
+            self.setCursor(Qt.CursorShape.PointingHandCursor if (self._over_btn and self._clickable())
+                           else Qt.CursorShape.ArrowCursor)
+        self._set_ticking(state == "installing" and self.progress < 0)
+        self.update()
+
+    def flash(self) -> None:
+        """Brief green glow confirming a successful install."""
+        self._flash.set_now(1.0)
+        self._flash.animate_to(0.0)
+
+    # ---- events --------------------------------------------------------------
+    def enterEvent(self, event) -> None:
+        self._hover.animate_to(1.0)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        self._hover.animate_to(0.0)
+        self._btn_hover.animate_to(0.0)
+        self._over_btn = False
+        self._btn_down = False
+        super().leaveEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        over = self._btn_rect().contains(event.position())
+        if over != self._over_btn:
+            self._over_btn = over
+            self._btn_hover.animate_to(1.0 if over else 0.0)
+            self.setCursor(Qt.CursorShape.PointingHandCursor if (over and self._clickable())
+                           else Qt.CursorShape.ArrowCursor)
+        super().mouseMoveEvent(event)
+
+    def mousePressEvent(self, event) -> None:
+        if (event.button() == Qt.MouseButton.LeftButton and self._clickable()
+                and self._btn_rect().contains(event.position())):
+            self._btn_down = True
+            self.update()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if self._btn_down:
+            self._btn_down = False
+            self.update()
+            if self._btn_rect().contains(event.position()) and self._clickable():
+                self.action_clicked.emit(self)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        if not self._btn_rect().contains(event.position()) and self.info.get("url"):
+            self.open_requested.emit(self)
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
+
+    def hideEvent(self, event) -> None:
+        self._set_ticking(False)
+        super().hideEvent(event)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if self.state == "skeleton" or (self.state == "installing" and self.progress < 0):
+            self._set_ticking(True)
+
+    # ---- painting ------------------------------------------------------------
+    def _button_style(self):
+        """(bg, fg, text) for the current state + hover amount."""
+        hv = self._btn_hover.value
+        if self.state == "install":
+            bg = _lerp_color(QColor("#0A84FF"), QColor("#2F95FF"), hv)
+            if self._btn_down:
+                bg = QColor("#0067C0")
+            return bg, QColor("#FFFFFF"), "Install"
+        if self.state == "queued":
+            return (_lerp_color(QColor("#3A3A3C"), QColor("#48484A"), hv), QColor("#D1D1D6"),
+                    "Cancel" if hv > 0.5 else "Queued")
+        if self.state == "installed":
+            bg = _lerp_color(QColor(48, 209, 88, 40), QColor(255, 69, 58, 46), hv)
+            fg = _lerp_color(QColor("#30D158"), QColor("#FF6961"), hv)
+            return bg, fg, ("Remove" if hv > 0.5 else "✓ Installed")
+        if self.state == "remove":
+            bg = _lerp_color(QColor("#2C2C2E"), QColor("#FF453A"), hv)
+            fg = _lerp_color(QColor("#D1D1D6"), QColor("#FFFFFF"), hv)
+            return bg, fg, "Remove"
+        if self.state == "required":
+            return QColor("#2A2A2C"), QColor("#8E8E93"), "Required"
+        return QColor(10, 132, 255, 56), QColor("#FFFFFF"), ""
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        appear = self._appear.value
+        if appear < 1.0:
+            painter.setOpacity(max(0.0, appear))
+            painter.translate(0, (1.0 - appear) * 10)
+
+        w, h = self.width(), self.HEIGHT
+        card = QRectF(0.5, 0.5, w - 1, h - 1)
+        hv = self._hover.value
+        bg = _lerp_color(QColor("#242426"), QColor("#2C2C2F"), hv)
+        if self._flash.value > 0:
+            bg = _lerp_color(bg, QColor(48, 209, 88, 255), self._flash.value * 0.22)
+        painter.setPen(QPen(_lerp_color(QColor("#2F2F32"), QColor("#3E3E42"), hv), 1))
+        painter.setBrush(bg)
+        painter.drawRoundedRect(card, 10, 10)
+
+        icon_rect = QRectF(11, (h - self._ICON) / 2, self._ICON, self._ICON)
+
+        if self.state == "skeleton":
+            pulse = 0.5 + 0.5 * math.sin(time.monotonic() * 4.0)
+            shade = QColor(255, 255, 255, int(14 + 14 * pulse))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(shade)
+            painter.drawRoundedRect(icon_rect, 9, 9)
+            painter.drawRoundedRect(QRectF(60, 16, w * 0.35, 9), 4, 4)
+            painter.drawRoundedRect(QRectF(60, 33, w * 0.55, 8), 4, 4)
+            return
+
+        # Icon (or a coloured monogram while it loads / if it has none).
+        painter.save()
+        clip = QPainterPath()
+        clip.addRoundedRect(icon_rect, 9, 9)
+        painter.setClipPath(clip)
+        if self.icon is not None and not self.icon.isNull():
+            painter.fillRect(icon_rect, QColor("#1C1C1E"))
+            painter.drawPixmap(icon_rect.toRect(), self.icon)
+        else:
+            title = self.info.get("title") or "?"
+            color = QColor(self._PALETTE[sum(map(ord, title)) % len(self._PALETTE)])
+            grad = QLinearGradient(0, icon_rect.top(), 0, icon_rect.bottom())
+            grad.setColorAt(0.0, color.lighter(120))
+            grad.setColorAt(1.0, color.darker(135))
+            painter.fillRect(icon_rect, QBrush(grad))
+            painter.setPen(QColor("#FFFFFF"))
+            painter.setFont(self._font("letter"))
+            painter.drawText(icon_rect, Qt.AlignmentFlag.AlignCenter, title[:1].upper())
+        painter.restore()
+
+        btn = self._btn_rect()
+        text_x = icon_rect.right() + 11
+        text_w = max(20.0, btn.left() - 10 - text_x)
+
+        # Title + author on line one.
+        title_font = self._font("title")
+        meta_font = self._font("meta")
+        title = self.info.get("title") or ""
+        author = self.info.get("author") or ""
+        fm_title = QFontMetrics(title_font)
+        title_text = fm_title.elidedText(title, Qt.TextElideMode.ElideRight, int(text_w))
+        painter.setFont(title_font)
+        painter.setPen(QColor("#FFFFFF"))
+        painter.drawText(QRectF(text_x, 11, text_w, 18),
+                         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, title_text)
+        used = fm_title.horizontalAdvance(title_text)
+        if author and used + 30 < text_w:
+            fm_meta = QFontMetrics(meta_font)
+            by = fm_meta.elidedText(f"by {author}", Qt.TextElideMode.ElideRight, int(text_w - used - 6))
+            painter.setFont(meta_font)
+            painter.setPen(QColor("#8E8E93"))
+            painter.drawText(QRectF(text_x + used + 6, 12, text_w - used - 6, 18),
+                             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, by)
+
+        # Meta / description on line two.
+        subtitle = self.info.get("subtitle") or ""
+        painter.setFont(meta_font)
+        painter.setPen(QColor("#9A9AA0"))
+        sub_text = QFontMetrics(meta_font).elidedText(subtitle, Qt.TextElideMode.ElideRight, int(text_w))
+        painter.drawText(QRectF(text_x, 31, text_w, 16),
+                         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, sub_text)
+
+        # Action button.
+        bg_c, fg_c, label = self._button_style()
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(bg_c)
+        painter.drawRoundedRect(btn, 8, 8)
+        painter.setFont(self._font("btn"))
+        if self.state == "installing":
+            if self.progress >= 0:
+                fill = QRectF(btn.left(), btn.top(), btn.width() * max(0.0, min(1.0, self._prog.value)), btn.height())
+                painter.save()
+                clip = QPainterPath()
+                clip.addRoundedRect(btn, 8, 8)
+                painter.setClipPath(clip)
+                painter.fillRect(fill, QColor("#0A84FF"))
+                painter.restore()
+                painter.setPen(QColor("#FFFFFF"))
+                painter.drawText(btn, Qt.AlignmentFlag.AlignCenter, f"{int(self._prog.value * 100)}%")
+            else:
+                size = 14.0
+                arc = QRectF(btn.center().x() - size / 2, btn.center().y() - size / 2, size, size)
+                painter.setPen(QPen(QColor("#FFFFFF"), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                start = int(-(time.monotonic() * 360 * 1.4) % 360 * 16)
+                painter.drawArc(arc, start, 100 * 16)
+        else:
+            painter.setPen(fg_c)
+            painter.drawText(btn, Qt.AlignmentFlag.AlignCenter, label)
+
+
+class ModListView(QScrollArea):
+    """Scrollable column of ModCards with eased wheel scrolling and empty/loading states."""
+    near_bottom = pyqtSignal()
+    cleared = pyqtSignal()  # emitted after all cards were scheduled for deletion
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("modList")
+        self.setWidgetResizable(True)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._inner = QWidget(objectName="modListInner")
+        self._layout = QVBoxLayout(self._inner)
+        self._layout.setContentsMargins(0, 0, 6, 0)
+        self._layout.setSpacing(6)
+
+        self._message = QLabel(objectName="modListMessage")
+        self._message.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._message.setWordWrap(True)
+        self._message.setTextFormat(Qt.TextFormat.RichText)
+        self._message.setMinimumHeight(140)
+        self._message.hide()
+        self._layout.addWidget(self._message)
+        self._layout.addStretch(1)
+        self.setWidget(self._inner)
+
+        self.cards: List[ModCard] = []
+        self._scroll_anim = QVariantAnimation(self)
+        self._scroll_anim.setDuration(240)
+        self._scroll_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._scroll_anim.valueChanged.connect(lambda v: self.verticalScrollBar().setValue(int(v)))
+        self._scroll_target = 0
+        self.verticalScrollBar().valueChanged.connect(self._check_bottom)
+
+    def clear(self) -> None:
+        self._scroll_anim.stop()
+        for card in self.cards:
+            card.hide()
+            card.deleteLater()
+        self.cards = []
+        self._message.hide()
+        self.verticalScrollBar().setValue(0)
+        self.cleared.emit()
+
+    def add_cards(self, cards: List[ModCard], animate: bool = True) -> None:
+        self._message.hide()
+        for i, card in enumerate(cards):
+            self._layout.insertWidget(self._layout.count() - 1, card)
+            self.cards.append(card)
+            if animate:
+                card.play_appear(min(i, 12) * 26)
+
+    def show_skeletons(self, count: int = 5) -> None:
+        self.clear()
+        self.add_cards([ModCard({"skeleton": True}) for _ in range(count)], animate=False)
+
+    def show_message(self, title: str, subtitle: str = "") -> None:
+        self.clear()
+        html = f"<div style='color:#E5E5EA; font-size:13px; font-weight:600;'>{title}</div>"
+        if subtitle:
+            html += f"<div style='color:#8E8E93; font-size:11px; margin-top:4px;'>{subtitle}</div>"
+        self._message.setText(html)
+        self._message.show()
+
+    def wheelEvent(self, event) -> None:
+        # Touchpads already deliver smooth pixel deltas; only ease notched wheels.
+        if not event.pixelDelta().isNull() or event.angleDelta().y() == 0:
+            super().wheelEvent(event)
+            return
+        bar = self.verticalScrollBar()
+        base = self._scroll_target if self._scroll_anim.state() == QVariantAnimation.State.Running else bar.value()
+        target = max(bar.minimum(), min(bar.maximum(), int(base - event.angleDelta().y() * 0.75)))
+        self._scroll_target = target
+        self._scroll_anim.stop()
+        self._scroll_anim.setStartValue(bar.value())
+        self._scroll_anim.setEndValue(target)
+        self._scroll_anim.start()
+        event.accept()
+
+    def _check_bottom(self, value: int) -> None:
+        bar = self.verticalScrollBar()
+        if bar.maximum() > 0 and bar.maximum() - value < 140:
+            self.near_bottom.emit()
+
+
+class ShadowCanvas(QWidget):
+    """Central widget that paints soft drop shadows behind the floating panels.
+
+    Replaces QGraphicsDropShadowEffect on the card: a graphics effect
+    re-renders the whole card offscreen on every child repaint (the
+    progress-bar shimmer alone triggers that 60x/s). Stacked translucent
+    rounded rects cost a handful of fills and only when this widget repaints.
+    """
+
+    _LAYERS = 9
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self._panels: List[QWidget] = []
+
+    def set_panels(self, panels: List[QWidget]) -> None:
+        self._panels = list(panels)
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        for panel in self._panels:
+            if not panel.isVisible():
+                continue
+            r = QRectF(panel.geometry())
+            for i in range(self._LAYERS, 0, -1):
+                alpha = int(11 * (1.0 - i / (self._LAYERS + 1)) + 1)
+                painter.setBrush(QColor(0, 0, 0, alpha))
+                painter.drawRoundedRect(r.adjusted(-i, -i + 3, i, i + 3), 16 + i, 16 + i)
 
 
 class EaseAnimator(QObject):
@@ -1663,6 +2792,16 @@ class EaseAnimator(QObject):
     def stop(self) -> None:
         self._timer.stop()
         self._running = False
+
+    def finish(self) -> None:
+        """Stop and apply the end value immediately."""
+        if not self._running:
+            return
+        self.stop()
+        try:
+            self._callback(self._to)
+        except (RuntimeError, ReferenceError):
+            pass
 
     def is_running(self) -> bool:
         return self._running
@@ -2165,11 +3304,15 @@ class ComboPopup(QWidget):
         outer_layout.addWidget(self.card)
 
     def repopulate(self) -> None:
-        self.list_widget.clear()
-        for i in range(self.combo.count()):
-            text = self.combo.itemText(i)
-            item = QListWidgetItem(text)
-            self.list_widget.addItem(item)
+        # The version list holds several hundred entries; rebuilding it on
+        # every open made the dropdown hitch. Rebuild only when it changed.
+        items = tuple(self.combo.itemText(i) for i in range(self.combo.count()))
+        if items != getattr(self, "_items", None):
+            self.list_widget.setUpdatesEnabled(False)
+            self.list_widget.clear()
+            self.list_widget.addItems(items)
+            self.list_widget.setUpdatesEnabled(True)
+            self._items = items
         idx = self.combo.currentIndex()
         if 0 <= idx < self.list_widget.count():
             self.list_widget.setCurrentRow(idx)
@@ -2446,15 +3589,32 @@ class ShimmerProgressBar(QProgressBar):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._shimmer_pos = -0.4
+        # Displayed fill fraction; eased toward the real value each frame so
+        # coarse progress jumps (e.g. 20% -> 60%) glide instead of snapping.
+        self._display_frac = 0.0
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._timer.setInterval(16)
         self._timer.timeout.connect(self._advance)
 
+    def _real_frac(self) -> float:
+        maximum = self.maximum()
+        if maximum <= self.minimum():
+            return 0.0
+        frac = (self.value() - self.minimum()) / (maximum - self.minimum())
+        return max(0.0, min(1.0, frac))
+
     def _advance(self) -> None:
         self._shimmer_pos += self._SPEED
         if self._shimmer_pos > 1.4:
             self._shimmer_pos -= self._RANGE
+        target = self._real_frac()
+        delta = target - self._display_frac
+        if delta < -0.25 or abs(delta) < 0.002:
+            # Big backwards jump = a new phase started (reset to 0): snap.
+            self._display_frac = target
+        else:
+            self._display_frac += delta * 0.16
         self.update()
 
     def showEvent(self, event) -> None:
@@ -2492,10 +3652,8 @@ class ShimmerProgressBar(QProgressBar):
         painter.drawRoundedRect(0, 0, self.width() - 1, self.height() - 1, 10, 10)
 
         rect = self.rect().adjusted(2, 2, -2, -2)
-        maximum = self.maximum()
-        frac = 0.0 if maximum <= self.minimum() else (self.value() - self.minimum()) / (maximum - self.minimum())
-        frac = max(0.0, min(1.0, frac))
-        fill_w = int(rect.width() * frac)
+        frac = self._real_frac()
+        fill_w = int(rect.width() * self._display_frac)
 
         band_w = max(60, int(rect.width() * self._BAND_FRAC))
 
@@ -2701,6 +3859,9 @@ class SplashScreen(QWidget):
 class MinecraftLauncher(QMainWindow):
     _FADE_DURATION = 220
     _EXPAND_DURATION = 380
+    _CARD_H = 192
+    _MODS_DRAWER_H = 440
+    _LAYOUT_DURATION = 380
 
     def __init__(self, initial_avatar: Optional[QPixmap] = None,
                  preloaded_versions: Optional[List[str]] = None) -> None:
@@ -2724,6 +3885,29 @@ class MinecraftLauncher(QMainWindow):
         self._initial_avatar = initial_avatar if (initial_avatar is not None and not initial_avatar.isNull()) else None
 
         self.vanta_dir = get_vanta_dir()
+
+        # Mods manager state (see the "Mods manager" section below).
+        self._layout_animator: Optional[EaseAnimator] = None
+        self._total_ram_cached: Optional[int] = None
+        self._mods_activated = False
+        self._mods_mode = 0  # 0 = Browse, 1 = Installed
+        self._mods_queries = ["", ""]
+        self._search_token = 0
+        self._search_offset = 0
+        self._search_total = 0
+        self._search_loading = False
+        self._search_key: tuple = ("", "")
+        self._search_cache: dict = {}
+        self._installed_files: List[tuple] = []
+        self._installed_meta: dict = {}
+        self._installed_projects: dict = {}
+        self._installed_token = 0
+        self._mod_queue: List[dict] = []
+        self._mod_active: Optional[dict] = None
+        self._cards: dict = {}
+        self._status_restore_timer: Optional[QTimer] = None
+        self.icon_loader = IconLoader(os.path.join(self.vanta_dir, "cache", "icons"), self)
+        self.icon_loader.icon_ready.connect(self._on_icon_ready)
 
         self.setWindowOpacity(0.0)
         self._init_ui()
@@ -2818,6 +4002,8 @@ class MinecraftLauncher(QMainWindow):
         group = getattr(self, "_anim_group", None)
         if group is not None and group.state() == QParallelAnimationGroup.State.Running:
             group.stop()
+        if self._layout_animator is not None:
+            self._layout_animator.finish()
         for anim_name in ("_drawer_animator", "_window_animator", "_motion_anim"):
             anim = getattr(self, anim_name, None)
             if anim is not None:
@@ -2899,12 +4085,13 @@ class MinecraftLauncher(QMainWindow):
         self._anim_group.start()
 
     def _apply_card_shadow(self) -> None:
-        shadow = QGraphicsDropShadowEffect(self.card)
-        shadow.setBlurRadius(18)
-        shadow.setXOffset(0)
-        shadow.setYOffset(4)
-        shadow.setColor(QColor(0, 0, 0, 100))
-        self.card.setGraphicsEffect(shadow)
+        # Shadows are painted by the ShadowCanvas central widget (much
+        # cheaper than a QGraphicsDropShadowEffect); just make sure no
+        # stale effect is left on the card and repaint the canvas.
+        self.card.setGraphicsEffect(None)
+        central = getattr(self, "_central", None)
+        if central is not None:
+            central.update()
 
     def _fade_in_with_motion_blur(self) -> None:
         """Fade in with a strong motion-blur style transition (blur + vertical glide)."""
@@ -2984,6 +4171,8 @@ class MinecraftLauncher(QMainWindow):
         self._anim_group.start()
 
     def _fade_out_and_minimize(self) -> None:
+        if self._layout_animator is not None:
+            self._layout_animator.finish()
         self._restore_geometry = self.geometry()
         taskbar = self._get_taskbar_geometry()
 
@@ -3032,6 +4221,7 @@ class MinecraftLauncher(QMainWindow):
             event.ignore()
 
             def cleanup_and_close():
+                self.icon_loader.shutdown()
                 self._shutdown_workers()
                 with self._rpc_lock:
                     if self.rpc:
@@ -3139,7 +4329,7 @@ class MinecraftLauncher(QMainWindow):
         # Closed = compact "card-only" launcher. Open = drawer slides out
         # next to the card; both panels share the same height so the
         # layout stays visually balanced (mirror look).
-        self.setFixedSize(self._CLOSED_WIDTH, 214)
+        self.setFixedSize(self._CLOSED_WIDTH, self._CARD_H + 24)
 
         screen = QApplication.primaryScreen()
         if screen is not None:
@@ -3152,17 +4342,18 @@ class MinecraftLauncher(QMainWindow):
         arrow_path = _get_arrow_image_path()
         self.setStyleSheet(self._stylesheet(arrow_path))
 
-        central = QWidget(self)
+        central = ShadowCanvas(self)
         self.setCentralWidget(central)
         self._central = central
 
         self.card = QFrame(central, objectName="cardFrame")
-        self.card.setGeometry(12, 12, 340, 190)
+        self.card.setGeometry(12, 12, 340, self._CARD_H)
         self._apply_card_shadow()
 
         card_layout = QVBoxLayout(self.card)
-        card_layout.setContentsMargins(16, 16, 16, 16)
-        card_layout.setSpacing(8)
+        # Equal gaps above the title row and below the Play button.
+        card_layout.setContentsMargins(16, 11, 16, 11)
+        card_layout.setSpacing(3)
 
         title = QHBoxLayout()
         title.setContentsMargins(0, 0, 0, 0)
@@ -3196,6 +4387,7 @@ class MinecraftLauncher(QMainWindow):
         title.addWidget(self._min_btn)
         title.addWidget(self._close_btn)
         card_layout.addLayout(title)
+        card_layout.addSpacing(6)
 
         nick_layout = QHBoxLayout()
         nick_layout.setContentsMargins(0, 0, 0, 0)
@@ -3240,6 +4432,7 @@ class MinecraftLauncher(QMainWindow):
         self.meta_label.setMinimumHeight(14)
         card_layout.addWidget(self.meta_label)
 
+        card_layout.addSpacing(5)
         self.play_stack = QStackedWidget()
         self.play_stack.setFixedHeight(42)
 
@@ -3259,39 +4452,29 @@ class MinecraftLauncher(QMainWindow):
 
         self.drawer = QFrame(central, objectName="drawer")
         # Drawer mirrors the card in size so the two panels balance visually
-        # when the drawer slides out to the right.
-        self.drawer.setGeometry(12, 12, 340, 190)
+        # when the drawer slides out to the right. On the Mods tab it grows
+        # taller (see _layout_target) to give the mod list room.
+        self.drawer.setGeometry(12, 12, 340, self._CARD_H)
         self.drawer.stackUnder(self.card)
+        central.set_panels([self.drawer, self.card])
 
         drawer_layout = QVBoxLayout(self.drawer)
-        drawer_layout.setContentsMargins(16, 16, 16, 16)
+        drawer_layout.setContentsMargins(14, 14, 14, 14)
         drawer_layout.setSpacing(10)
 
-        nav_layout = QHBoxLayout()
-        nav_layout.setContentsMargins(0, 0, 0, 0)
-        self.settings_tab_btn = QPushButton("Settings", objectName="tabBtn")
-        self.mods_tab_btn = QPushButton("Mods Manager", objectName="tabBtn")
-        self.settings_tab_btn.setCheckable(True)
-        self.mods_tab_btn.setCheckable(True)
-        # Settings is the default tab; show its checked styling on launch
-        # so the active state is visible before the first click.
-        self.settings_tab_btn.setChecked(True)
-        self.settings_tab_btn.clicked.connect(self._on_tab_clicked)
-        self.mods_tab_btn.clicked.connect(self._on_tab_clicked)
-        nav_layout.addWidget(self.settings_tab_btn)
-        nav_layout.addWidget(self.mods_tab_btn)
-        drawer_layout.addLayout(nav_layout)
+        self.drawer_tabs = SegmentedControl(["Settings", "Mods"])
+        self.drawer_tabs.currentChanged.connect(self._on_drawer_tab_changed)
+        drawer_layout.addWidget(self.drawer_tabs)
 
         self.drawer_stack = QStackedWidget()
-        drawer_layout.addWidget(self.drawer_stack)
+        drawer_layout.addWidget(self.drawer_stack, 1)
 
         settings_widget = QWidget()
         # Tight spacing so the RAM row + 3 toggles fit inside the drawer's
-        # 190 px height without clipping. The previous header-above-slider
-        # layout pushed everything below by ~30 px.
+        # 190 px height without clipping.
         settings_layout = QVBoxLayout(settings_widget)
         settings_layout.setContentsMargins(0, 0, 0, 0)
-        settings_layout.setSpacing(6)
+        settings_layout.setSpacing(4)
 
         # RAM on a single row: [RAM] [slider.............] [4 GB]
         ram_row = QHBoxLayout()
@@ -3302,6 +4485,8 @@ class MinecraftLauncher(QMainWindow):
             "color: #FFFFFF; font-family: 'Segoe UI', sans-serif; font-size: 11px;"
         )
         self.ram_val_lbl = QLabel("4 GB")
+        self.ram_val_lbl.setMinimumWidth(40)
+        self.ram_val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.ram_val_lbl.setStyleSheet(
             "color: #0A84FF; font-family: 'Segoe UI', sans-serif;"
             " font-size: 11px; font-weight: bold;"
@@ -3315,7 +4500,7 @@ class MinecraftLauncher(QMainWindow):
         self._ram_swim_displayed = 4.0
         self._ram_swim_target = 4.0
         self.ram_slider = QSlider(Qt.Orientation.Horizontal)
-        # Whole-GB steps (1..16). 16 positions is enough — the smooth
+        # Whole-GB steps (1..16). 16 positions is enough - the smooth
         # "swim" between values is what makes the drag feel continuous,
         # not adding more discrete positions.
         self.ram_slider.setMinimum(1)
@@ -3338,7 +4523,7 @@ class MinecraftLauncher(QMainWindow):
         )
         settings_layout.addWidget(self.perf_checkbox)
 
-        self.vulkan_checkbox = QCheckBox("Native Vulkan (Mojang)")
+        self.vulkan_checkbox = ToggleSwitch("Native Vulkan (Mojang)")
         self.vulkan_checkbox.setChecked(False)
         self.vulkan_checkbox.toggled.connect(self._on_vulkan_toggled)
         self.vulkan_checkbox.setEnabled(False)
@@ -3348,57 +4533,14 @@ class MinecraftLauncher(QMainWindow):
         )
         settings_layout.addWidget(self.vulkan_checkbox)
 
-        self.rpc_checkbox = QCheckBox("Discord Rich Presence")
+        self.rpc_checkbox = ToggleSwitch("Discord Rich Presence")
         self.rpc_checkbox.setChecked(True)
         self.rpc_checkbox.stateChanged.connect(self._on_rpc_state_changed)
         settings_layout.addWidget(self.rpc_checkbox)
         settings_layout.addStretch(1)
 
         self.drawer_stack.addWidget(settings_widget)
-
-        mods_widget = QWidget()
-        mods_layout = QVBoxLayout(mods_widget)
-        mods_layout.setContentsMargins(0, 0, 0, 0)
-        mods_layout.setSpacing(4)
-
-        search_layout = QHBoxLayout()
-        search_layout.setContentsMargins(0, 0, 0, 0)
-        search_layout.setSpacing(4)
-
-        self.mod_search_input = QLineEdit()
-        self.mod_search_input.setPlaceholderText("Search Modrinth...")
-        self.mod_search_input.setFixedHeight(26)
-        self.mod_search_input.setStyleSheet(
-            "padding: 0px 10px; font-size: 11px;"
-            " background-color: #2C2C2E; border: 1px solid #38383A;"
-            " border-radius: 6px; color: #FFFFFF;"
-        )
-
-        self._search_timer = QTimer()
-        self._search_timer.setSingleShot(True)
-        self._search_timer.setInterval(300)
-        self._search_timer.timeout.connect(self._on_mod_search)
-        self.mod_search_input.textChanged.connect(self._search_timer.start)
-
-        search_layout.addWidget(self.mod_search_input)
-        mods_layout.addLayout(search_layout)
-
-        self.mods_list = QListWidget()
-        self.mods_list.setSpacing(0)
-        mods_layout.addWidget(self.mods_list, 1)
-
-        mod_action_layout = QHBoxLayout()
-        self.mod_action_btn = QPushButton("Install", objectName="modActionBtn")
-        self.mod_action_btn.clicked.connect(self._on_mod_action)
-        self.mod_action_btn.setFixedHeight(24)
-        self.mod_delete_btn = QPushButton("Delete Selected", objectName="modDeleteBtn")
-        self.mod_delete_btn.clicked.connect(self._on_mod_delete)
-        self.mod_delete_btn.setFixedHeight(24)
-        mod_action_layout.addWidget(self.mod_action_btn)
-        mod_action_layout.addWidget(self.mod_delete_btn)
-        mods_layout.addLayout(mod_action_layout)
-
-        self.drawer_stack.addWidget(mods_widget)
+        self.drawer_stack.addWidget(self._build_mods_page())
 
         self._avatar_timer = QTimer()
         self._avatar_timer.setSingleShot(True)
@@ -3448,119 +4590,100 @@ class MinecraftLauncher(QMainWindow):
         self._ram_swim_displayed = float(saved)
         self._ram_swim_target = float(saved)
 
-    def _on_tab_clicked(self) -> None:
-        is_settings = self.sender() is self.settings_tab_btn
-        target_index = 0 if is_settings else 1
+    def _on_drawer_tab_changed(self, index: int) -> None:
+        if self.drawer_stack.currentIndex() == index:
+            return
+        self.drawer_stack.setCurrentIndex(index)
+        self._fade_in_page(self.drawer_stack.widget(index))
+        if index == 1:
+            self._activate_mods_tab()
+        # The Mods tab needs more height than the settings page; the drawer
+        # (and window) grow/shrink smoothly to match.
+        self._animate_layout()
 
-        # The button is checkable, so clicking the already-active tab has
-        # already toggled its setChecked state to False before this slot
-        # fires. Sync the button visuals to the actual active page so the
-        # user always sees the correct highlighted tab, even on a no-op
-        # click. (Same line below after the page-switch handles the
-        # normal cross-tab click.)
-        self.settings_tab_btn.setChecked(is_settings)
-        self.mods_tab_btn.setChecked(not is_settings)
+    @staticmethod
+    def _fade_in_page(widget: QWidget, duration: int = 240) -> None:
+        """Fade a freshly shown page in from transparent.
 
-        if self.drawer_stack.currentIndex() == target_index:
-            return  # already on this tab
-
-        # Switch immediately so the new page is laid out, then fade it
-        # in from 0 opacity. Each tab page gets its own
-        # QGraphicsOpacityEffect on first use so we don't have to add them
-        # at construction time (which would interfere with the initial
-        # render). The old page keeps its final opacity (1.0) so flipping
-        # back to it later just shows it instantly.
-        new_widget = self.drawer_stack.widget(target_index)
-        opacity = getattr(new_widget, "_tab_opacity_effect", None)
-        if opacity is None:
-            opacity = QGraphicsOpacityEffect(new_widget)
-            opacity.setOpacity(0.0)
-            new_widget.setGraphicsEffect(opacity)
-            new_widget._tab_opacity_effect = opacity
-        else:
-            opacity.setOpacity(0.0)
-
-        # Cancel any in-flight fade so back-to-back clicks don't queue.
-        prev_anim = getattr(new_widget, "_tab_fade_anim", None)
-        if prev_anim is not None:
+        The opacity effect is removed once the fade finishes: a live
+        QGraphicsEffect forces offscreen rendering of the whole page on
+        every repaint, which would tax the scrolling mod list.
+        """
+        prev = getattr(widget, "_fade_anim", None)
+        if prev is not None:
             try:
-                prev_anim.stop()
+                prev.stop()
             except RuntimeError:
                 pass
-
-        self.drawer_stack.setCurrentIndex(target_index)
-        # setChecked calls already happened at the top of this method;
-        # no need to repeat them here.
-
-        anim = QPropertyAnimation(opacity, b"opacity")
-        anim.setDuration(220)
+        effect = QGraphicsOpacityEffect(widget)
+        effect.setOpacity(0.0)
+        widget.setGraphicsEffect(effect)
+        anim = QPropertyAnimation(effect, b"opacity", widget)
+        anim.setDuration(duration)
         anim.setStartValue(0.0)
         anim.setEndValue(1.0)
-        anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
-        new_widget._tab_fade_anim = anim
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.finished.connect(lambda: widget.setGraphicsEffect(None))
+        widget._fade_anim = anim
         anim.start()
 
     def _toggle_drawer(self) -> None:
         if hasattr(self, "version_combo") and hasattr(self.version_combo, "hidePopup"):
             self.version_combo.hidePopup()
-
-        if getattr(self, "_drawer_animator", None) is not None and self._drawer_animator.is_running():
-            self._drawer_animator.stop()
-        if getattr(self, "_window_animator", None) is not None and self._window_animator.is_running():
-            self._window_animator.stop()
-
         self._drawer_expanded = not self._drawer_expanded
-        end_x = 352 if self._drawer_expanded else 12
-        start_x = self.drawer.x()
+        if self._drawer_expanded and self.drawer_tabs.currentIndex() == 1:
+            self._activate_mods_tab()
+        self._animate_layout()
 
-        def apply_drawer(x: float) -> None:
-            self.drawer.move(round(x), self.drawer.y())
+    def _layout_target(self) -> tuple:
+        """(drawer_x, drawer_h, window_w, window_h) for the current drawer state."""
+        expanded = self._drawer_expanded
+        on_mods = expanded and self.drawer_tabs.currentIndex() == 1
+        drawer_h = self._MODS_DRAWER_H if on_mods else self._CARD_H
+        drawer_x = 352 if expanded else 12
+        window_w = self._OPEN_WIDTH if expanded else self._CLOSED_WIDTH
+        return drawer_x, drawer_h, window_w, drawer_h + 24
 
-        self._drawer_animator = EaseAnimator(340, apply_drawer, parent=self)
-        self._drawer_animator.start(start_x, end_x)
+    def _animate_layout(self) -> None:
+        """Animate drawer slide/height and window size together in one eased pass.
 
-        self._animate_window_width(self._OPEN_WIDTH if self._drawer_expanded else self._CLOSED_WIDTH)
-
-    def _animate_window_width(self, target_width: int) -> None:
+        The window widens symmetrically (shifting left by half the delta so
+        the launcher stays centred) and grows downward, clamped so it never
+        leaves the screen's available area.
         """
-        Expand/collapse window width while shifting the window horizontally.
-        Moves left by half the expansion delta when opening so the launcher stays
-        visually centered, and moves back right when closing.
-        """
-        if getattr(self, "_window_animator", None) is not None and self._window_animator.is_running():
-            self._window_animator.stop()
+        if self._layout_animator is not None and self._layout_animator.is_running():
+            self._layout_animator.stop()
 
-        start_geo = self.geometry()
-        start_w = start_geo.width()
-        delta_w = target_width - start_w
-        if delta_w == 0:
-            return
+        drawer_x, drawer_h, win_w, win_h = self._layout_target()
+        g = self.geometry()
+        d = self.drawer.geometry()
 
-        start_x = start_geo.x()
-        target_x = start_x - (delta_w // 2)
-
+        target_x = g.x() - (win_w - g.width()) // 2
+        target_y = g.y()
         screen = self.screen() or QApplication.primaryScreen()
         if screen is not None:
-            available = screen.availableGeometry()
-            if target_x + target_width > available.right():
-                target_x = available.right() - target_width
-            if target_x < available.left():
-                target_x = available.left()
+            avail = screen.availableGeometry()
+            target_x = max(avail.left(), min(target_x, avail.right() + 1 - win_w))
+            target_y = max(avail.top(), min(target_y, avail.bottom() + 1 - win_h))
 
-        delta_x = target_x - start_x
+        start = (d.x(), d.height(), g.x(), g.y(), g.width(), g.height())
+        end = (drawer_x, drawer_h, target_x, target_y, win_w, win_h)
+        if start == end:
+            return
 
         self.setMinimumSize(0, 0)
         self.setMaximumSize(16777215, 16777215)
 
         def apply(t: float) -> None:
-            w = round(start_w + delta_w * t)
-            x = round(start_x + delta_x * t)
-            self.setGeometry(x, start_geo.y(), w, start_geo.height())
+            dx, dh, wx, wy, ww, wh = (round(a + (b - a) * t) for a, b in zip(start, end))
+            self.setGeometry(wx, wy, ww, wh)
+            self.drawer.setGeometry(dx, 12, 340, dh)
+            self._central.update()
             if t >= 1.0:
-                self.setFixedSize(w, self.height())
+                self.setFixedSize(ww, wh)
 
-        self._window_animator = EaseAnimator(340, apply, parent=self)
-        self._window_animator.start(0.0, 1.0)
+        self._layout_animator = EaseAnimator(self._LAYOUT_DURATION, apply, parent=self)
+        self._layout_animator.start(0.0, 1.0)
 
     def _on_ram_slider_changed(self, value: int) -> None:
         # The slider snaps between whole-GB positions, but the displayed
@@ -3684,6 +4807,8 @@ class MinecraftLauncher(QMainWindow):
 
         self._refresh_meta_label()
         self._refresh_installed_mods()
+        if self._mods_activated:
+            self._show_mods_view()
 
     def _refresh_meta_label(self) -> None:
         """Update the small meta-line under the version picker."""
@@ -3704,152 +4829,569 @@ class MinecraftLauncher(QMainWindow):
             bits.append("OpenGL only")
 
         try:
-            bits.append(f"{self._get_total_ram_gb()} GB system RAM")
+            if self._total_ram_cached is None:
+                self._total_ram_cached = self._get_total_ram_gb()
+            bits.append(f"{self._total_ram_cached} GB system RAM")
         except Exception:
             pass
 
         self.meta_label.setText("  ·  ".join(bits))
 
-    def _on_mod_search(self) -> None:
-        query = self.mod_search_input.text().strip()
-        if not query:
-            self._refresh_installed_mods()
-            return
+    # ------------------------------------------------------------------
+    # Mods manager
+    # ------------------------------------------------------------------
+    def _build_mods_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
 
-        if hasattr(self, "_search_worker") and self._search_worker.isRunning():
-            try:
-                self._search_worker.results_ready.disconnect()
-            except Exception:
-                pass
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(6)
+        self.mods_view_tabs = SegmentedControl(["Browse", "Installed"], height=28)
+        self.mods_view_tabs.currentChanged.connect(self._on_mods_view_changed)
+        top.addWidget(self.mods_view_tabs, 1)
+        self.mods_folder_btn = QPushButton("Folder", objectName="ghostBtn")
+        self.mods_folder_btn.setFixedSize(64, 28)
+        self.mods_folder_btn.setToolTip("Open this version's mods folder")
+        self.mods_folder_btn.clicked.connect(self._open_mods_folder)
+        top.addWidget(self.mods_folder_btn)
+        layout.addLayout(top)
 
-        self._search_worker = ModSearchWorker(query)
-        self._register_worker(self._search_worker)
-        self._search_worker.results_ready.connect(self._on_search_results)
-        self._search_worker.start()
+        self.mod_search_input = QLineEdit(objectName="modSearch")
+        self.mod_search_input.setFixedHeight(32)
+        self.mod_search_input.setClearButtonEnabled(True)
+        search_icon = _generate_search_icon()
+        if not search_icon.isNull():
+            self.mod_search_input.addAction(QIcon(search_icon), QLineEdit.ActionPosition.LeadingPosition)
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(320)
+        self._search_timer.timeout.connect(self._on_mod_search)
+        self.mod_search_input.textChanged.connect(self._on_mod_search_text)
+        self.mod_search_input.returnPressed.connect(self._on_mod_search)
+        layout.addWidget(self.mod_search_input)
 
-    def _on_search_results(self, hits: list) -> None:
-        self.mods_list.clear()
-        self.mod_action_btn.setText("Install")
-        self.mod_action_btn.setProperty("mode", "install")
-        for hit in hits:
-            title = hit.get("title", "Unknown") or "Unknown"
-            item = QListWidgetItem(title)
-            item.setData(Qt.ItemDataRole.UserRole, (hit.get("project_id", ""), hit.get("slug", "")))
-            item.setToolTip(title)
-            self.mods_list.addItem(item)
+        self.mods_status = QLabel(objectName="modsStatus")
+        self.mods_status.setFixedHeight(14)
+        layout.addWidget(self.mods_status)
 
-    def _refresh_installed_mods(self) -> None:
-        self.mods_list.clear()
-        self.mod_action_btn.setText("Refresh")
-        self.mod_action_btn.setProperty("mode", "refresh")
+        self.mods_view = ModListView()
+        self.mods_view.near_bottom.connect(self._on_mods_near_bottom)
+        self.mods_view.cleared.connect(self._cards.clear)
+        layout.addWidget(self.mods_view, 1)
 
-        version = self.version_combo.currentText()
+        self._update_search_placeholder()
+        return page
+
+    def _current_mod_version(self) -> Optional[str]:
+        version = self.version_combo.currentText() if hasattr(self, "version_combo") else ""
         if not version or version == "Loading versions...":
-            return
+            return None
+        return version
 
-        mods_dir = os.path.join(self.vanta_dir, "instances", safe_instance_name(version), "mods")
-        if os.path.exists(mods_dir):
-            try:
-                for file in os.listdir(mods_dir):
-                    if file.endswith(".jar"):
-                        # Strip the .jar for a tidier row; tooltip keeps
-                        # the full filename for hover detail.
-                        name = file[:-4] if file.lower().endswith(".jar") else file
-                        item = QListWidgetItem(name)
-                        item.setData(Qt.ItemDataRole.UserRole, file)
-                        item.setToolTip(file)
-                        self.mods_list.addItem(item)
-            except OSError:
-                pass
+    def _mods_dir(self, version: Optional[str] = None) -> Optional[str]:
+        version = version or self._current_mod_version()
+        if not version:
+            return None
+        return os.path.join(self.vanta_dir, "instances", safe_instance_name(version), "mods")
 
-    def _on_mod_action(self) -> None:
-        mode = self.mod_action_btn.property("mode")
-        if mode == "refresh":
-            self._refresh_installed_mods()
-            return
-
-        selected_item = self.mods_list.currentItem()
-        if not selected_item:
-            return
-
-        data = selected_item.data(Qt.ItemDataRole.UserRole)
-        if isinstance(data, (tuple, list)):
-            project_id, slug = data[0], data[1]
+    def _update_search_placeholder(self) -> None:
+        version = self._current_mod_version() or ""
+        if self._mods_mode == 0:
+            text = f"Search Fabric mods for {version}" if version else "Search Fabric mods"
         else:
-            project_id, slug = data, data
+            text = "Filter installed mods"
+        self.mod_search_input.setPlaceholderText(text)
 
-        version = self.version_combo.currentText()
-        if not project_id or not version or version == "Loading versions...":
+    def _set_mods_status(self, text: str, color: str = "#8E8E93", restore_ms: int = 0) -> None:
+        if self._status_restore_timer is not None:
+            self._status_restore_timer.stop()
+        self.mods_status.setStyleSheet(f"color: {color};")
+        self.mods_status.setText(text)
+        if restore_ms > 0:
+            if self._status_restore_timer is None:
+                self._status_restore_timer = QTimer(self)
+                self._status_restore_timer.setSingleShot(True)
+                self._status_restore_timer.timeout.connect(self._restore_mods_status)
+            self._status_restore_timer.start(restore_ms)
+
+    def _restore_mods_status(self) -> None:
+        if self._mods_mode == 0:
+            self._set_browse_status()
+        else:
+            self._set_installed_status()
+
+    def _set_browse_status(self) -> None:
+        version = self._current_mod_version() or ""
+        query = self._mods_queries[0].strip()
+        if self._search_total <= 0:
+            self._set_mods_status("")
+        elif query:
+            self._set_mods_status(f"{self._search_total:,} results for {version}")
+        else:
+            self._set_mods_status(f"Most popular Fabric mods for {version}")
+
+    def _set_installed_status(self) -> None:
+        n = len(self._installed_files)
+        total = sum(size for _, size in self._installed_files)
+        if n:
+            self._set_mods_status(f"{n} mod{'s' if n != 1 else ''} installed · {_format_size(total)}"
+                                  "  ·  Double-click a mod to open its page")
+        else:
+            self._set_mods_status("")
+
+    def _activate_mods_tab(self) -> None:
+        """Lazy first load: nothing touches Modrinth until the Mods tab is opened."""
+        if self._mods_activated:
             return
-
-        self.mod_action_btn.setEnabled(False)
-        self.mod_action_btn.setText("Preparing...")
-
-        instance_dir = os.path.join(self.vanta_dir, "instances", safe_instance_name(version))
-        self._install_worker = ModInstallWorker(project_id, slug, version, instance_dir)
-        self._register_worker(self._install_worker)
-        self._install_worker.progress.connect(self.mod_action_btn.setText)
-        self._install_worker.completed.connect(self._on_mod_installed)
-        self._install_worker.error.connect(self._on_mod_install_failed)
-        self._install_worker.start()
-
-    def _on_mod_installed(self) -> None:
-        self.mod_action_btn.setEnabled(True)
-        self.mod_action_btn.setText("Install")
-        self.mod_search_input.clear()
+        self._mods_activated = True
         self._refresh_installed_mods()
+        self._show_mods_view()
 
-    def _on_mod_install_failed(self, error: str) -> None:
-        self.mod_action_btn.setEnabled(True)
-        self.mod_action_btn.setText("Install")
-        VantaDialog.warning(self, "Mod Install Error", f"Failed to install mod:\n\n{error}")
+    def _show_mods_view(self) -> None:
+        self._update_search_placeholder()
+        if self._mods_mode == 0:
+            self._start_mod_search(reset=True)
+        else:
+            self._render_installed()
 
-    def _on_mod_delete(self) -> None:
-        selected_item = self.mods_list.currentItem()
-        if not selected_item:
+    def _on_mods_view_changed(self, index: int) -> None:
+        self._mods_queries[self._mods_mode] = self.mod_search_input.text()
+        self._mods_mode = index
+        self.mod_search_input.blockSignals(True)
+        self.mod_search_input.setText(self._mods_queries[index])
+        self.mod_search_input.blockSignals(False)
+        self._search_timer.stop()
+        self._show_mods_view()
+
+    def _on_mod_search_text(self, text: str) -> None:
+        self._mods_queries[self._mods_mode] = text
+        if self._mods_mode == 1:
+            self._render_installed(animate=False)  # local filter: instant
+        else:
+            self._search_timer.start()
+
+    def _on_mod_search(self) -> None:
+        self._search_timer.stop()
+        if self._mods_mode == 0:
+            self._start_mod_search(reset=True)
+
+    # ---- Browse ------------------------------------------------------------
+    def _start_mod_search(self, reset: bool = True) -> None:
+        version = self._current_mod_version()
+        if not version:
+            self.mods_view.show_message("Loading versions…")
             return
-
-        mode = self.mod_action_btn.property("mode")
-        if mode != "refresh":
-            VantaDialog.warning(
-                self, "Cannot Delete",
-                "You can only delete installed mods from the list, not search results."
+        if not is_fabric_compatible(version):
+            self._search_total = 0
+            self._set_mods_status("")
+            self.mods_view.show_message(
+                "Mods need Minecraft 1.14 or newer",
+                f"Fabric doesn't support {version}. Pick a newer version to browse mods.",
             )
             return
 
-        filename = selected_item.data(Qt.ItemDataRole.UserRole)
-        if not filename or not isinstance(filename, str):
-            return
-        version = self.version_combo.currentText()
-        if not version or version == "Loading versions...":
+        query = self._mods_queries[0].strip()
+        offset = 0 if reset else self._search_offset
+        self._search_token += 1
+        token = self._search_token
+        self._search_key = (query, version)
+        self._search_loading = True
+
+        cached = self._search_cache.get((query, version, offset))
+        if cached is not None and time.monotonic() - cached[2] < 300:
+            self._on_search_results(token, offset, cached[0], cached[1])
             return
 
-        if "fabric-api" in filename.lower() or "fabric_api" in filename.lower():
+        if reset:
+            self._search_offset = 0
+            self._search_total = 0
+            self.mods_view.show_skeletons(5)
+            self._set_mods_status("Searching Modrinth…")
+        else:
+            self._set_mods_status("Loading more…")
+
+        worker = ModSearchWorker(token, query, version, offset)
+        self._register_worker(worker)
+        worker.results_ready.connect(self._on_search_results)
+        worker.failed.connect(self._on_search_failed)
+        worker.start()
+
+    def _on_search_results(self, token: int, offset: int, hits: list, total: int) -> None:
+        if token != self._search_token:
+            return  # a newer search superseded this one
+        query, version = self._search_key
+        self._search_cache[(query, version, offset)] = (hits, total, time.monotonic())
+        self._search_loading = False
+        if self._mods_mode != 0:
+            return
+
+        if offset == 0:
+            self.mods_view.clear()
+            self._cards.clear()
+        self._search_offset = offset + len(hits)
+        self._search_total = total
+
+        if offset == 0 and not hits:
+            self.mods_view.show_message(
+                "No mods found",
+                f"Nothing matches “{query}” for {version}." if query else "Try searching for a mod by name.",
+            )
+            self._set_mods_status("")
+            return
+
+        cards = []
+        for hit in hits:
+            project_id = hit.get("project_id", "")
+            if not project_id or project_id in self._cards:
+                continue
+            desc = (hit.get("description") or "").strip()
+            info = {
+                "key": project_id,
+                "project_id": project_id,
+                "slug": hit.get("slug", "") or "",
+                "title": hit.get("title", "") or "Unknown",
+                "author": hit.get("author", "") or "",
+                "subtitle": f"↓ {_format_count(hit.get('downloads', 0))}  ·  {desc}",
+                "tooltip": desc,
+                "icon_url": hit.get("icon_url", "") or "",
+                "url": f"https://modrinth.com/mod/{hit.get('slug') or project_id}",
+            }
+            card = self._make_card(info)
+            card.set_state(*self._browse_state(info))
+            cards.append(card)
+        self.mods_view.add_cards(cards)
+        self._set_browse_status()
+
+    def _on_search_failed(self, token: int, error: str) -> None:
+        if token != self._search_token:
+            return
+        self._search_loading = False
+        if self._mods_mode != 0:
+            return
+        if self._search_offset == 0:
+            self.mods_view.show_message(
+                "Couldn't reach Modrinth",
+                "Check your internet connection, then press Enter to retry.",
+            )
+            self._set_mods_status("")
+        else:
+            self._set_mods_status("Couldn't load more results.", "#FF9F0A", restore_ms=3000)
+
+    def _on_mods_near_bottom(self) -> None:
+        if (self._mods_mode == 0 and not self._search_loading
+                and 0 < self._search_offset < self._search_total):
+            self._start_mod_search(reset=False)
+
+    def _browse_state(self, info: dict) -> tuple:
+        project_id = info.get("project_id", "")
+        if self._mod_active is not None and self._mod_active["key"] == project_id:
+            return "installing", self._mod_active.get("progress", -1.0)
+        if any(q["key"] == project_id for q in self._mod_queue):
+            return "queued", None
+        if project_id in self._installed_projects:
+            return "installed", None
+        slug = info.get("slug", "")
+        if slug and not self._installed_meta and any(
+            matches_mod(fn, slug) for fn, _ in self._installed_files
+        ):
+            # Hash identification unavailable (offline): filename heuristic.
+            return "installed", None
+        return "install", None
+
+    # ---- Installed -------------------------------------------------------------
+    def _refresh_installed_mods(self) -> None:
+        """Rescan the current version's mods folder and refresh every view of it."""
+        mods_dir = self._mods_dir()
+        files: List[tuple] = []
+        if mods_dir and os.path.isdir(mods_dir):
+            try:
+                with os.scandir(mods_dir) as it:
+                    for entry in it:
+                        if entry.is_file() and entry.name.lower().endswith(".jar"):
+                            files.append((entry.name, entry.stat().st_size))
+            except OSError:
+                pass
+        files.sort(key=lambda f: f[0].lower())
+        self._installed_files = files
+        names = {fn for fn, _ in files}
+        self._installed_meta = {fn: m for fn, m in self._installed_meta.items() if fn in names}
+        self._rebuild_installed_projects()
+        if hasattr(self, "mods_view_tabs"):
+            self.mods_view_tabs.setLabel(1, f"Installed · {len(files)}" if files else "Installed")
+
+        if not self._mods_activated:
+            return
+        if self._mods_mode == 1:
+            self._render_installed(animate=False)
+        else:
+            self._refresh_card_states()
+        if files and mods_dir:
+            self._installed_token += 1
+            worker = InstalledModsWorker(mods_dir)
+            token = self._installed_token
+            worker.identified.connect(lambda d, m, t=token: self._on_installed_identified(t, d, m))
+            self._register_worker(worker)
+            worker.start()
+
+    def _rebuild_installed_projects(self) -> None:
+        self._installed_projects = {
+            m["project_id"]: fn for fn, m in self._installed_meta.items() if m.get("project_id")
+        }
+
+    def _on_installed_identified(self, token: int, mods_dir: str, mapping: dict) -> None:
+        if token != self._installed_token or mods_dir != self._mods_dir():
+            return
+        self._installed_meta = mapping
+        self._rebuild_installed_projects()
+        if self._mods_mode == 1:
+            # Upgrade existing cards in place (names/icons) - no re-animation.
+            for card in self.mods_view.cards:
+                meta = mapping.get(card.info.get("filename", ""))
+                if meta:
+                    self._apply_installed_meta(card, meta)
+        else:
+            self._refresh_card_states()
+
+    def _installed_info(self, filename: str, size: int) -> dict:
+        meta = self._installed_meta.get(filename)
+        info = {
+            "key": f"file:{filename}",
+            "filename": filename,
+            "size": size,
+            "title": _pretty_jar_name(filename),
+            "subtitle": f"{filename}  ·  {_format_size(size)}",
+            "tooltip": filename,
+            "locked": matches_mod(filename, "fabric-api"),
+        }
+        if meta:
+            self._merge_meta(info, meta)
+        return info
+
+    @staticmethod
+    def _merge_meta(info: dict, meta: dict) -> None:
+        info["title"] = meta.get("title") or info["title"]
+        version = meta.get("version", "")
+        info["subtitle"] = (f"v{version}  ·  " if version else "") + _format_size(info.get("size", 0))
+        info["icon_url"] = meta.get("icon_url", "")
+        info["project_id"] = meta.get("project_id", "")
+        if meta.get("slug"):
+            info["url"] = f"https://modrinth.com/mod/{meta['slug']}"
+        if meta.get("project_id") == FABRIC_API_PROJECT_ID:
+            info["locked"] = True
+
+    def _apply_installed_meta(self, card: "ModCard", meta: dict) -> None:
+        self._merge_meta(card.info, meta)
+        if card.info.get("locked"):
+            card.set_state("required")
+        url = card.info.get("icon_url", "")
+        if url:
+            pixmap = self.icon_loader.get(url)
+            if pixmap is not None:
+                card.set_icon(pixmap)
+            else:
+                self.icon_loader.request(url)
+        card.update()
+
+    def _render_installed(self, animate: bool = True) -> None:
+        if self._mods_mode != 1:
+            return
+        self._search_token += 1  # drop any in-flight browse results
+        needle = self._mods_queries[1].strip().lower()
+        self.mods_view.clear()
+        self._cards.clear()
+        if not self._current_mod_version():
+            self.mods_view.show_message("Loading versions…")
+            return
+        if not self._installed_files:
+            self.mods_view.show_message(
+                "No mods installed yet",
+                "Switch to Browse and hit Install on anything you like.",
+            )
+            self._set_mods_status("")
+            return
+
+        cards = []
+        for filename, size in self._installed_files:
+            info = self._installed_info(filename, size)
+            if needle and needle not in info["title"].lower() and needle not in filename.lower():
+                continue
+            card = self._make_card(info)
+            card.set_state("required" if info.get("locked") else "remove")
+            cards.append(card)
+        if not cards:
+            self.mods_view.show_message("No matches", f"No installed mod matches “{needle}”.")
+        else:
+            self.mods_view.add_cards(cards, animate=animate)
+        self._set_installed_status()
+
+    # ---- Cards & actions ---------------------------------------------------
+    def _make_card(self, info: dict) -> "ModCard":
+        card = ModCard(info)
+        card.action_clicked.connect(self._on_card_action)
+        card.open_requested.connect(self._on_card_open)
+        url = info.get("icon_url", "")
+        if url:
+            pixmap = self.icon_loader.get(url)
+            if pixmap is not None:
+                card.icon = pixmap
+            else:
+                self.icon_loader.request(url)
+        self._cards[info["key"]] = card
+        return card
+
+    def _on_icon_ready(self, url: str, pixmap: QPixmap) -> None:
+        for card in self.mods_view.cards:
+            if card.info.get("icon_url") == url:
+                card.set_icon(pixmap)
+
+    def _refresh_card_states(self) -> None:
+        if self._mods_mode != 0:
+            return
+        for card in self.mods_view.cards:
+            if card.state != "skeleton":
+                card.set_state(*self._browse_state(card.info))
+
+    def _on_card_open(self, card: "ModCard") -> None:
+        url = card.info.get("url")
+        if url and url.startswith("https://modrinth.com/"):
+            webbrowser.open(url)
+
+    def _on_card_action(self, card: "ModCard") -> None:
+        info = card.info
+        if card.state == "install":
+            self._enqueue_mod(info)
+        elif card.state == "queued":
+            self._mod_queue = [q for q in self._mod_queue if q["key"] != info["key"]]
+            card.set_state("install")
+            self._set_mods_status(f"Removed {info['title']} from the queue.", restore_ms=2200)
+        elif card.state == "installed":
+            filename = self._installed_projects.get(info.get("project_id", ""))
+            if not filename:
+                slug = info.get("slug", "")
+                filename = next((fn for fn, _ in self._installed_files if slug and matches_mod(fn, slug)), None)
+            if filename:
+                self._remove_mod_file(filename, info.get("title", filename))
+        elif card.state == "remove":
+            self._remove_mod_file(info["filename"], info.get("title", info["filename"]))
+
+    def _enqueue_mod(self, info: dict) -> None:
+        version = self._current_mod_version()
+        if not version:
+            return
+        job = {
+            "key": info["project_id"],
+            "project_id": info["project_id"],
+            "slug": info.get("slug", ""),
+            "title": info.get("title", ""),
+            "version": version,
+            "progress": -1.0,
+        }
+        self._mod_queue.append(job)
+        card = self._cards.get(job["key"])
+        if card is not None:
+            card.set_state("queued")
+        self._pump_mod_queue()
+
+    def _pump_mod_queue(self) -> None:
+        if self._mod_active is not None or not self._mod_queue or self._is_closing:
+            return
+        job = self._mod_queue.pop(0)
+        self._mod_active = job
+        card = self._cards.get(job["key"])
+        if card is not None:
+            card.set_state("installing", -1.0)
+        pending = len(self._mod_queue)
+        self._set_mods_status(
+            f"Installing {job['title']}…" + (f"  ({pending} queued)" if pending else ""),
+            "#0A84FF",
+        )
+        instance_dir = os.path.join(self.vanta_dir, "instances", safe_instance_name(job["version"]))
+        worker = ModInstallWorker(job["project_id"], job["slug"], job["version"], instance_dir)
+        self._register_worker(worker)
+        worker.progress.connect(self._on_mod_progress)
+        worker.completed.connect(self._on_mod_installed)
+        worker.error.connect(self._on_mod_install_failed)
+        worker.start()
+
+    def _on_mod_progress(self, key: str, fraction: float) -> None:
+        if self._mod_active is not None and self._mod_active["key"] == key:
+            self._mod_active["progress"] = fraction
+        card = self._cards.get(key)
+        if card is not None:
+            card.set_state("installing", fraction)
+
+    def _on_mod_installed(self, key: str, filenames: list) -> None:
+        job = self._mod_active or {}
+        self._mod_active = None
+        title = job.get("title", "Mod")
+        extra = len(filenames) - 1
+        self._refresh_installed_mods()
+        # Mark it installed right away; the hash lookup in the refresh above
+        # confirms it moments later.
+        if job.get("version") == self._current_mod_version() and filenames:
+            self._installed_projects.setdefault(key, filenames[0])
+        card = self._cards.get(key)
+        if card is not None:
+            card.set_state("installed")
+            card.flash()
+        suffix = f" + {extra} dependenc{'ies' if extra != 1 else 'y'}" if extra > 0 else ""
+        self._set_mods_status(f"✓ Installed {title}{suffix}", "#30D158", restore_ms=3000)
+        self._pump_mod_queue()
+
+    def _on_mod_install_failed(self, key: str, error: str) -> None:
+        job = self._mod_active or {}
+        self._mod_active = None
+        card = self._cards.get(key)
+        if card is not None:
+            card.set_state("install")
+        self._set_mods_status(f"Couldn't install {job.get('title', 'mod')}", "#FF9F0A", restore_ms=3500)
+        self._pump_mod_queue()
+        VantaDialog.warning(self, "Mod Install Error",
+                            f"Failed to install {job.get('title', 'the mod')}:\n\n{error}")
+
+    def _remove_mod_file(self, filename: str, title: str) -> None:
+        mods_dir = self._mods_dir()
+        if not mods_dir or not filename:
+            return
+        if matches_mod(filename, "fabric-api"):
             VantaDialog.warning(
-                self, "Cannot Delete",
+                self, "Cannot Remove",
                 "Fabric API is required for mod support and cannot be removed from here."
             )
             return
-
-        reply = VantaDialog.question(
-            self, "Delete Mod",
-            f"Are you sure you want to delete '{filename}'?",
-            default_yes=False
-        )
-        if not reply:
+        if not VantaDialog.question(self, "Remove Mod", f"Remove {title}?\n\n{filename}", default_yes=False):
             return
-
-        mods_dir = os.path.abspath(os.path.join(self.vanta_dir, "instances", safe_instance_name(version), "mods"))
+        mods_dir = os.path.abspath(mods_dir)
         filepath = os.path.abspath(os.path.join(mods_dir, filename))
         if os.path.normcase(os.path.dirname(filepath)) != os.path.normcase(mods_dir):
             return
-
-        if os.path.exists(filepath):
-            try:
+        try:
+            if os.path.exists(filepath):
                 os.remove(filepath)
-                self._refresh_installed_mods()
-            except Exception as e:
-                VantaDialog.warning(self, "Delete Error", f"Could not delete mod file:\n\n{e}")
+        except OSError as e:
+            VantaDialog.warning(self, "Remove Error", f"Could not delete mod file:\n\n{e}")
+            return
+        self._installed_meta.pop(filename, None)
+        self._refresh_installed_mods()
+        self._set_mods_status(f"Removed {title}", restore_ms=2500)
+
+    def _open_mods_folder(self) -> None:
+        mods_dir = self._mods_dir()
+        if not mods_dir:
+            return
+        try:
+            os.makedirs(mods_dir, exist_ok=True)
+            if sys.platform == "win32":
+                os.startfile(mods_dir)  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", mods_dir])
+            else:
+                subprocess.Popen(["xdg-open", mods_dir])
+        except OSError as e:
+            VantaDialog.warning(self, "Open Folder", f"Could not open the mods folder:\n\n{e}")
 
     @staticmethod
     def _stylesheet(arrow_path: str) -> str:
@@ -3979,27 +5521,71 @@ class MinecraftLauncher(QMainWindow):
                 background-color: rgba(255, 255, 255, 0.1);
                 border-radius: 4px;
             }}
-            #tabBtn {{
-                background-color: #2C2C2E;
-                border: 1px solid #3A3A3C;
-                border-radius: 6px;
-                padding: 0px 12px;
-                height: 26px;
-                font-size: 11px;
-                font-weight: normal;
-                color: #FFFFFF;
-            }}
-            #tabBtn:hover {{
-                background-color: #3A3A3C;
-            }}
-            #tabBtn:checked {{
-                background-color: #0A84FF;
-                border-color: #0A84FF;
-                color: #FFFFFF;
-            }}
             #drawer QLabel {{
                 color: #FFFFFF;
                 font-family: 'Segoe UI', sans-serif;
+            }}
+            #ghostBtn {{
+                background-color: #232325;
+                border: 1px solid #38383A;
+                border-radius: 8px;
+                padding: 0px 8px;
+                height: 28px;
+                font-size: 11px;
+                font-weight: 600;
+                color: #D1D1D6;
+            }}
+            #ghostBtn:hover {{
+                background-color: #2C2C2E;
+                border-color: #0A84FF;
+                color: #FFFFFF;
+            }}
+            #ghostBtn:pressed {{
+                background-color: #1C1C1E;
+            }}
+            QLineEdit#modSearch {{
+                background-color: #232325;
+                border: 1px solid #38383A;
+                border-radius: 9px;
+                padding: 0px 6px;
+                height: 32px;
+                font-size: 12px;
+            }}
+            QLineEdit#modSearch:focus {{
+                border: 1px solid #0A84FF;
+                background-color: #262628;
+            }}
+            #modsStatus {{
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 10px;
+                padding: 0 2px;
+                background: transparent;
+            }}
+            #modList, #modListInner {{
+                background: transparent;
+                border: none;
+            }}
+            #modList QScrollBar:vertical {{
+                background: transparent;
+                width: 5px;
+                margin: 2px 0 2px 0;
+                border: none;
+            }}
+            #modList QScrollBar::handle:vertical {{
+                background: #3A3A3C;
+                border-radius: 2px;
+                min-height: 30px;
+            }}
+            #modList QScrollBar::handle:vertical:hover {{
+                background: #55555A;
+            }}
+            #modList QScrollBar::add-line:vertical, #modList QScrollBar::sub-line:vertical {{
+                height: 0;
+                border: none;
+                background: none;
+            }}
+            #modList QScrollBar::add-page:vertical, #modList QScrollBar::sub-page:vertical {{
+                background: none;
             }}
             QSlider::groove:horizontal {{
                 height: 4px;
@@ -4016,6 +5602,9 @@ class MinecraftLauncher(QMainWindow):
                 margin-top: -5px;
                 margin-bottom: -5px;
                 border-radius: 7px;
+            }}
+            QSlider::handle:horizontal:hover {{
+                background: #E5F1FF;
             }}
             QCheckBox {{
                 color: #FFFFFF;
@@ -4047,46 +5636,6 @@ class MinecraftLauncher(QMainWindow):
             QCheckBox::indicator:checked:disabled {{
                 background-color: #2C4D7A;
                 border-color: #2C4D7A;
-            }}
-            QListWidget {{
-                background-color: #232325;
-                border: 1px solid #3A3A3C;
-                border-radius: 8px;
-                color: #FFFFFF;
-                font-family: 'Segoe UI', sans-serif;
-                font-size: 11px;
-            }}
-            QListWidget::item {{
-                padding: 2px 8px;
-                border: none;
-                border-radius: 4px;
-                margin: 0 2px;
-            }}
-            QListWidget::item:hover {{
-                background-color: #323234;
-            }}
-            QListWidget::item:selected {{
-                background-color: #0A84FF;
-                color: #FFFFFF;
-            }}
-            #modActionBtn, #modDeleteBtn {{
-                font-size: 11px;
-                padding: 0px 10px;
-                height: 24px;
-                border-radius: 5px;
-                font-weight: 600;
-            }}
-            #modActionBtn {{
-                background-color: #0A84FF;
-            }}
-            #modActionBtn:hover {{
-                background-color: #2F95FF;
-            }}
-            #modDeleteBtn {{
-                background-color: #FF5F56;
-            }}
-            #modDeleteBtn:hover {{
-                background-color: #E0443E;
             }}
         """
 
@@ -4287,6 +5836,7 @@ class MinecraftLauncher(QMainWindow):
         self._is_closing = True
 
         def _finish_update() -> None:
+            self.icon_loader.shutdown()
             self._shutdown_workers()
             with self._rpc_lock:
                 if self.rpc:
@@ -4356,11 +5906,13 @@ class MinecraftLauncher(QMainWindow):
         self._launch_in_progress = True
 
         required_runtime = None
+        required_major = None
         try:
             runtime_info = minecraft_launcher_lib.runtime.get_version_runtime_information(
                 version, self.minecraft_dir
             )
             required_runtime = runtime_info.get("name") if runtime_info else None
+            required_major = runtime_info.get("javaMajorVersion") if runtime_info else None
         except Exception:
             pass
 
@@ -4399,33 +5951,48 @@ class MinecraftLauncher(QMainWindow):
         if java_exec and not os.path.exists(java_exec):
             java_exec = None
 
-        if not java_exec:
-            min_major = RUNTIME_JAVA_MAJOR.get(required_runtime, 17)
-            java_exec = find_system_java(min_major)
-
-        if not java_exec:
-            def on_download():
-                self._set_ui_enabled(False)
-                self._show_progress(True, "Downloading Java")
-                self._java_worker = JavaDownloadWorker(required_runtime, self.minecraft_dir)
-                self._register_worker(self._java_worker)
-                self._java_worker.progress.connect(self._on_java_progress)
-                self._java_worker.completed.connect(
-                    lambda: start_launch(
-                        minecraft_launcher_lib.runtime.get_executable_path(
-                            required_runtime, self.minecraft_dir
-                        )
-                        or find_system_java()
+        def on_download():
+            self._set_ui_enabled(False)
+            self._show_progress(True, "Downloading Java")
+            self._java_worker = JavaDownloadWorker(required_runtime, self.minecraft_dir)
+            self._register_worker(self._java_worker)
+            self._java_worker.progress.connect(self._on_java_progress)
+            self._java_worker.completed.connect(
+                lambda: start_launch(
+                    minecraft_launcher_lib.runtime.get_executable_path(
+                        required_runtime, self.minecraft_dir
                     )
                 )
-                self._java_worker.error.connect(self._on_java_error)
-                self._java_worker.start()
+            )
+            self._java_worker.error.connect(self._on_java_error)
+            self._java_worker.start()
 
+        def on_java_located(path) -> None:
+            if self._is_closing:
+                return
+            if path:
+                start_launch(path)
+                return
+            self._show_progress(False)
+            self._set_ui_enabled(True)
             if not self._prompt_java_download(required_runtime, on_download):
                 self._launch_in_progress = False
+
+        if java_exec:
+            start_launch(java_exec)
             return
 
-        start_launch(java_exec)
+        # Probing system Java spawns `java -version` for every candidate
+        # (up to several seconds); run it on a worker so the UI stays live.
+        self._set_ui_enabled(False)
+        self._show_progress(True, "Locating Java")
+        self.progress_bar.setFormat("Locating Java...")
+        self._java_locate_worker = JavaLocateWorker(
+            RUNTIME_JAVA_MAJOR.get(required_runtime) or required_major or 17
+        )
+        self._register_worker(self._java_locate_worker)
+        self._java_locate_worker.located.connect(on_java_located)
+        self._java_locate_worker.start()
 
     def _on_java_progress(self, status: str, percent: int) -> None:
         if percent >= 0:
@@ -4446,6 +6013,10 @@ class MinecraftLauncher(QMainWindow):
         )
 
     def _on_mods_missing(self, details: str) -> None:
+        key = f"mods_skipped/{safe_instance_name(self.version_combo.currentText())}"
+        if self.settings.value(key, "") == details:
+            return
+        self.settings.setValue(key, details)
         VantaDialog.warning(
             self,
             "Some Mods Skipped",
@@ -4552,11 +6123,15 @@ if __name__ == "__main__":
     sys.excepthook = _excepthook
 
     app = QApplication(sys.argv)
+    app.setStyleSheet(
+        "QToolTip { background-color: #2C2C2E; color: #F2F2F7; border: 1px solid #3A3A3C;"
+        " border-radius: 6px; padding: 5px 8px; font-family: 'Segoe UI'; font-size: 11px; }"
+    )
 
     splash = SplashScreen()
     splash.show()
 
-    MIN_SPLASH_MS = 1700
+    MIN_SPLASH_MS = 900
     boot_clock = QElapsedTimer()
     boot_clock.start()
 
@@ -4571,7 +6146,7 @@ if __name__ == "__main__":
         data = None
         if saved_username:
             try:
-                r = requests.get(
+                r = HTTP.get(
                     f"https://minotar.net/helm/{saved_username}/128.png",
                     headers=API_HEADERS,
                     timeout=(3, 5),
@@ -4611,7 +6186,7 @@ if __name__ == "__main__":
 
     def _boot_launcher() -> None:
         elapsed = boot_clock.elapsed()
-        if (not avatar_state["done"] or not version_state["done"]) and elapsed < 8000:
+        if (not avatar_state["done"] or not version_state["done"]) and elapsed < 4000:
             QTimer.singleShot(100, _boot_launcher)
             return
         if not avatar_state["done"]:
@@ -4642,7 +6217,7 @@ if __name__ == "__main__":
                 splash.finish()
                 raise
 
-        QTimer.singleShot(800, _open_window)
+        QTimer.singleShot(350, _open_window)
 
     QTimer.singleShot(150, _boot_launcher)
     sys.exit(app.exec())

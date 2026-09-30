@@ -28,7 +28,7 @@ Most launchers want an account first and ask questions later. Vanta flips that: 
 
 ## Download & play
 
-1. Grab the latest **`Vanta.exe`** (99.6 MB) from the [Releases](https://github.com/inpriv/vanta/releases/latest) page — or the standalone ZIP **`Vanta-2.0-standalone.zip`** (37.9 MB; see [antivirus notes](#antivirus-false-positives))
+1. Grab the latest **`Vanta.exe`** (96.7 MB) from the [Releases](https://github.com/inpriv/vanta/releases/latest) page — or the standalone ZIP **`Vanta-2.1-standalone.zip`** (36.7 MB; see [antivirus notes](#antivirus-false-positives))
 2. Run it — no installer, no admin rights
 3. Type a nickname, pick a version, press **Play**
 
@@ -73,20 +73,20 @@ Vanta is MIT-licensed open source, contains **no telemetry**, and talks only to 
 
 ## Verify your download
 
-Every release publishes its SHA-256 on the release page. Current (v2.0):
+Every release publishes its SHA-256 on the release page. Current (v2.1):
 
 ```
-ABB4CD9457754F633E10214822BD62687D68F877B8D9BDEBED029EBF5F00C4ED
+BB58600A4E20F65A09FCC20311629BBC4AAE82BD50278B8F8272B625B63F2927
 ```
 
 ```powershell
 Get-FileHash .\Vanta.exe -Algorithm SHA256
 ```
 
-The standalone ZIP (`Vanta-2.0-standalone.zip`) hashes to:
+The standalone ZIP (`Vanta-2.1-standalone.zip`) hashes to:
 
 ```
-8DB5BEF59485F9A6B8DBAD8755F23A694F1DCB9D134EDEB3F2975B27D82B9476
+FA2C33757953F515A4AEE9B9EBCFF703669B10480180EAFC2283028EAD55695D
 ```
 
 ## Security
