@@ -542,7 +542,8 @@
   .mobile-menu a:hover, .mobile-menu a:active { background: var(--surface); }
 
   /* ===== Hero ===== */
-  .hero { position: relative; padding: 24px 0 64px; overflow: hidden; }
+  .hero { position: relative; padding: 24px 0 16px; overflow: hidden; }
+  .hero + .section { padding-top: 40px; }
   .hero::before {
     content: ""; position: absolute; inset: -20% -10% auto; height: 520px; z-index: -1;
     background:
@@ -859,7 +860,8 @@
     .nav-links a:hover { color: var(--text); background: var(--surface); }
     .gh-link { display: inline-flex; }
     .menu-btn, .mobile-menu { display: none; }
-    .hero { padding: 36px 0 104px; }
+    .hero { padding: 36px 0 32px; }
+    .hero + .section { padding-top: 64px; }
     .hero-grid { grid-template-columns: 1.1fr .9fr; gap: 56px; }
     .hero-sub { font-size: 18px; }
     .features { grid-template-columns: repeat(3, 1fr); gap: 16px; }
