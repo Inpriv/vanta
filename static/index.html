@@ -502,6 +502,7 @@
     transition: border-color .2s;
   }
   .header.scrolled { border-bottom-color: var(--line); }
+  .header.menu-open { background: #0C0C0E; }
   .header-inner { height: var(--header-h); display: flex; align-items: center; gap: 12px; }
   .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
   .brand img { width: 28px; height: 28px; }
@@ -517,20 +518,28 @@
   .gh-link { display: none; }
 
   .mobile-menu {
+    position: absolute; left: 0; right: 0; top: 100%;
     display: grid; grid-template-rows: 0fr;
-    transition: grid-template-rows .3s var(--ease);
+    background: #0C0C0E;
     border-bottom: 1px solid transparent;
+    box-shadow: 0 24px 40px -16px rgba(0, 0, 0, 0);
+    transition: grid-template-rows .3s var(--ease), border-color .3s, box-shadow .3s;
   }
   .mobile-menu > div { overflow: hidden; }
-  .mobile-menu.open { grid-template-rows: 1fr; border-bottom-color: var(--line); }
-  .mobile-menu nav { display: flex; flex-direction: column; padding: 4px 0 16px; }
+  .mobile-menu.open {
+    grid-template-rows: 1fr;
+    border-bottom-color: var(--line);
+    box-shadow: 0 24px 40px -16px rgba(0, 0, 0, .7);
+  }
+  .mobile-menu nav { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; padding-bottom: 16px; }
   .mobile-menu a {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 13px 2px; font-size: 16px; font-weight: 500; color: var(--muted);
-    border-bottom: 1px solid var(--line);
+    min-height: 48px; padding: 0 14px; border-radius: 12px;
+    font-size: 16px; font-weight: 500; color: var(--text);
+    transition: background-color .15s;
   }
-  .mobile-menu a:last-child { border-bottom: 0; }
-  .mobile-menu a:hover { color: var(--text); }
+  .mobile-menu a span { color: var(--dim); font-size: 18px; }
+  .mobile-menu a:hover, .mobile-menu a:active { background: var(--surface); }
 
   /* ===== Hero ===== */
   .hero { position: relative; padding: 24px 0 64px; overflow: hidden; }
@@ -1215,6 +1224,7 @@
     const icon = document.getElementById('menuIcon');
     const set = (open) => {
       menu.classList.toggle('open', open);
+      header.classList.toggle('menu-open', open);
       btn.setAttribute('aria-expanded', open);
       btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
       icon.setAttribute('d', open ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16');
@@ -1222,6 +1232,10 @@
     btn.addEventListener('click', () => set(!menu.classList.contains('open')));
     menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => set(false)));
     document.addEventListener('keydown', e => { if (e.key === 'Escape') set(false); });
+    document.addEventListener('click', e => {
+      if (menu.classList.contains('open') && !header.contains(e.target)) set(false);
+    });
+    window.matchMedia('(min-width: 860px)').addEventListener('change', e => { if (e.matches) set(false); });
   })();
 
   /* ===== Latest version + direct download links from version.json ===== */
