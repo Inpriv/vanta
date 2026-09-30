@@ -49,7 +49,7 @@ import minecraft_launcher_lib
 import minecraft_launcher_lib.runtime
 import minecraft_launcher_lib.fabric
 
-APP_VERSION = "2.1"
+APP_VERSION = "2.2"
 
 # version.json is the single source of truth for the launcher's version.
 # It's bundled into the executable by build.py (--include-data-file) and
@@ -561,12 +561,63 @@ def matches_mod(filename: str, mod_id: str) -> bool:
     return m in fn
 
 
-def get_vanta_dir() -> str:
-    """Return the Vanta data directory for the current platform."""
+def _packaged_python_family() -> Optional[str]:
+    """Package family name when running from source on the Microsoft Store Python.
+
+    Store (MSIX) Python redirects writes under %APPDATA% into a private
+    per-package copy. The launcher then sees its files, but Minecraft (a
+    separate, unpackaged Java process) and Explorer look at the real
+    %APPDATA% and find nothing - mods silently don't load and "Folder"
+    opens a missing/empty directory. Compiled builds are never packaged.
+    """
+    if sys.platform != "win32" or getattr(sys, "frozen", False) or "__compiled__" in globals():
+        return None
+    for path in (sys.executable, sys.prefix, getattr(sys, "base_prefix", "")):
+        m = re.search(r"WindowsApps[\\/](PythonSoftwareFoundation\.Python\.[^\\/]+)", path or "")
+        if not m:
+            continue
+        name = m.group(1)
+        # Full package name "Name_1.2.3.0_x64__publisherid" -> family "Name_publisherid".
+        full = re.match(r"(.+?)_[\d.]+_[^_]*__(\w+)$", name)
+        return f"{full.group(1)}_{full.group(2)}" if full else name
+    return None
+
+
+def _appdata_dir(name: str) -> str:
+    """Real on-disk location of %APPDATA%/<name>, as every process sees it.
+
+    Under packaged Python: an existing redirected copy shadows the real
+    folder for this interpreter, so use its explicit LocalCache path; a
+    pre-existing real folder (no copy) receives writes directly; a folder
+    that doesn't exist yet would be created redirected, so create it at
+    the explicit LocalCache path up front.
+    """
     base = os.environ.get("APPDATA") if sys.platform == "win32" else None
     if not base:
-        base = os.path.expanduser("~")
-    return os.path.join(base, ".Vanta")
+        return os.path.join(os.path.expanduser("~"), name)
+    real = os.path.join(base, name)
+    family = _packaged_python_family()
+    local = os.environ.get("LOCALAPPDATA")
+    if not family or not local:
+        return real
+    redirected = os.path.join(local, "Packages", family, "LocalCache", "Roaming", name)
+    if os.path.isdir(redirected):
+        return redirected
+    if os.path.isdir(real):
+        return real
+    return redirected
+
+
+def get_vanta_dir() -> str:
+    """Return the Vanta data directory for the current platform."""
+    return _appdata_dir(".Vanta")
+
+
+def get_minecraft_dir() -> str:
+    """Minecraft directory, resolved like get_vanta_dir() on Windows."""
+    if sys.platform == "win32":
+        return _appdata_dir(".minecraft")
+    return minecraft_launcher_lib.utils.get_minecraft_directory()
 
 
 def safe_instance_name(version: str) -> str:
@@ -3866,7 +3917,7 @@ class MinecraftLauncher(QMainWindow):
     def __init__(self, initial_avatar: Optional[QPixmap] = None,
                  preloaded_versions: Optional[List[str]] = None) -> None:
         super().__init__()
-        self.minecraft_dir = minecraft_launcher_lib.utils.get_minecraft_directory()
+        self.minecraft_dir = get_minecraft_dir()
         self.settings = QSettings("Vanta", "Preferences")
         self._preloaded_versions = preloaded_versions if preloaded_versions else None
         self._drag_position = QPoint()
