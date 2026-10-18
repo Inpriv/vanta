@@ -880,18 +880,41 @@
     .reveal { opacity: 1; transform: none; }
   }
 
-  .linux-install { margin-top: 32px; padding: clamp(20px, 4vw, 36px); border: 1px solid var(--border, #333); border-radius: 20px; background: rgba(18, 24, 32, .85); text-align: left; scroll-margin-top: 100px; }
-  .linux-install h3 { margin: 8px 0 12px; font-size: 26px; letter-spacing: -.6px; }
-  .linux-install h4 { margin: 24px 0 8px; font-size: 16px; }
-  .linux-install pre { overflow-x: auto; padding: 16px; margin: 16px 0; border-radius: 12px; background: #080c12; color: #d9f7e9; line-height: 1.8; font-size: 13px; text-align: left; }
-  .linux-install p { color: #b5bac7; line-height: 1.7; }
-  .linux-install .linux-label { color: #74d4ac; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
-  .linux-command { display: flex; gap: 12px; align-items: center; margin: 20px 0 12px; padding: 16px; background: #080c12; border: 1px solid #303744; border-radius: 12px; }
-  .linux-command code { flex: 1; overflow-x: auto; white-space: pre; color: #d9f7e9; font-size: 13px; padding: 4px 0; }
-  .linux-command button { flex-shrink: 0; border: 1px solid #465363; border-radius: 8px; padding: 8px 12px; background: #1a2632; color: white; cursor: pointer; }
-  .linux-install a { color: #9cbdff; }
-  .linux-install .linux-note { font-size: 13px; }
-  @media (max-width: 540px) { .linux-command { flex-wrap: wrap; } .linux-command code { flex-basis: 100%; } }
+  /* ===== Linux / Wine ===== */
+  .linux-grid { display: grid; gap: 32px; align-items: center; }
+  .linux-intro .lead { margin-bottom: 28px; max-width: 380px; }
+  .linux-intro .h2 { max-width: 440px; }
+  .linux-download { display: flex; gap: 14px; align-items: flex-start; margin-top: 28px; }
+  .linux-step-number { display: grid; place-items: center; flex: none; width: 28px; height: 28px; margin-top: 2px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--muted); font: 12px var(--mono); }
+  .linux-download strong { display: block; font-size: 15px; margin-bottom: 3px; }
+  .linux-download p { color: var(--muted); font-size: 14px; }
+  .linux-download code { color: var(--text); }
+  .linux-terminal { min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: 0 24px 64px -32px rgba(0,0,0,.6); }
+  .linux-terminal-head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  .linux-terminal-head svg { width: 16px; height: 16px; color: var(--accent); }
+  .linux-terminal-head span:last-child { margin-left: auto; color: var(--dim); font-family: var(--mono); font-size: 11px; }
+  .linux-terminal-body { padding: 22px; }
+  .linux-terminal-label { margin-bottom: 12px; color: var(--muted); font-size: 12px; font-weight: 500; }
+  .linux-tabs { display: flex; width: fit-content; gap: 4px; margin-bottom: 16px; padding: 4px; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; }
+  .linux-tabs button { border-radius: 6px; padding: 7px 12px; font-size: 12px; font-weight: 500; color: var(--muted); transition: background .2s, color .2s; }
+  .linux-tabs button[aria-selected="true"] { color: var(--text); background: var(--surface-3); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .linux-tabs button:hover { color: var(--text); }
+  .linux-commands { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); }
+  .linux-command { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 7px 10px 7px 14px; }
+  .linux-command + .linux-command { border-top: 1px solid var(--line); }
+  .linux-prompt { flex: none; color: var(--dim); font: 12px var(--mono); user-select: none; }
+  .linux-command code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; color: var(--text); font: 12px var(--mono); line-height: 1.8; }
+  .linux-copy { display: flex; align-items: center; justify-content: center; flex: none; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid transparent; border-radius: 7px; color: var(--muted); font-size: 11px; transition: color .15s, background .15s; }
+  .linux-copy:hover { background: var(--surface-3); color: var(--text); border-color: var(--line); }
+  .linux-copy svg { width: 15px; height: 15px; }
+  .linux-copy[data-copied] { color: var(--green); }
+  .linux-launch { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .linux-terminal-foot { min-height: 47px; padding: 14px 20px; border-top: 1px solid var(--line); color: var(--dim); font-size: 12px; }
+  .linux-panel[hidden] { display: none; }
+  .linux-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  @media (min-width: 860px) { .linux-grid { grid-template-columns: .85fr 1.15fr; gap: 64px; } }
+  @media (max-width: 400px) { .linux-terminal-body { padding: 16px; } .linux-command { gap: 8px; padding-left: 10px; } .linux-tabs button { padding: 7px 9px; } }
+
 </style>
 </head>
 <body class="no-js">
@@ -1184,25 +1207,50 @@
         <span class="hash-display" id="hashText">SHA256: 1D31C80DC906233AB67597223B27293C9959FBA9946F99A52A49451A610AF949</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       </button>
-      <div class="linux-install" id="linux">
-        <span class="linux-label">Linux · Wine</span>
-        <h3>Run Vanta on Linux.</h3>
-        <p>Download <a class="vanta-download-link" href="https://github.com/inpriv/vanta/releases/latest">Vanta.exe</a> and save it in <code>~/Downloads</code>. Then open a terminal and run:</p>
-        <div class="linux-command">
-          <code id="wineLaunchCommand">cd ~/Downloads
-wine Vanta.exe</code>
-          <button type="button" id="copyWineLaunch" aria-label="Copy Wine launch command">Copy</button>
-        </div>
-        <p class="linux-note" id="wineCopyStatus" role="status" aria-live="polite"></p>
-        <p>Don't have Wine? Install it first:</p>
-        <p class="linux-note"><strong>Arch Linux:</strong></p>
-        <pre><code>sudo pacman -Syu
-sudo pacman -S wine</code></pre>
-        <p class="linux-note"><strong>Ubuntu / Debian:</strong></p>
-        <pre><code>sudo apt update
-sudo apt install wine</code></pre>
-      </div>
 
+
+    </div>
+  </div>
+</section>
+
+<section class="section" id="linux" aria-labelledby="linux-title">
+  <div class="container">
+    <div class="linux-grid">
+      <div class="linux-intro">
+        <span class="eyebrow">Linux, too.</span>
+        <h2 class="h2" id="linux-title">Same Vanta.<br>Your Linux desktop.</h2>
+        <p class="lead">Download the Windows launcher. Open it with Wine. That's it.</p>
+        <a class="btn btn-ghost vanta-download-link" href="https://github.com/inpriv/vanta/releases/latest">Download Vanta.exe <span aria-hidden="true">↗</span></a>
+        <div class="linux-download">
+          <span class="linux-step-number" aria-hidden="true">01</span>
+          <div><strong>Save it in Downloads</strong><p>Your file should be at <code>~/Downloads/Vanta.exe</code>.</p></div>
+        </div>
+      </div>
+      <div class="linux-terminal">
+        <div class="linux-terminal-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 5 6 6-6 6m10 0h6"/></svg>
+          <span>Quick setup</span><span>Linux / Wine</span>
+        </div>
+        <div class="linux-terminal-body">
+          <p class="linux-terminal-label">02 &nbsp; Install Wine, if you need it</p>
+          <div class="linux-tabs" role="tablist" aria-label="Linux distribution">
+            <button type="button" role="tab" id="wine-tab-arch" aria-controls="wine-panel-arch" aria-selected="true">Arch Linux</button>
+            <button type="button" role="tab" id="wine-tab-apt" aria-controls="wine-panel-apt" aria-selected="false" tabindex="-1">Ubuntu / Debian</button>
+          </div>
+          <div class="linux-panel" id="wine-panel-arch" role="tabpanel" aria-labelledby="wine-tab-arch">
+            <div class="linux-commands"><div class="linux-command"><span class="linux-prompt" aria-hidden="true">$</span><code>sudo pacman -Syu</code><button class="linux-copy" type="button" data-copy-command aria-label="Copy Arch update command" title="Copy command"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div><div class="linux-command"><span class="linux-prompt" aria-hidden="true">$</span><code>sudo pacman -S wine</code><button class="linux-copy" type="button" data-copy-command aria-label="Copy Arch Wine install command" title="Copy command"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div></div>
+          </div>
+          <div class="linux-panel" id="wine-panel-apt" role="tabpanel" aria-labelledby="wine-tab-apt">
+            <div class="linux-commands"><div class="linux-command"><span class="linux-prompt" aria-hidden="true">$</span><code>sudo apt update</code><button class="linux-copy" type="button" data-copy-command aria-label="Copy Ubuntu and Debian update command" title="Copy command"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div><div class="linux-command"><span class="linux-prompt" aria-hidden="true">$</span><code>sudo apt install wine</code><button class="linux-copy" type="button" data-copy-command aria-label="Copy Ubuntu and Debian Wine install command" title="Copy command"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div></div>
+          </div>
+          <div class="linux-launch">
+            <p class="linux-terminal-label">03 &nbsp; Open a terminal &amp; launch Vanta</p>
+            <div class="linux-commands"><div class="linux-command"><span class="linux-prompt" aria-hidden="true">$</span><code>cd ~/Downloads</code><button class="linux-copy" type="button" data-copy-command aria-label="Copy Downloads command" title="Copy command"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div><div class="linux-command"><span class="linux-prompt" aria-hidden="true">$</span><code>wine Vanta.exe</code><button class="linux-copy" type="button" data-copy-command aria-label="Copy Vanta launch command" title="Copy command"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div></div>
+          </div>
+        </div>
+        <div class="linux-terminal-foot">Click the copy icon beside any command.</div>
+        <p class="linux-sr" id="wineCopyStatus" role="status" aria-live="polite"></p>
+      </div>
     </div>
   </div>
 </section>
@@ -1246,15 +1294,57 @@ sudo apt install wine</code></pre>
 <script>
   document.body.classList.remove('no-js');
 
-  document.getElementById('copyWineLaunch').addEventListener('click', async () => {
-    const status = document.getElementById('wineCopyStatus');
-    try {
-      await navigator.clipboard.writeText(document.getElementById('wineLaunchCommand').textContent);
-      status.textContent = 'Copied. Paste into your desktop terminal.';
-    } catch {
-      status.textContent = 'Select the command above and copy it manually.';
-    }
-  });
+  /* ===== Linux commands and distro tabs ===== */
+  (() => {
+    const root = document.getElementById('linux');
+    const tabs = [...root.querySelectorAll('[role="tab"]')];
+    const selectTab = (selected) => tabs.forEach(tab => {
+      const active = tab === selected;
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+      document.getElementById(tab.getAttribute('aria-controls')).hidden = !active;
+    });
+    selectTab(tabs[0]);
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectTab(tab));
+      tab.addEventListener('keydown', event => {
+        let next;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = tabs[(index + 1) % tabs.length];
+        if (event.key === 'Home') next = tabs[0];
+        if (event.key === 'End') next = tabs[tabs.length - 1];
+        if (!next) return;
+        event.preventDefault();
+        selectTab(next);
+        next.focus();
+      });
+    });
+    root.querySelectorAll('[data-copy-command]').forEach(button => {
+      const original = button.innerHTML;
+      let reset;
+      button.addEventListener('click', async () => {
+        const code = button.closest('.linux-command').querySelector('code');
+        const status = document.getElementById('wineCopyStatus');
+        try {
+          await navigator.clipboard.writeText(code.textContent.trim());
+          clearTimeout(reset);
+          button.textContent = 'Copied';
+          button.setAttribute('data-copied', '');
+          status.textContent = 'Copied: ' + code.textContent.trim();
+          reset = setTimeout(() => {
+            button.innerHTML = original;
+            button.removeAttribute('data-copied');
+          }, 1800);
+        } catch {
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(code);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          status.textContent = 'Command selected. Copy it with Ctrl+C or your browser menu.';
+        }
+      });
+    });
+  })();
 
   /* ===== Header: border on scroll + mobile menu ===== */
   (function () {
