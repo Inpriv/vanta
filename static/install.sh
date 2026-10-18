@@ -12,12 +12,12 @@ esac
 if [[ ${1:-} == --install-deps ]]; then
   if command -v apt-get >/dev/null; then
     sudo apt-get update
-    sudo apt-get install -y python3 python3-venv python3-pip git curl util-linux libegl1 libgl1 libglib2.0-0 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-render-util0 xdg-utils
+    sudo apt-get install -y python3 python3-venv python3-pip git curl util-linux libfontconfig1 fonts-dejavu-core libdbus-1-3 libegl1 libgl1 libglib2.0-0 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-render-util0 xdg-utils
   elif command -v pacman >/dev/null; then
     # Do not refresh package databases independently: Arch partial upgrades are unsupported.
-    sudo pacman -S --needed python python-pip git curl util-linux glib2 mesa libglvnd libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms xcb-util-image xcb-util-renderutil xdg-utils
+    sudo pacman -S --needed python python-pip git curl util-linux glib2 fontconfig ttf-dejavu dbus mesa libglvnd libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms xcb-util-image xcb-util-renderutil xdg-utils
   elif command -v dnf >/dev/null; then
-    sudo dnf install -y python3 python3-pip git curl util-linux mesa-libEGL mesa-libGL libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms xcb-util-image xcb-util-renderutil xdg-utils
+    sudo dnf install -y python3 python3-pip git curl util-linux fontconfig dejavu-sans-fonts dbus-libs mesa-libEGL mesa-libGL libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms xcb-util-image xcb-util-renderutil xdg-utils
   else
     fail 'Automatic packages support apt, pacman and dnf. Install Python 3.10+, venv, git and Qt6 desktop libraries, then run without --install-deps.'
   fi
