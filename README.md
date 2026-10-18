@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="icons/icon.png" width="88" alt="Vanta Launcher logo">
+<img src="static/icons/favicon.svg" width="72" alt="Vanta Launcher logo">
 
 # Vanta Launcher
 
@@ -25,6 +25,14 @@
 Most launchers want an account first and ask questions later. Vanta flips that: enter any nickname, choose a Minecraft version, and hit play — no login, no premium, no hassle. Fabric, performance mods, and the right Java runtime are set up for you automatically, and every game version lives in its own clean instance so mods and saves never collide.
 
 > **Why "non-premium"?** Nicknames map to a deterministic offline UUID (v3), so your offline profile keeps the same identity across sessions and servers.
+
+## See Vanta in action
+
+[![Vanta's real settings and mods drawer animation](static/media/launcher-preview.gif)](https://getvanta.xyz/media/launcher-tour.mp4)
+
+Recorded from **Vanta.exe v2.2 on Arch Linux through Wine**. This is the real launcher opening settings, adjusting RAM, and browsing mods. [Watch the full 14-second video](https://getvanta.xyz/media/launcher-tour.mp4) · [View the screenshot gallery](https://getvanta.xyz/#showcase)
+
+![Vanta's actual mods browser running through Wine](static/media/launcher-mods.webp)
 
 ## Download & play
 

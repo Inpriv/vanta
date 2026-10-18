@@ -123,107 +123,6 @@
       .catch(() => {});
   })();
 
-  /* ===== Launcher mockup ===== */
-  (function () {
-    const input = document.getElementById('lcUsername');
-    const avatar = document.getElementById('lcAvatar');
-    const version = document.getElementById('lcVersion');
-    const meta = document.getElementById('lcMeta');
-    const play = document.getElementById('lcPlay');
-    const fill = document.getElementById('lcFill');
-    const label = document.getElementById('lcLabel');
-    let timer, busy = false;
-
-    function loadAvatar() {
-      const name = input.value.trim();
-      avatar.innerHTML = '';
-      if (name.length < 3) return;
-      const img = new Image();
-      img.alt = '';
-      img.onload = () => { avatar.innerHTML = ''; avatar.appendChild(img); };
-      img.src = `https://minotar.net/helm/${encodeURIComponent(name)}/64.png`;
-    }
-    input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(loadAvatar, 400); });
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') play.click(); });
-    loadAvatar();
-
-    function javaFor(v) {
-      const p = v.split('.').map(Number);
-      if (p[0] > 1) return 25;
-      if (p[1] > 20 || (p[1] === 20 && (p[2] || 0) >= 5)) return 21;
-      if (p[1] >= 18) return 17;
-      if (p[1] === 17) return 16;
-      return 8;
-    }
-    version.addEventListener('change', () => {
-      const v = version.value;
-      meta.textContent = `Java ${javaFor(v)} · ${javaFor(v) === 25 ? 'Vulkan ready' : 'OpenGL only'} · 16 GB system RAM`;
-    });
-
-    play.addEventListener('click', () => {
-      if (busy) return;
-      if (!input.value.trim()) {
-        input.classList.add('error'); input.focus();
-        setTimeout(() => input.classList.remove('error'), 1200);
-        return;
-      }
-      busy = true;
-      play.classList.add('busy');
-      let p = 0;
-      label.textContent = 'Preparing…';
-      const iv = setInterval(() => {
-        p = Math.min(100, p + 3 + Math.random() * 4);
-        fill.style.width = p + '%';
-        label.textContent = `Installing: ${Math.round(p)}% · v2.2`;
-        if (p >= 100) {
-          clearInterval(iv);
-          label.textContent = 'Starting Minecraft…';
-          setTimeout(() => {
-            busy = false;
-            play.classList.remove('busy');
-            fill.style.width = '0';
-            label.textContent = 'Play';
-          }, 1100);
-        }
-      }, 60);
-    });
-  })();
-
-  /* ===== Mods mockup: Install -> progress -> Installed ===== */
-  (function () {
-    const status = document.getElementById('drawerStatus');
-    const base = status.textContent;
-    document.querySelectorAll('#modList [data-install]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (!btn.hasAttribute('data-install')) return;
-        btn.removeAttribute('data-install');
-        const fill = btn.querySelector('.fill');
-        const text = btn.querySelector('span:last-child');
-        const title = btn.closest('.mod').querySelector('.mod-title').firstChild.textContent;
-        btn.classList.add('installing');
-        status.textContent = `Installing ${title}…`;
-        status.style.color = '#0A84FF';
-        let p = 0;
-        const iv = setInterval(() => {
-          p = Math.min(100, p + 6 + Math.random() * 8);
-          fill.style.width = p + '%';
-          text.textContent = Math.round(p) + '%';
-          if (p >= 100) {
-            clearInterval(iv);
-            btn.classList.remove('installing');
-            btn.classList.add('installed');
-            fill.remove();
-            text.innerHTML = '<b>✓ Installed</b>';
-            btn.closest('.mod').classList.add('flash');
-            status.textContent = `✓ Installed ${title}`;
-            status.style.color = '#30D158';
-            setTimeout(() => { status.textContent = base; status.style.color = ''; }, 2400);
-          }
-        }, 80);
-      });
-    });
-  })();
-
   /* ===== Performance comparison ===== */
   (function () {
     const card = document.getElementById('compare');
@@ -407,3 +306,91 @@
     });
     details.addEventListener('toggle', () => { if (!animation) expanded = details.open; });
   });
+
+  /* ===== Real app media: load only when viewed; respect explicit pause ===== */
+  (() => {
+    const video = document.getElementById('launcherTour');
+    let visible = false, userPaused = false, internalPause = false;
+    const saveData = () => Boolean(navigator.connection?.saveData);
+    const pause = () => {
+      if (video.paused) return;
+      internalPause = true;
+      video.pause();
+    };
+    const sync = () => {
+      if (!visible || document.hidden || motionPreference.matches || saveData()) {
+        pause();
+        return;
+      }
+      if (!userPaused) video.play().catch(() => {});
+    };
+    video.addEventListener('pause', () => {
+      if (internalPause) internalPause = false;
+      else userPaused = true;
+    });
+    video.addEventListener('play', () => { userPaused = false; });
+    // Native controls remain available even when automatic playback is disabled.
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(entries => {
+        visible = entries[0].isIntersecting;
+        sync();
+      }, {threshold: .35}).observe(video);
+    }
+    document.addEventListener('visibilitychange', sync);
+    motionPreference.addEventListener('change', sync);
+    navigator.connection?.addEventListener('change', sync);
+
+    const tabs = [...document.querySelectorAll('[data-capture]')];
+    const image = document.getElementById('captureImage');
+    const zoom = document.getElementById('captureZoom');
+    const caption = document.getElementById('captureCaption');
+    const panel = document.getElementById('capture-panel');
+    const descriptions = {
+      mods: ['Vanta mods browser running through Wine on Arch Linux', 'Browse compatible mods without leaving the launcher.'],
+      settings: ['Vanta settings drawer with RAM and performance controls', 'RAM and performance options, a click away.'],
+      versions: ['Vanta version picker showing Minecraft releases', 'Choose your version from the scrolling release list.'],
+      home: ['Vanta launcher with nickname, version picker and Play button', 'A nickname. A version. One Play button.']
+    };
+    const select = tab => {
+      const name = tab.dataset.capture;
+      tabs.forEach(other => {
+        const active = other === tab;
+        other.setAttribute('aria-selected', String(active));
+        other.tabIndex = active ? 0 : -1;
+      });
+      panel.setAttribute('aria-labelledby', tab.id);
+      image.src = '/media/launcher-' + name + '.webp';
+      image.alt = descriptions[name][0];
+      zoom.href = image.src;
+      caption.textContent = descriptions[name][1];
+      if (!motionPreference.matches && image.animate) image.animate(
+        [{opacity: .25, transform: 'translateY(5px)'}, {opacity: 1, transform: 'translateY(0)'}],
+        {duration: 280, easing: 'cubic-bezier(.16,1,.3,1)'});
+    };
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => select(tab));
+      tab.addEventListener('keydown', event => {
+        let next;
+        if (event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+        if (event.key === 'ArrowLeft') next = tabs[(index + tabs.length - 1) % tabs.length];
+        if (event.key === 'Home') next = tabs[0];
+        if (event.key === 'End') next = tabs[tabs.length - 1];
+        if (!next) return;
+        event.preventDefault();
+        select(next);
+        next.focus();
+      });
+    });
+    const lightbox = document.getElementById('captureLightbox');
+    const full = document.getElementById('captureFullImage');
+    document.querySelectorAll('[data-open-capture]').forEach(link => {
+      link.addEventListener('click', event => {
+        if (!lightbox.showModal) return;
+        event.preventDefault();
+        full.src = link.href;
+        full.alt = link.querySelector('img').alt;
+        lightbox.showModal();
+      });
+    });
+    lightbox.addEventListener('click', event => { if (event.target === lightbox) lightbox.close(); });
+  })();
