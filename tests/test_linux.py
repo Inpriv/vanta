@@ -74,11 +74,25 @@ class LinuxLauncherTests(unittest.TestCase):
             self.assertEqual(main.find_system_java(21), '/usr/lib/jvm/test/bin/java')
             self.assertIsNone(main.find_system_java(25))
 
-    def test_native_popup_opens_and_closes(self):
-        self.window.version_combo.showPopup()
+    def test_native_popup_is_dark_compact_and_keyboard_selects(self):
+        combo = self.window.version_combo
+        combo.clear()
+        combo.addItems([f"1.{i}" for i in range(200)])
+        combo.setCurrentIndex(0)
+        combo.setEnabled(True)
+        combo.showPopup()
         self.app.processEvents()
-        self.window.version_combo.hidePopup()
+        view = combo.view()
+        self.assertTrue(view.isVisible())
+        self.assertLessEqual(view.window().height(), 260)
+        self.assertGreater(view.verticalScrollBar().maximum(), 0)
+        self.assertLess(view.palette().color(view.backgroundRole()).lightness(), 70)
+        self.assertGreater(view.palette().color(view.foregroundRole()).lightness(), 180)
+        QTest.keyClick(view, main.Qt.Key.Key_End)
+        QTest.keyClick(view, main.Qt.Key.Key_Return)
         self.app.processEvents()
+        self.assertEqual(combo.currentIndex(), 199)
+        self.assertFalse(view.isVisible())
 
 
 if __name__ == '__main__':

@@ -38,7 +38,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QComboBox, QPushButton, QMessageBox, QFrame, QLabel,
     QStackedWidget, QSlider, QCheckBox, QListWidget, QListWidgetItem, QProgressBar, QScrollArea,
     QGraphicsDropShadowEffect, QDialog, QAbstractItemView, QGraphicsBlurEffect,
-    QGraphicsOpacityEffect
+    QGraphicsOpacityEffect, QListView, QProxyStyle, QStyle
 )
 from PyQt6.QtGui import (
     QColor, QFont, QFontMetrics, QImage, QPainter, QBrush, QPolygon, QIcon, QPixmap,
@@ -3440,6 +3440,15 @@ class _ComboOutsideClickFilter(QObject):
         return True
 
 
+class _LinuxComboStyle(QProxyStyle):
+    """Keep the native Qt popup scrollable instead of a screen-sized menu."""
+
+    def styleHint(self, hint, option=None, widget=None, returnData=None):
+        if hint == QStyle.StyleHint.SH_ComboBox_Popup:
+            return 0
+        return super().styleHint(hint, option, widget, returnData)
+
+
 class AnchoredComboBox(QComboBox):
     """Custom combobox with a floating frameless popup list.
 
@@ -3460,6 +3469,36 @@ class AnchoredComboBox(QComboBox):
         self._last_hide_time = 0.0
         self._popup_anim: Optional[QParallelAnimationGroup] = None
         self._grow_upward = False
+        if sys.platform.startswith("linux"):
+            # Own a separate base style; borrowing QApplication.style() here
+            # would transfer ownership and can destroy the application's style.
+            self._linux_style = _LinuxComboStyle("Fusion")
+            self._linux_style.setParent(self)
+            self.setStyle(self._linux_style)
+            self.setMaxVisibleItems(7)
+            view = QListView(self)
+            view.setUniformItemSizes(True)
+            view.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+            view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            view.setStyleSheet("""
+                QListView {
+                    background-color: #1C1C1E; color: #E0E0E0;
+                    border: 1px solid #38383A; padding: 4px;
+                    outline: 0; font-size: 12px;
+                    selection-background-color: #0A84FF;
+                    selection-color: #FFFFFF;
+                }
+                QListView::item { min-height: 28px; padding: 2px 10px; }
+                QListView::item:hover { background-color: #2C2C2E; color: #FFFFFF; }
+                QListView::item:selected { background-color: #0A84FF; color: #FFFFFF; }
+                QScrollBar:vertical { background: #1C1C1E; width: 8px; }
+                QScrollBar::handle:vertical {
+                    background: #505054; border-radius: 4px; min-height: 24px;
+                }
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+                QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
+            """)
+            self.setView(view)
 
     def _ensure_popup(self) -> ComboPopup:
         if self._popup is None:
