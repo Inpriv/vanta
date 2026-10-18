@@ -36,26 +36,27 @@ That's it. The launcher keeps itself up to date from here on.
 
 ## Linux (Wine)
 
-Use the Windows build with Wine. There is no native Linux installer.
+Download **Vanta.exe** from [Releases](https://github.com/inpriv/vanta/releases/latest) into `~/Downloads`, then run:
 
-1. Install Wine using your distribution's package manager. See the [WineHQ download guide](https://gitlab.winehq.org/wine/wine/-/wikis/Download) or [ArchWiki Wine guide](https://wiki.archlinux.org/title/Wine).
-2. Download **Vanta.exe** from [Releases](https://github.com/inpriv/vanta/releases/latest) into your Downloads folder.
-3. Create a separate Wine environment and select **Windows 10** in Wine Configuration:
+```bash
+cd ~/Downloads
+wine Vanta.exe
+```
 
-   ```bash
-   mkdir -p "$HOME/.local/share"
-   WINEPREFIX="$HOME/.local/share/vanta-wine" winecfg
-   ```
+If you don't have Wine, install it first:
 
-4. Start Vanta (adjust the file path if you saved it elsewhere):
+**Arch Linux:**
 
-   ```bash
-   WINEPREFIX="$HOME/.local/share/vanta-wine" wine "$HOME/Downloads/Vanta.exe"
-   ```
+```bash
+sudo pacman -S wine
+```
 
-Use the same Wine prefix every time so settings and saves stay together. Vanta manages its Windows Java runtime inside Wine. If the single-file executable fails to open, extract the Windows standalone ZIP from the same release, locate its `.exe`, and run it with the same `WINEPREFIX` command. Wine compatibility and game rendering depend on your Wine version and graphics drivers; this is not a tested native Linux release.
+**Ubuntu / Debian:**
 
-Previous native installs and game data are left in place. The former `install.sh` endpoint now only points to the [Wine guide](https://getvanta.xyz/#linux).
+```bash
+sudo apt update
+sudo apt install wine
+```
 
 ## Features
 

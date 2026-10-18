@@ -887,7 +887,7 @@
   .linux-install p { color: #b5bac7; line-height: 1.7; }
   .linux-install .linux-label { color: #74d4ac; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
   .linux-command { display: flex; gap: 12px; align-items: center; margin: 20px 0 12px; padding: 16px; background: #080c12; border: 1px solid #303744; border-radius: 12px; }
-  .linux-command code { flex: 1; overflow-x: auto; white-space: nowrap; color: #d9f7e9; font-size: 13px; padding: 4px 0; }
+  .linux-command code { flex: 1; overflow-x: auto; white-space: pre; color: #d9f7e9; font-size: 13px; padding: 4px 0; }
   .linux-command button { flex-shrink: 0; border: 1px solid #465363; border-radius: 8px; padding: 8px 12px; background: #1a2632; color: white; cursor: pointer; }
   .linux-install a { color: #9cbdff; }
   .linux-install .linux-note { font-size: 13px; }
@@ -1185,26 +1185,21 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       </button>
       <div class="linux-install" id="linux">
-        <span class="linux-label">Linux · Windows build via Wine</span>
-        <h3>Open Vanta with Wine.</h3>
-        <p>Use the same Windows download on Linux through Wine. No native Linux installation or Python setup is needed.</p>
-        <h4>1. Install Wine</h4>
-        <p>Install Wine through your distribution's package manager. Follow the <a href="https://gitlab.winehq.org/wine/wine/-/wikis/Download" target="_blank" rel="noopener">WineHQ installation guide</a> for your distro, or the <a href="https://wiki.archlinux.org/title/Wine" target="_blank" rel="noopener">Arch Linux guide</a>.</p>
-        <h4>2. Download the Windows launcher</h4>
-        <p>Save <a class="vanta-download-link" href="https://github.com/inpriv/vanta/releases/latest">Vanta.exe</a> in your Downloads folder.</p>
-        <h4>3. Set up a Wine environment</h4>
-        <p>Run these commands once, then choose <strong>Windows 10</strong> in the Wine Configuration window and click OK.</p>
-        <pre><code>mkdir -p "$HOME/.local/share"
-WINEPREFIX="$HOME/.local/share/vanta-wine" winecfg</code></pre>
-        <h4>4. Launch Vanta</h4>
-        <p>Run this command whenever you want to play. Adjust the executable path if you saved it somewhere else.</p>
+        <span class="linux-label">Linux · Wine</span>
+        <h3>Run Vanta on Linux.</h3>
+        <p>Download <a class="vanta-download-link" href="https://github.com/inpriv/vanta/releases/latest">Vanta.exe</a> and save it in <code>~/Downloads</code>. Then open a terminal and run:</p>
         <div class="linux-command">
-          <code id="wineLaunchCommand">WINEPREFIX="$HOME/.local/share/vanta-wine" wine "$HOME/Downloads/Vanta.exe"</code>
+          <code id="wineLaunchCommand">cd ~/Downloads
+wine Vanta.exe</code>
           <button type="button" id="copyWineLaunch" aria-label="Copy Wine launch command">Copy</button>
         </div>
         <p class="linux-note" id="wineCopyStatus" role="status" aria-live="polite"></p>
-        <p class="linux-note">Keep using the same Wine environment to retain your settings and saves. Vanta manages its Windows Java runtime inside Wine.</p>
-        <p class="linux-note">If Vanta.exe fails to open, extract the Windows <a class="vanta-zip-link" href="https://github.com/inpriv/vanta/releases/latest">standalone ZIP</a> and run its executable with the same WINEPREFIX. For launch or rendering issues, check your Wine version and graphics drivers against the linked distribution guides.</p>
+        <p>Don't have Wine? Install it first:</p>
+        <p class="linux-note"><strong>Arch Linux:</strong></p>
+        <pre><code>sudo pacman -S wine</code></pre>
+        <p class="linux-note"><strong>Ubuntu / Debian:</strong></p>
+        <pre><code>sudo apt update
+sudo apt install wine</code></pre>
       </div>
 
     </div>
