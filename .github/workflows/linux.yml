@@ -1,0 +1,40 @@
+name: Linux
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  ubuntu:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Desktop libraries
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-render-util0
+      - name: Setup and diagnostics
+        run: |
+          bash -n start.sh static/install.sh
+          ./start.sh --setup
+          ./start.sh --doctor
+      - name: UI and launch regressions
+        run: .venv/bin/python -m unittest discover -s tests -v
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:base
+    steps:
+      - name: System dependencies
+        run: pacman -Syu --noconfirm python python-pip git util-linux glib2 mesa libglvnd libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms xcb-util-image xcb-util-renderutil
+      - uses: actions/checkout@v4
+      - name: Setup and diagnostics
+        run: |
+          bash -n start.sh static/install.sh
+          ./start.sh --setup
+          ./start.sh --doctor
+      - name: UI and launch regressions
+        run: .venv/bin/python -m unittest discover -s tests -v

@@ -492,6 +492,10 @@ def find_system_java(min_major: Optional[int] = None) -> Optional[str]:
     with the highest version wins.
     """
     candidates: List[str] = []
+    if sys.platform.startswith("linux"):
+        for pattern in ("/usr/lib/jvm/*/bin/java", "/usr/java/*/bin/java",
+                        os.path.expanduser("~/.sdkman/candidates/java/*/bin/java")):
+            candidates.extend(glob.glob(pattern))
 
     java_home = os.environ.get("JAVA_HOME")
     if java_home:
@@ -2034,7 +2038,7 @@ def _lerp_color(a: QColor, b: QColor, t: float) -> QColor:
 
 
 def _ui_font(px: int, weight: QFont.Weight = QFont.Weight.Normal) -> QFont:
-    font = QFont("Segoe UI")
+    font = QFont(QApplication.font().family() if sys.platform.startswith("linux") else "Segoe UI")
     font.setPixelSize(px)
     font.setWeight(weight)
     return font
@@ -3222,6 +3226,9 @@ class VantaDialog(QDialog):
               details: Optional[str] = None, log_dir: Optional[str] = None):
         dlg = VantaDialog(parent, kind, title, message, buttons,
                           details=details, log_dir=log_dir)
+        if sys.platform.startswith("linux"):
+            dlg.exec()
+            return dlg.result_choice
         dlg.setWindowOpacity(0.0)
         fade = QVariantAnimation(dlg)
         fade.setDuration(170)
@@ -3499,6 +3506,9 @@ class AnchoredComboBox(QComboBox):
         self._outside_filter_installed = False
 
     def showPopup(self) -> None:
+        if sys.platform.startswith("linux"):
+            super().showPopup()
+            return
         if self.count() == 0 or not self.isEnabled():
             return
 
@@ -3565,6 +3575,9 @@ class AnchoredComboBox(QComboBox):
         self._popup_anim.start()
 
     def hidePopup(self) -> None:
+        if sys.platform.startswith("linux"):
+            super().hidePopup()
+            return
         if self._popup is None or not self._popup.isVisible():
             return
 
@@ -3609,6 +3622,9 @@ class AnchoredComboBox(QComboBox):
         self._popup_anim.start()
 
     def mousePressEvent(self, event) -> None:
+        if sys.platform.startswith("linux"):
+            super().mousePressEvent(event)
+            return
         if not self.isEnabled():
             return
         if event.button() == Qt.MouseButton.LeftButton:
@@ -3808,6 +3824,10 @@ class SplashScreen(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        if sys.platform.startswith("linux"):
+            self._dot_timer.start()
+            self._bar_timer.start()
+            return
         self.setWindowOpacity(0.0)
         self._dot_timer.start()
         self._bar_timer.start()
@@ -3822,6 +3842,9 @@ class SplashScreen(QWidget):
         self._dot_timer.stop()
         self._bar_timer.stop()
         self._fade.stop()
+        if sys.platform.startswith("linux"):
+            self.close()
+            return
         self._fade.setDuration(300)
         self._fade.setStartValue(self.windowOpacity())
         self._fade.setEndValue(0.0)
@@ -3908,6 +3931,12 @@ class SplashScreen(QWidget):
 
 
 class MinecraftLauncher(QMainWindow):
+    def setWindowOpacity(self, opacity: float) -> None:
+        # Wayland compositors own top-level opacity. Keep the window visible;
+        # Linux uses compositor transitions and animates only content in Qt.
+        if not sys.platform.startswith("linux"):
+            super().setWindowOpacity(opacity)
+
     _FADE_DURATION = 220
     _EXPAND_DURATION = 380
     _CARD_H = 192
@@ -4035,6 +4064,11 @@ class MinecraftLauncher(QMainWindow):
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
+            if sys.platform.startswith("linux"):
+                handle = self.windowHandle()
+                if handle is not None and handle.startSystemMove():
+                    event.accept()
+                    return
             self._drag_position = (
                 event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             )
@@ -4092,6 +4126,9 @@ class MinecraftLauncher(QMainWindow):
                               target_geo: Optional[QRect] = None,
                               slide_down: bool = False) -> None:
         self._stop_animations()
+        if sys.platform.startswith("linux"):
+            finish_callback()
+            return
 
         opacity = QPropertyAnimation(self, b"windowOpacity")
         opacity.setDuration(self._FADE_DURATION)
@@ -4123,6 +4160,8 @@ class MinecraftLauncher(QMainWindow):
 
     def _fade_in(self) -> None:
         self._stop_animations()
+        if sys.platform.startswith("linux"):
+            return
         self.setWindowOpacity(self.windowOpacity() if self.windowOpacity() < 1.0 else 0.0)
 
         opacity = QPropertyAnimation(self, b"windowOpacity")
@@ -4146,6 +4185,12 @@ class MinecraftLauncher(QMainWindow):
 
     def _fade_in_with_motion_blur(self) -> None:
         """Fade in with a strong motion-blur style transition (blur + vertical glide)."""
+        if sys.platform.startswith("linux"):
+            # Blurring the complete backing store repaints every pixel each
+            # frame and moving top-level windows is unsupported on Wayland.
+            self._stop_animations()
+            self._apply_card_shadow()
+            return
         self._stop_animations()
         self.setWindowOpacity(0.0)
 
@@ -4182,6 +4227,8 @@ class MinecraftLauncher(QMainWindow):
 
     def _fade_in_from_taskbar(self) -> None:
         self._stop_animations()
+        if sys.platform.startswith("linux"):
+            return
         target = getattr(self, "_restore_geometry", self.geometry())
 
         taskbar = self._get_taskbar_geometry()
@@ -4222,6 +4269,9 @@ class MinecraftLauncher(QMainWindow):
         self._anim_group.start()
 
     def _fade_out_and_minimize(self) -> None:
+        if sys.platform.startswith("linux"):
+            self.showMinimized()
+            return
         if self._layout_animator is not None:
             self._layout_animator.finish()
         self._restore_geometry = self.geometry()
@@ -4727,7 +4777,10 @@ class MinecraftLauncher(QMainWindow):
 
         def apply(t: float) -> None:
             dx, dh, wx, wy, ww, wh = (round(a + (b - a) * t) for a, b in zip(start, end))
-            self.setGeometry(wx, wy, ww, wh)
+            if sys.platform.startswith("linux") and QApplication.platformName().startswith("wayland"):
+                self.resize(ww, wh)
+            else:
+                self.setGeometry(wx, wy, ww, wh)
             self.drawer.setGeometry(dx, 12, 340, dh)
             self._central.update()
             if t >= 1.0:
@@ -5797,6 +5850,10 @@ class MinecraftLauncher(QMainWindow):
         )
 
     def _start_update_check(self) -> None:
+        # This updater validates and replaces a Windows PE executable. Linux
+        # installs are updated transactionally by install.sh, never via an EXE.
+        if sys.platform.startswith("linux"):
+            return
         if self._is_closing or self._update_in_progress or self._pending_update:
             return
         if self._update_check_worker is not None and self._update_check_worker.isRunning():
@@ -6174,6 +6231,9 @@ if __name__ == "__main__":
     sys.excepthook = _excepthook
 
     app = QApplication(sys.argv)
+    if sys.platform.startswith("linux"):
+        app.setDesktopFileName("xyz.getvanta.Vanta")
+        app.setStyle("Fusion")
     app.setStyleSheet(
         "QToolTip { background-color: #2C2C2E; color: #F2F2F7; border: 1px solid #3A3A3C;"
         " border-radius: 6px; padding: 5px 8px; font-family: 'Segoe UI'; font-size: 11px; }"

@@ -126,7 +126,7 @@
   "logo": "https://getvanta.xyz/icons/favicon.svg",
   "applicationCategory": "GameApplication",
   "applicationSubCategory": "Minecraft Launcher",
-  "operatingSystem": "Windows 10, Windows 11, Linux (via Proton/Wine)",
+  "operatingSystem": "Windows 10, Windows 11, Linux (native Python / Qt)",
   "softwareVersion": "2.2",
   "fileSize": "96.7MB",
   "downloadUrl": "https://github.com/inpriv/vanta/releases/latest",
@@ -879,6 +879,17 @@
     *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
     .reveal { opacity: 1; transform: none; }
   }
+
+  .linux-install { margin-top: 32px; padding: clamp(20px, 4vw, 36px); border: 1px solid var(--border, #333); border-radius: 20px; background: rgba(18, 24, 32, .85); text-align: left; scroll-margin-top: 100px; }
+  .linux-install h3 { margin: 8px 0 12px; font-size: 26px; letter-spacing: -.6px; }
+  .linux-install p { color: #b5bac7; line-height: 1.7; }
+  .linux-install .linux-label { color: #74d4ac; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+  .linux-command { display: flex; gap: 12px; align-items: center; margin: 20px 0 12px; padding: 16px; background: #080c12; border: 1px solid #303744; border-radius: 12px; }
+  .linux-command code { flex: 1; overflow-x: auto; white-space: nowrap; color: #d9f7e9; font-size: 13px; padding: 4px 0; }
+  .linux-command button { flex-shrink: 0; border: 1px solid #465363; border-radius: 8px; padding: 8px 12px; background: #1a2632; color: white; cursor: pointer; }
+  .linux-install a { color: #9cbdff; }
+  .linux-install .linux-note { font-size: 13px; }
+  @media (max-width: 540px) { .linux-command { flex-wrap: wrap; } .linux-command code { flex-basis: 100%; } }
 </style>
 </head>
 <body class="no-js">
@@ -939,6 +950,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>
           Download for Windows
         </a>
+        <a href="#linux" class="btn btn-ghost">Install on Linux</a>
         <a href="https://github.com/inpriv/vanta" class="btn btn-ghost" target="_blank" rel="noopener">View on GitHub</a>
       </div>
       <div class="hero-meta reveal">
@@ -1106,7 +1118,7 @@
       <div class="spec"><dt>Built with</dt><dd>Python 3.12 &middot; PyQt6 &middot; Nuitka</dd></div>
       <div class="spec"><dt>Java runtimes</dt><dd>8, 16, 17, 21 and 25 &mdash; auto-selected</dd></div>
       <div class="spec"><dt>Minecraft</dt><dd>Classic &rarr; 26.2 &middot; Fabric from 1.14</dd></div>
-      <div class="spec"><dt>Platform</dt><dd>Windows 10 / 11 (64-bit)</dd></div>
+      <div class="spec"><dt>Platform</dt><dd>Windows 10 / 11 · Native Linux</dd></div>
       <div class="spec"><dt>Executable size</dt><dd>96.7 MB (Win)</dd></div>
       <div class="spec"><dt>Telemetry</dt><dd>None</dd></div>
       <div class="spec"><dt>License</dt><dd>MIT</dd></div>
@@ -1170,6 +1182,19 @@
         <span class="hash-display" id="hashText">SHA256: 1D31C80DC906233AB67597223B27293C9959FBA9946F99A52A49451A610AF949</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       </button>
+      <div class="linux-install" id="linux">
+        <span class="linux-label">Native Linux · No Wine required</span>
+        <h3>Your distro. One command.</h3>
+        <p>Install on Ubuntu, Debian, Arch Linux or Fedora. Vanta sets up its own Python environment and adds a launcher to your application menu.</p>
+        <div class="linux-command">
+          <code id="linuxInstallCommand">curl -fsSL https://getvanta.xyz/install.sh | bash -s -- --install-deps</code>
+          <button type="button" id="copyLinuxInstall" aria-label="Copy Linux install command">Copy</button>
+        </div>
+        <p class="linux-note" id="linuxCopyStatus" role="status" aria-live="polite"></p>
+        <p class="linux-note">Uses sudo to install distribution packages, then installs Vanta for your user. Python 3.10+ and a graphical desktop required. Supports Wayland and X11; Java is managed automatically where Mojang provides a runtime.</p>
+        <p class="linux-note">Run the same command to update. <a href="/install.sh">Read the installer</a> · <a href="https://github.com/inpriv/vanta#linux" target="_blank" rel="noopener">Setup &amp; troubleshooting</a></p>
+      </div>
+
     </div>
   </div>
 </section>
@@ -1212,6 +1237,16 @@
 
 <script>
   document.body.classList.remove('no-js');
+
+  document.getElementById('copyLinuxInstall').addEventListener('click', async () => {
+    const status = document.getElementById('linuxCopyStatus');
+    try {
+      await navigator.clipboard.writeText(document.getElementById('linuxInstallCommand').textContent);
+      status.textContent = 'Copied. Paste into your desktop terminal.';
+    } catch {
+      status.textContent = 'Select the command above and copy it manually.';
+    }
+  });
 
   /* ===== Header: border on scroll + mobile menu ===== */
   (function () {
