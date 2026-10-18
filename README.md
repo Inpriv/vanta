@@ -9,7 +9,7 @@
 **Pick a nickname. Pick a version. Play.**
 
 [![Release](https://img.shields.io/github/v/release/inpriv/vanta?style=flat-square)](https://github.com/inpriv/vanta/releases/latest)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue?style=flat-square)](https://github.com/inpriv/vanta/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-Windows-blue?style=flat-square)](https://github.com/inpriv/vanta/releases/latest)
 [![License](https://img.shields.io/github/license/inpriv/vanta?style=flat-square)](LICENSE)
 [![Packaging](https://img.shields.io/badge/packaging-Nuitka%20native-9F86FF?style=flat-square)](#build-from-source)
 [![Website](https://img.shields.io/badge/website-getvanta.xyz-E75480?style=flat-square)](https://getvanta.xyz/)
@@ -34,37 +34,28 @@ Most launchers want an account first and ask questions later. Vanta flips that: 
 
 That's it. The launcher keeps itself up to date from here on.
 
-## Linux
+## Linux (Wine)
 
-Install natively from your desktop terminal (Ubuntu/Debian, Arch Linux, Fedora):
+Use the Windows build with Wine. There is no native Linux installer.
 
-```bash
-curl -fsSL https://getvanta.xyz/install.sh | bash -s -- --install-deps
-```
+1. Install Wine using your distribution's package manager. See the [WineHQ download guide](https://gitlab.winehq.org/wine/wine/-/wikis/Download) or [ArchWiki Wine guide](https://wiki.archlinux.org/title/Wine).
+2. Download **Vanta.exe** from [Releases](https://github.com/inpriv/vanta/releases/latest) into your Downloads folder.
+3. Create a separate Wine environment and select **Windows 10** in Wine Configuration:
 
-The optional `--install-deps` flag uses sudo for distribution packages. Vanta itself runs as your normal user in an isolated virtual environment; it never installs pip packages into system Python. [Read the installer](static/install.sh) before running it. Other distributions can install Python 3.10+, venv, git, util-linux and Qt desktop libraries themselves, then omit the flag.
+   ```bash
+   mkdir -p "$HOME/.local/share"
+   WINEPREFIX="$HOME/.local/share/vanta-wine" winecfg
+   ```
 
-Open **Vanta Launcher** from your application menu or desktop shortcut. The installer uses your configured XDG desktop directory (including localized names), and marks the shortcut executable and trusted for GNOME/DING when supported. If prompted, right-click it and choose **Allow Launching**. Re-run the command to update. Each update is prepared and checked before the active installation is switched; previous installations remain under `${XDG_DATA_HOME:-~/.local/share}/vanta/releases` for recovery. Saves, mods and preferences stay in `~/.Vanta` and Java/game downloads in `~/.minecraft`. Close Vanta before updating. Windows downloads and updates are unchanged.
+4. Start Vanta (adjust the file path if you saved it elsewhere):
 
-To run a source checkout:
+   ```bash
+   WINEPREFIX="$HOME/.local/share/vanta-wine" wine "$HOME/Downloads/Vanta.exe"
+   ```
 
-```bash
-git clone https://github.com/inpriv/vanta.git
-cd vanta
-./start.sh
-```
+Use the same Wine prefix every time so settings and saves stay together. Vanta manages its Windows Java runtime inside Wine. If the single-file executable fails to open, extract the Windows standalone ZIP from the same release, locate its `.exe`, and run it with the same `WINEPREFIX` command. Wine compatibility and game rendering depend on your Wine version and graphics drivers; this is not a tested native Linux release.
 
-`./start.sh --setup` installs dependencies without opening the app. `./start.sh --doctor` checks the Python environment and Qt platform libraries. Subsequent starts skip pip when requirements are unchanged. Set `VANTA_PYTHON=/path/to/python3` to select an interpreter. After an Arch Python upgrade, the virtual environment is rebuilt automatically.
-
-Wayland uses compositor-managed dragging and window transitions, with the same animated controls and drawers. Full-window blur is skipped on Linux to reduce repaint cost. Vanta selects native Wayland when available and X11 otherwise; use `QT_QPA_PLATFORM=xcb ./start.sh` to select XWayland explicitly. Keep your distribution's graphics drivers up to date. Where Mojang does not supply a runtime for your architecture, install a matching Java version through your package manager and set `JAVA_HOME`.
-
-### Linux troubleshooting
-
-- **Ubuntu/Debian:** install `python3-venv`, `libegl1`, `libgl1`, `libxkbcommon-x11-0`, `libxcb-cursor0`, `libxcb-icccm4`, `libxcb-keysyms1`, `libxcb-shape0`, `libxcb-xinerama0`, `libxcb-render-util0` and `xdg-utils`, or re-run the installer with `--install-deps`.
-- **Arch:** use a fully updated system. The installer uses `pacman -S --needed` without refreshing package databases to avoid a partial upgrade. If packages cannot be found, update your system normally first.
-- **Qt plugin errors:** run `./start.sh --doctor` and install the libraries it lists. The launcher removes inherited Qt plugin paths that can conflict with PyQt6.
-- **No compatible PyQt6 wheel:** package availability depends on Python version and CPU architecture. Use a supported Python interpreter with `VANTA_PYTHON`; this source installer does not promise prebuilt binaries for every architecture.
-- **Remove Vanta:** delete the `vanta` install directory, `applications/xyz.getvanta.Vanta.desktop` and `icons/hicolor/512x512/apps/xyz.getvanta.Vanta.png` under your XDG data directory, plus `xyz.getvanta.Vanta.desktop` in your desktop folder. Keep `~/.Vanta` and `~/.minecraft` to preserve game data.
+Previous native installs and game data are left in place. The former `install.sh` endpoint now only points to the [Wine guide](https://getvanta.xyz/#linux).
 
 ## Features
 
@@ -185,8 +176,7 @@ Vanta/
 - [x] Performance mode (Sodium, Lithium, FerriteCore, EntityCulling)
 - [x] Nuitka native build pipeline
 - [x] Standalone (folder) distribution
-- [x] Native Linux source installer and desktop integration
-- [ ] Prebuilt Linux and macOS binaries
+- [ ] Linux and macOS builds
 - [ ] Microsoft account login (optional premium support)
 - [ ] Code signing for flag-free downloads
 - [ ] Instance import/export

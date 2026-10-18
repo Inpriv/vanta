@@ -25,7 +25,3 @@ abandoned (do not touch)/
 nuitka-crash-report.xml
 kilo-*.txt
 dist-kilo/
-
-# Linux runtime environment
-.venv/
-.setup.lock
