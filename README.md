@@ -48,6 +48,7 @@ If you don't have Wine, install it first:
 **Arch Linux:**
 
 ```bash
+sudo pacman -Syu
 sudo pacman -S wine
 ```
 
