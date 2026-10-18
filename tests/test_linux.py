@@ -42,6 +42,9 @@ class LinuxLauncherTests(unittest.TestCase):
         for mock in reversed(self.patches):
             mock.stop()
 
+    def test_window_has_linux_icon(self):
+        self.assertFalse(self.window.windowIcon().isNull())
+
     def test_no_windows_update_on_linux(self):
         with patch.object(main, 'UpdateCheckWorker') as worker:
             self.window._start_update_check()

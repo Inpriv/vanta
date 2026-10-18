@@ -44,7 +44,7 @@ curl -fsSL https://getvanta.xyz/install.sh | bash -s -- --install-deps
 
 The optional `--install-deps` flag uses sudo for distribution packages. Vanta itself runs as your normal user in an isolated virtual environment; it never installs pip packages into system Python. [Read the installer](static/install.sh) before running it. Other distributions can install Python 3.10+, venv, git, util-linux and Qt desktop libraries themselves, then omit the flag.
 
-Open **Vanta Launcher** from your application menu. Re-run the command to update. Each update is prepared and checked before the active installation is switched; previous installations remain under `${XDG_DATA_HOME:-~/.local/share}/vanta/releases` for recovery. Saves, mods and preferences stay in `~/.Vanta` and Java/game downloads in `~/.minecraft`. Close Vanta before updating. Windows downloads and updates are unchanged.
+Open **Vanta Launcher** from your application menu or desktop shortcut. The installer uses your configured XDG desktop directory (including localized names), and marks the shortcut executable and trusted for GNOME/DING when supported. If prompted, right-click it and choose **Allow Launching**. Re-run the command to update. Each update is prepared and checked before the active installation is switched; previous installations remain under `${XDG_DATA_HOME:-~/.local/share}/vanta/releases` for recovery. Saves, mods and preferences stay in `~/.Vanta` and Java/game downloads in `~/.minecraft`. Close Vanta before updating. Windows downloads and updates are unchanged.
 
 To run a source checkout:
 
@@ -64,7 +64,7 @@ Wayland uses compositor-managed dragging and window transitions, with the same a
 - **Arch:** use a fully updated system. The installer uses `pacman -S --needed` without refreshing package databases to avoid a partial upgrade. If packages cannot be found, update your system normally first.
 - **Qt plugin errors:** run `./start.sh --doctor` and install the libraries it lists. The launcher removes inherited Qt plugin paths that can conflict with PyQt6.
 - **No compatible PyQt6 wheel:** package availability depends on Python version and CPU architecture. Use a supported Python interpreter with `VANTA_PYTHON`; this source installer does not promise prebuilt binaries for every architecture.
-- **Remove Vanta:** delete the `vanta` install directory, `applications/xyz.getvanta.Vanta.desktop` and `icons/hicolor/256x256/apps/xyz.getvanta.Vanta.png` under your XDG data directory. Keep `~/.Vanta` and `~/.minecraft` to preserve game data.
+- **Remove Vanta:** delete the `vanta` install directory, `applications/xyz.getvanta.Vanta.desktop` and `icons/hicolor/512x512/apps/xyz.getvanta.Vanta.png` under your XDG data directory, plus `xyz.getvanta.Vanta.desktop` in your desktop folder. Keep `~/.Vanta` and `~/.minecraft` to preserve game data.
 
 ## Features
 

@@ -4456,7 +4456,8 @@ class MinecraftLauncher(QMainWindow):
     def _init_ui(self) -> None:
         self.setWindowTitle(f"Vanta Launcher v{APP_VERSION_RUNTIME}")
 
-        icon_path = os.path.join(_resource_base(), "icons", "icon.ico")
+        icon_path = os.path.join(_resource_base(), "icons",
+                                 "icon.png" if sys.platform.startswith("linux") else "icon.ico")
 
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
@@ -6272,6 +6273,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     if sys.platform.startswith("linux"):
         app.setDesktopFileName("xyz.getvanta.Vanta")
+        app.setWindowIcon(QIcon(os.path.join(_resource_base(), "icons", "icon.png")))
         app.setStyle("Fusion")
     app.setStyleSheet(
         "QToolTip { background-color: #2C2C2E; color: #F2F2F7; border: 1px solid #3A3A3C;"

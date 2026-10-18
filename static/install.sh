@@ -31,7 +31,7 @@ for tool in python3 git flock; do command -v "$tool" >/dev/null || fail "Missing
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 [[ "$DATA_HOME" == /* ]] || fail 'XDG_DATA_HOME must be an absolute path.'
 BASE="$DATA_HOME/vanta"
-mkdir -p "$BASE/releases" "$DATA_HOME/applications" "$DATA_HOME/icons/hicolor/256x256/apps"
+mkdir -p "$BASE/releases" "$DATA_HOME/applications" "$DATA_HOME/icons/hicolor/512x512/apps"
 exec 8>"$BASE/install.lock"
 flock 8
 STAGE=$(mktemp -d "$BASE/releases/install.XXXXXXXX")
@@ -46,15 +46,48 @@ LINK="$BASE/current.new.$$"
 ln -s "$STAGE" "$LINK"
 mv -Tf "$LINK" "$BASE/current"
 STAGE=''
-cp "$BASE/current/icons/icon.png" "$DATA_HOME/icons/hicolor/256x256/apps/xyz.getvanta.Vanta.png"
+cp "$BASE/current/icons/icon.png" "$DATA_HOME/icons/hicolor/512x512/apps/xyz.getvanta.Vanta.png"
 # Escape paths according to the Desktop Entry string and Exec quoting rules.
-python3 - "$BASE/current/start.sh" "$DATA_HOME/applications/xyz.getvanta.Vanta.desktop" <<'PY'
-import pathlib, sys
-launcher, destination = sys.argv[1:]
+python3 - "$BASE/current/start.sh" "$DATA_HOME/applications/xyz.getvanta.Vanta.desktop" "$DATA_HOME/icons/hicolor/512x512/apps/xyz.getvanta.Vanta.png" <<'PY'
+import pathlib, shutil, subprocess, sys
+launcher, destination, icon = sys.argv[1:]
 quoted = launcher.replace('\\', '\\\\').replace('"', '\\"').replace('`', '\\`').replace('$', '\\$').replace('%', '%%')
 # Desktop Entry string escapes are decoded before Exec quoting.
 quoted = quoted.replace('\\', '\\\\')
-pathlib.Path(destination).write_text('[Desktop Entry]\nType=Application\nName=Vanta Launcher\nComment=Play Minecraft with Vanta\nExec="' + quoted + '"\nIcon=xyz.getvanta.Vanta\nTerminal=false\nCategories=Game;\nStartupWMClass=Vanta Launcher\n', encoding='utf-8')
+icon = icon.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
+pathlib.Path(destination).write_text('[Desktop Entry]\nType=Application\nName=Vanta Launcher\nComment=Play Minecraft with Vanta\nExec="' + quoted + '"\nIcon=' + icon + '\nTerminal=false\nCategories=Game;\nStartupWMClass=Vanta Launcher\n', encoding='utf-8')
+# Respect localized desktop paths and desktops disabled with XDG_DESKTOP_DIR=$HOME.
+desktop = None
+if shutil.which('xdg-user-dir'):
+    try:
+        result = subprocess.run(['xdg-user-dir', 'DESKTOP'], capture_output=True,
+                                text=True, timeout=5, check=True)
+        candidate = pathlib.Path(result.stdout.strip())
+        if candidate.is_absolute() and candidate != pathlib.Path.home() and candidate.is_dir():
+            desktop = candidate
+    except (OSError, subprocess.SubprocessError):
+        pass
+else:
+    candidate = pathlib.Path.home() / 'Desktop'
+    if candidate.is_dir():
+        desktop = candidate
+if desktop is not None:
+    shortcut = desktop / 'xyz.getvanta.Vanta.desktop'
+    shutil.copyfile(destination, shortcut)
+    shortcut.chmod(0o755)
+    trusted = False
+    if shutil.which('gio'):
+        try:
+            result = subprocess.run(['gio', 'set', '-t', 'string', str(shortcut),
+                                     'metadata::trusted', 'true'],
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                    timeout=5)
+            trusted = result.returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            pass
+    print(f'Desktop shortcut: {shortcut}')
+    if not trusted:
+        print('If your desktop asks, right-click the shortcut and choose Allow Launching.')
 PY
 if command -v update-desktop-database >/dev/null; then update-desktop-database "$DATA_HOME/applications" || true; fi
 printf '\nVanta installed. Open Vanta Launcher from your application menu.\nRun this installer again to update. Game data stays in ~/.Vanta.\n'
