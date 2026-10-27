@@ -1,7 +1,6 @@
 /target
 **/*.rs.bk
 /dist
-/.claude/
 .env
 *.minisign.key
 *.key
