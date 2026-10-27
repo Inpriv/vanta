@@ -62,7 +62,7 @@ jobs:
           CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
           & "${{ steps.sign.outputs.signtool }}" sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f "$env:RUNNER_TEMP\cert.pfx" /p $env:CERT_PASSWORD "dist\Vanta-Setup-$env:VERSION.exe"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: dist/*
@@ -112,7 +112,7 @@ jobs:
           printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/bin/vanta" "$@"\n' > $app/AppRun
           chmod +x $app/AppRun
           ARCH=x86_64 ./appimagetool --no-appstream $app "dist/Vanta-${VERSION}-x86_64.AppImage"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux
           path: dist/*
@@ -138,7 +138,7 @@ jobs:
           chown -R builder /tmp/pkg
           su builder -c "cd /tmp/pkg && VANTA_VERSION=${VERSION} PKGEXT=.pkg.tar.zst makepkg --nodeps --noconfirm"
           mkdir out && cp /tmp/pkg/vanta-${VERSION}-1-x86_64.pkg.tar.zst "out/vanta-${VERSION}-x86_64.pkg.tar.zst"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: arch
           path: out/*
