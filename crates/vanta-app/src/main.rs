@@ -44,6 +44,23 @@ fn init_logging(dir: &std::path::Path) -> Option<tracing_appender::non_blocking:
     Some(guard)
 }
 
+/// winit backend with the application id set, so desktop environments match
+/// the window to `xyz.getvanta.Vanta.desktop` (icon, grouping).
+fn select_backend() {
+    let selector = slint::BackendSelector::new().with_winit_window_attributes_hook(|attrs| {
+        #[cfg(target_os = "linux")]
+        let attrs = {
+            use slint::winit_030::winit::platform::{wayland, x11};
+            let attrs = wayland::WindowAttributesExtWayland::with_name(attrs, "xyz.getvanta.Vanta", "vanta");
+            x11::WindowAttributesExtX11::with_name(attrs, "xyz.getvanta.Vanta", "vanta")
+        };
+        attrs
+    });
+    if let Err(e) = selector.select() {
+        tracing::warn!(error = %e, "falling back to the default backend");
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let started = Instant::now();
     let settings = settings::Settings::load();
@@ -78,6 +95,7 @@ fn main() -> anyhow::Result<()> {
         .build()
         .context("could not start the async runtime")?;
 
+    select_backend();
     let ui = AppWindow::new().context("could not create the window")?;
 
     let launcher = Launcher::new(paths.clone());

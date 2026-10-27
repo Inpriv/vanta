@@ -1,0 +1,196 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build, e.g. v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  windows:
+    name: Windows x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Version
+        shell: bash
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+      - name: Build
+        env:
+          VANTA_MSA_CLIENT_ID: ${{ secrets.VANTA_MSA_CLIENT_ID }}
+        run: cargo build --release -p vanta-app
+      - name: Code signing (only when certificate secrets are configured)
+        id: sign
+        shell: pwsh
+        env:
+          CERT: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          if (-not $env:CERT) { Write-Host "No signing certificate configured; skipping."; echo "enabled=false" >> $env:GITHUB_OUTPUT; exit 0 }
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:CERT))
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          & $signtool.FullName sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f "$env:RUNNER_TEMP\cert.pfx" /p $env:CERT_PASSWORD target\release\vanta.exe
+          echo "enabled=true" >> $env:GITHUB_OUTPUT
+          echo "signtool=$($signtool.FullName)" >> $env:GITHUB_OUTPUT
+      - name: Portable executable
+        shell: bash
+        run: |
+          mkdir dist
+          cp target/release/vanta.exe "dist/Vanta-${VERSION}-portable.exe"
+      - name: Installer
+        shell: pwsh
+        run: |
+          makensis /DVERSION=$env:VERSION /DSOURCE="$pwd\target\release\vanta.exe" /DOUTFILE="$pwd\dist\Vanta-Setup-$env:VERSION.exe" packaging\windows\installer.nsi
+      - name: Sign installer
+        if: steps.sign.outputs.enabled == 'true'
+        shell: pwsh
+        env:
+          CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          & "${{ steps.sign.outputs.signtool }}" sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f "$env:RUNNER_TEMP\cert.pfx" /p $env:CERT_PASSWORD "dist\Vanta-Setup-$env:VERSION.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+
+  linux:
+    name: Linux x86_64
+    # Oldest supported runner for broad glibc compatibility.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: System libraries
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libwayland-dev libdbus-1-dev desktop-file-utils libfuse2
+      - name: Version
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+      - name: Build
+        env:
+          VANTA_MSA_CLIENT_ID: ${{ secrets.VANTA_MSA_CLIENT_ID }}
+        run: cargo build --release -p vanta-app
+      - name: Tarball
+        run: |
+          mkdir -p dist
+          d="vanta-${VERSION}-x86_64-linux"
+          mkdir -p "$d/icons"
+          cp target/release/vanta LICENSE packaging/linux/xyz.getvanta.Vanta.desktop packaging/linux/xyz.getvanta.Vanta.metainfo.xml "$d/"
+          cp packaging/icons/vanta.svg packaging/icons/vanta-*.png "$d/icons/"
+          tar czf "dist/$d.tar.gz" "$d"
+      - name: Debian package
+        run: |
+          cargo install cargo-deb --locked
+          cargo deb -p vanta-app --no-build --no-strip --output "dist/vanta_${VERSION}_amd64.deb"
+      - name: AppImage
+        run: |
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+          app=Vanta.AppDir
+          mkdir -p $app/usr/bin $app/usr/share/applications $app/usr/share/metainfo $app/usr/share/icons/hicolor/256x256/apps
+          cp target/release/vanta $app/usr/bin/
+          cp packaging/linux/xyz.getvanta.Vanta.desktop $app/usr/share/applications/
+          cp packaging/linux/xyz.getvanta.Vanta.desktop $app/
+          cp packaging/linux/xyz.getvanta.Vanta.metainfo.xml $app/usr/share/metainfo/xyz.getvanta.Vanta.appdata.xml
+          cp packaging/icons/vanta-256.png $app/usr/share/icons/hicolor/256x256/apps/xyz.getvanta.Vanta.png
+          cp packaging/icons/vanta-256.png $app/xyz.getvanta.Vanta.png
+          printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/bin/vanta" "$@"\n' > $app/AppRun
+          chmod +x $app/AppRun
+          ARCH=x86_64 ./appimagetool --no-appstream $app "dist/Vanta-${VERSION}-x86_64.AppImage"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*
+
+  arch:
+    name: Arch Linux package
+    needs: linux
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux
+          path: dist
+      - name: Build package
+        run: |
+          VERSION="${TAG#v}"
+          useradd -m builder
+          mkdir /tmp/pkg && cp packaging/arch/PKGBUILD "dist/vanta-${VERSION}-x86_64-linux.tar.gz" /tmp/pkg/
+          chown -R builder /tmp/pkg
+          su builder -c "cd /tmp/pkg && VANTA_VERSION=${VERSION} PKGEXT=.pkg.tar.zst makepkg --nodeps --noconfirm"
+          mkdir out && cp /tmp/pkg/vanta-${VERSION}-1-x86_64.pkg.tar.zst "out/vanta-${VERSION}-x86_64.pkg.tar.zst"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch
+          path: out/*
+
+  publish:
+    name: Publish release
+    needs: [windows, linux, arch]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Sign update packages
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y minisign
+          if [ -z "$MINISIGN_SECRET_KEY" ]; then echo "::error::MINISIGN_SECRET_KEY is not set"; exit 1; fi
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$RUNNER_TEMP/minisign.key"
+          cd artifacts
+          for f in *; do
+            minisign -S -s "$RUNNER_TEMP/minisign.key" -m "$f" -t "Vanta $TAG $f" < /dev/null
+          done
+          minisign -V -p ../packaging/minisign.pub -m "$(ls *.AppImage)"
+          rm -f "$RUNNER_TEMP/minisign.key"
+      - name: Checksums
+        run: cd artifacts && sha256sum $(ls | grep -v minisig) > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Release notes
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: NOTES.md
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            cat NOTES.md
+            echo
+            echo "Verify downloads with \`sha256sum -c SHA256SUMS.txt\`. Update packages are signed with the key in \`packaging/minisign.pub\`."
+            echo
+            echo "Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft."
+          } > BODY.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/* --clobber
+          else
+            gh release create "$TAG" artifacts/* --title "Vanta ${TAG#v}" --notes-file BODY.md
+          fi

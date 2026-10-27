@@ -3,7 +3,7 @@
 
 use vanta_core::accounts::SecretStore;
 
-const SERVICE: &str = "dev.inpriv.vanta";
+const SERVICE: &str = "xyz.getvanta.Vanta";
 /// Windows limits a credential blob to 2560 bytes (UTF-16), so long values
 /// are split across several entries.
 const CHUNK: usize = 1000;

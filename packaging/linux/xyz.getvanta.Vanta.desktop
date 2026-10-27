@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Vanta
+GenericName=Minecraft Launcher
+Comment=Fast, minimal launcher for Minecraft: Java Edition
+Exec=vanta
+Icon=xyz.getvanta.Vanta
+Terminal=false
+Categories=Game;
+Keywords=minecraft;launcher;mods;modrinth;fabric;forge;
+StartupWMClass=xyz.getvanta.Vanta
+StartupNotify=true

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>xyz.getvanta.Vanta</id>
+  <name>Vanta</name>
+  <summary>Fast, minimal launcher for Minecraft: Java Edition</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="xyz.getvanta">
+    <name>Inpriv</name>
+  </developer>
+  <description>
+    <p>
+      Vanta is an open-source launcher for Minecraft: Java Edition. It signs in with your
+      Microsoft account, keeps every instance separate, installs Fabric, Quilt, Forge and
+      NeoForge, and lets you browse and install mods, resource packs, shaders and modpacks
+      from Modrinth.
+    </p>
+    <p>
+      Vanta has no telemetry. Game files are downloaded from official sources only.
+      Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
+    </p>
+  </description>
+  <launchable type="desktop-id">xyz.getvanta.Vanta.desktop</launchable>
+  <url type="homepage">https://getvanta.xyz</url>
+  <url type="vcs-browser">https://github.com/Inpriv/vanta</url>
+  <url type="bugtracker">https://github.com/Inpriv/vanta/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://getvanta.xyz/assets/screenshots/home.png</image>
+      <caption>Home</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://getvanta.xyz/assets/screenshots/browse.png</image>
+      <caption>Browsing Modrinth</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <categories>
+    <category>Game</category>
+  </categories>
+  <releases>
+    <release version="0.1.0" date="2026-10-27"/>
+  </releases>
+</component>

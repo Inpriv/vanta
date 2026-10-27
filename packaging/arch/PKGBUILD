@@ -1,0 +1,28 @@
+# Builds vanta-<version>-x86_64.pkg.tar.zst from the release tarball in this
+# directory (used by the release workflow). For the AUR see ../aur/PKGBUILD.
+pkgname=vanta
+pkgver=${VANTA_VERSION:-0.1.0}
+pkgrel=1
+pkgdesc="Fast, minimal launcher for Minecraft: Java Edition"
+arch=('x86_64')
+url="https://getvanta.xyz"
+license=('GPL-3.0-or-later')
+depends=('glibc' 'gcc-libs' 'fontconfig' 'freetype2' 'libxkbcommon' 'dbus' 'hicolor-icon-theme')
+optdepends=('wayland: Wayland session support'
+            'libx11: X11 session support'
+            'xdg-desktop-portal: native file dialogs')
+source=("vanta-${pkgver}-x86_64-linux.tar.gz")
+sha256sums=('SKIP')
+options=('!strip' '!debug')
+
+package() {
+  cd "vanta-${pkgver}-x86_64-linux"
+  install -Dm755 vanta "${pkgdir}/usr/bin/vanta"
+  install -Dm644 xyz.getvanta.Vanta.desktop "${pkgdir}/usr/share/applications/xyz.getvanta.Vanta.desktop"
+  install -Dm644 xyz.getvanta.Vanta.metainfo.xml "${pkgdir}/usr/share/metainfo/xyz.getvanta.Vanta.metainfo.xml"
+  for size in 16 32 48 64 128 256 512; do
+    install -Dm644 "icons/vanta-${size}.png" "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/xyz.getvanta.Vanta.png"
+  done
+  install -Dm644 icons/vanta.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/xyz.getvanta.Vanta.svg"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
