@@ -8,8 +8,15 @@ pub const USER_AGENT: &str = concat!(
     " (+https://github.com/Inpriv/vanta)"
 );
 
+/// Install rustls' `ring` crypto provider (smaller than the aws-lc default).
+/// Safe to call any number of times.
+pub fn install_crypto_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
 /// Shared HTTP client: rustls, HTTP/2, connection pooling.
 pub fn client() -> reqwest::Client {
+    install_crypto_provider();
     reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .connect_timeout(Duration::from_secs(10))

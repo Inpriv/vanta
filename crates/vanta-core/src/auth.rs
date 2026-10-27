@@ -477,7 +477,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let auth = AuthClient::new(reqwest::Client::new(), "cid").with_endpoints(endpoints(&server.uri()));
+        let auth = AuthClient::new(crate::http::client(), "cid").with_endpoints(endpoints(&server.uri()));
         let session = auth.login_minecraft("MSA").await.unwrap();
         assert_eq!(session.access_token, "MC");
         assert_eq!(session.profile.name, "Notch");
@@ -498,7 +498,7 @@ mod tests {
             .respond_with(ResponseTemplate::new(404))
             .mount(&server)
             .await;
-        let auth = AuthClient::new(reqwest::Client::new(), "cid").with_endpoints(endpoints(&server.uri()));
+        let auth = AuthClient::new(crate::http::client(), "cid").with_endpoints(endpoints(&server.uri()));
         assert!(matches!(
             auth.login_minecraft("MSA").await,
             Err(AuthError::NotOwned)
@@ -520,7 +520,7 @@ mod tests {
             .respond_with(ResponseTemplate::new(401).set_body_json(json!({"XErr": 2148916238u64})))
             .mount(&server)
             .await;
-        let auth = AuthClient::new(reqwest::Client::new(), "cid").with_endpoints(endpoints(&server.uri()));
+        let auth = AuthClient::new(crate::http::client(), "cid").with_endpoints(endpoints(&server.uri()));
         assert!(matches!(
             auth.login_minecraft("MSA").await,
             Err(AuthError::ChildAccount)
@@ -551,7 +551,7 @@ mod tests {
             })))
             .mount(&server)
             .await;
-        let auth = AuthClient::new(reqwest::Client::new(), "cid").with_endpoints(endpoints(&server.uri()));
+        let auth = AuthClient::new(crate::http::client(), "cid").with_endpoints(endpoints(&server.uri()));
         let code = auth.start_device_code().await.unwrap();
         assert_eq!(code.user_code, "ABCD-EFGH");
         let tokens = auth.poll_device_code(&code).await.unwrap();
@@ -560,7 +560,7 @@ mod tests {
 
     #[tokio::test]
     async fn missing_client_id() {
-        let auth = AuthClient::new(reqwest::Client::new(), "");
+        let auth = AuthClient::new(crate::http::client(), "");
         assert!(matches!(
             auth.start_device_code().await,
             Err(AuthError::MissingClientId)

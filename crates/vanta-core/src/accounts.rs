@@ -260,7 +260,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let store = Arc::new(MemoryStore::default());
         let file = dir.path().join("accounts.json");
-        let auth = AuthClient::new(reqwest::Client::new(), "cid");
+        let auth = AuthClient::new(crate::http::client(), "cid");
         let mut m = AccountManager::load(file.clone(), store.clone(), auth.clone());
         m.add(tokens(), session("a", 60)).unwrap();
         m.add(tokens(), session("b", 60)).unwrap();

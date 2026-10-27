@@ -401,6 +401,11 @@ mod tests {
     use wiremock::matchers::{body_partial_json, method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
+    fn http() -> reqwest::Client {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        reqwest::Client::new()
+    }
+
     fn version(id: &str, project: &str, deps: serde_json::Value) -> serde_json::Value {
         json!({
             "id": id, "project_id": project, "name": id, "version_number": "1.0.0",
@@ -442,7 +447,7 @@ mod tests {
             })))
             .mount(&server)
             .await;
-        let client = Client::with_base(reqwest::Client::new(), server.uri());
+        let client = Client::with_base(http(), server.uri());
         let res = client
             .search(&SearchQuery {
                 query: "sodium".into(),
@@ -475,7 +480,7 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(version("lib-1", "lib", json!([]))))
             .mount(&server)
             .await;
-        let client = Client::with_base(reqwest::Client::new(), server.uri());
+        let client = Client::with_base(http(), server.uri());
         let root: Version = serde_json::from_value(version(
             "root-1",
             "root",
@@ -521,7 +526,7 @@ mod tests {
             })))
             .mount(&server)
             .await;
-        let client = Client::with_base(reqwest::Client::new(), server.uri());
+        let client = Client::with_base(http(), server.uri());
         let res = client
             .latest_versions(&["oldsha".into()], &["fabric"], &["1.20.1"])
             .await
@@ -537,7 +542,7 @@ mod tests {
             .respond_with(ResponseTemplate::new(404).set_body_string("not found"))
             .mount(&server)
             .await;
-        let client = Client::with_base(reqwest::Client::new(), server.uri());
+        let client = Client::with_base(http(), server.uri());
         assert!(matches!(
             client.project("nope").await,
             Err(Error::Status { status: 404, .. })

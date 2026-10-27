@@ -433,7 +433,7 @@ mod tests {
         };
         let pack = dir.path().join("t.mrpack");
         write_pack(&pack, &index, &[("overrides/options.txt", b"fov:1")]);
-        let dl = Downloader::new(reqwest::Client::new());
+        let dl = Downloader::new(crate::http::client());
         let err = import(&paths, &store, &dl, &pack, &Progress::default())
             .await
             .unwrap_err();
@@ -468,7 +468,7 @@ mod tests {
                 ("overrides/config/x.json", b"{}"),
             ],
         );
-        let dl = Downloader::new(reqwest::Client::new());
+        let dl = Downloader::new(crate::http::client());
         let inst = import(&paths, &store, &dl, &pack, &Progress::default())
             .await
             .unwrap();

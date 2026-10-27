@@ -426,7 +426,7 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn downloader() -> Downloader {
-        Downloader::new(reqwest::Client::new()).retries(2)
+        Downloader::new(crate::http::client()).retries(2)
     }
 
     #[tokio::test]
