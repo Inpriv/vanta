@@ -1,0 +1,232 @@
+// Data shared between Rust and the UI, plus every callback the UI can invoke.
+
+export enum Page { home, instances, instance, browse, settings }
+
+export struct InstanceItem {
+    id: string,
+    name: string,
+    initial: string,
+    icon: string,
+    game-version: string,
+    loader: string,
+    loader-index: int,
+    loader-version: string,
+    last-played: string,
+    running: bool,
+    memory-mb: int,
+    jvm-args: string,
+    java-path: string,
+    custom-resolution: bool,
+    width: int,
+    height: int,
+}
+
+export struct VersionItem {
+    id: string,
+    kind: string,
+    date: string,
+}
+
+export struct AccountItem {
+    uuid: string,
+    name: string,
+    head: image,
+    has-head: bool,
+    active: bool,
+}
+
+export struct LogItem {
+    text: string,
+    // 0 debug · 1 info · 2 warn · 3 error
+    level: int,
+}
+
+export struct ProjectItem {
+    id: string,
+    title: string,
+    author: string,
+    description: string,
+    downloads: string,
+    categories: string,
+    icon: image,
+    has-icon: bool,
+    installed: bool,
+    installing: bool,
+}
+
+export struct ContentItem {
+    file-name: string,
+    title: string,
+    subtitle: string,
+    icon: image,
+    has-icon: bool,
+    enabled: bool,
+    has-update: bool,
+    updating: bool,
+}
+
+export struct JavaItem {
+    path: string,
+    label: string,
+}
+
+export struct ProgressInfo {
+    active: bool,
+    stage: string,
+    // < 0 means indeterminate.
+    fraction: float,
+    detail: string,
+}
+
+export global App {
+    // ---- navigation & window ----
+    in-out property <Page> page: Page.home;
+    in-out property <bool> maximized: false;
+    in property <string> version: "0.1.0";
+    callback start-drag();
+    callback start-resize(int);
+    callback toggle-maximize();
+    callback minimize();
+    callback close();
+    callback open-url(string);
+    // Case-insensitive substring match (Slint strings have no `contains`).
+    pure callback text-matches(string, string) -> bool;
+
+    // ---- toasts ----
+    in-out property <string> toast-text;
+    in-out property <bool> toast-error;
+    in-out property <int> toast-serial;
+
+    // ---- accounts ----
+    in property <[AccountItem]> accounts;
+    in property <AccountItem> active-account;
+    in property <bool> has-account: false;
+    in property <bool> msa-configured: true;
+    in-out property <bool> login-open: false;
+    in property <string> login-code;
+    in property <string> login-url;
+    in property <string> login-error;
+    in property <bool> login-busy;
+    callback add-account();
+    callback cancel-login();
+    callback copy-login-code();
+    callback switch-account(string);
+    callback remove-account(string);
+
+    // ---- instances ----
+    in property <[InstanceItem]> instances;
+    in property <bool> instances-loaded: false;
+    in-out property <string> featured-id;
+    in property <InstanceItem> featured;
+    in property <bool> has-featured: false;
+    in-out property <string> selected-id;
+    in property <InstanceItem> selected;
+    in property <ProgressInfo> launch-progress;
+    in property <string> launch-instance-id;
+    in property <string> running-time;
+    callback play(string);
+    callback stop(string);
+    callback cancel-launch();
+    callback select-instance(string);
+    callback feature-instance(string);
+    callback create-instance(string, string, int, string, string);
+    callback rename-instance(string, string);
+    callback duplicate-instance(string);
+    callback delete-instance(string);
+    callback open-instance-folder(string);
+    callback set-instance-icon(string, string);
+    callback save-instance(InstanceItem);
+    callback import-mrpack();
+    callback export-mrpack(string, string, string, bool, bool, bool, bool);
+    callback browse-instance-java();
+
+    // ---- versions (create dialog) ----
+    in property <[VersionItem]> versions;
+    in property <bool> versions-loading;
+    in-out property <bool> show-snapshots: false;
+    in-out property <bool> show-old: false;
+    in property <[string]> loader-versions;
+    in property <bool> loader-versions-loading;
+    callback refresh-versions(string);
+    callback request-loader-versions(string, int);
+
+    // ---- content of the selected instance ----
+    in-out property <int> content-kind: 0;
+    in property <[ContentItem]> content;
+    in property <bool> content-loading;
+    in property <int> updates-available;
+    in property <bool> checking-updates;
+    callback refresh-content();
+    callback toggle-content(string, bool);
+    callback remove-content(string);
+    callback update-content(string);
+    callback update-all-content();
+    callback check-content-updates();
+    callback add-local-content();
+
+    // ---- browse (Modrinth) ----
+    in-out property <string> browse-query;
+    in-out property <int> browse-kind: 0;
+    in-out property <int> browse-sort: 0;
+    in-out property <int> browse-category: 0;
+    in-out property <string> browse-target-id;
+    in property <int> browse-target-index: -1;
+    in property <[string]> instance-names;
+    in property <[string]> browse-categories: ["All categories"];
+    in property <[ProjectItem]> projects;
+    in property <bool> projects-loading;
+    in property <bool> projects-more;
+    in property <string> projects-total;
+    in property <string> browse-error;
+    callback search();
+    callback load-more();
+    callback install-project(string);
+    callback open-project(string);
+
+    // ---- console ----
+    in-out property <bool> console-open: false;
+    in property <[LogItem]> logs;
+    in-out property <int> log-filter: 0;
+    in-out property <string> log-search;
+    callback copy-logs();
+    callback open-logs-folder();
+    callback clear-logs();
+    callback apply-log-filter();
+
+    // ---- crash ----
+    in-out property <bool> crash-open: false;
+    in property <string> crash-summary;
+    in property <string> crash-detail;
+    in property <bool> crash-has-report;
+    callback open-crash-report();
+    callback copy-crash();
+
+    // ---- settings ----
+    in-out property <int> theme-index: 0;
+    in-out property <int> accent-index: 0;
+    in-out property <bool> reduce-motion: false;
+    in-out property <int> default-memory-mb: 4096;
+    in property <int> max-memory-mb: 16384;
+    in-out property <string> java-path;
+    in-out property <string> global-jvm-args;
+    in-out property <int> close-behavior: 0;
+    in property <string> data-dir;
+    in-out property <bool> auto-update-check: true;
+    in property <[JavaItem]> javas;
+    in property <bool> javas-loading;
+    callback settings-changed();
+    callback detect-java();
+    callback browse-java();
+    callback change-data-dir();
+    callback open-data-dir();
+
+    // ---- updater ----
+    in property <bool> update-available;
+    in property <string> update-version;
+    in property <string> update-notes;
+    in property <bool> update-busy;
+    in property <string> update-status;
+    in-out property <bool> update-open;
+    callback check-for-updates();
+    callback install-update();
+}

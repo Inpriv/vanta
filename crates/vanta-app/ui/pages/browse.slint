@@ -1,0 +1,283 @@
+import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Segmented, Select, Card, Skeleton, Spinner } from "../components.slint";
+import { App, ProjectItem } from "../state.slint";
+
+component ProjectRow inherits Rectangle {
+    in property <ProjectItem> item;
+    in property <bool> is-pack;
+    height: 92px;
+    border-radius: Radius.lg;
+    background: ta.has-hover ? Theme.surface-2 : transparent;
+    animate background { duration: Motion.fast; }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { App.open-project(root.item.id); }
+    }
+    HorizontalLayout {
+        padding: Space.s3;
+        spacing: Space.s4;
+        Rectangle {
+            width: 64px;
+            height: 64px;
+            y: (parent.height - self.height) / 2;
+            border-radius: Radius.md;
+            background: Theme.surface-3;
+            clip: true;
+            if root.item.has-icon: Image {
+                source: root.item.icon;
+                width: 100%;
+                height: 100%;
+            }
+            if !root.item.has-icon: Icon {
+                source: @image-url("../icons/box.svg");
+                size: 24px;
+                colorize: Theme.text-faint;
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 3px;
+            HorizontalLayout {
+                spacing: Space.s2;
+                Text {
+                    text: root.item.title;
+                    color: Theme.text;
+                    font-size: Type.subtitle;
+                    font-weight: 600;
+                    overflow: elide;
+                }
+                Text {
+                    text: "by " + root.item.author;
+                    color: Theme.text-faint;
+                    font-size: Type.small;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+            }
+            Text {
+                text: root.item.description;
+                color: Theme.text-muted;
+                font-size: Type.small;
+                overflow: elide;
+            }
+            HorizontalLayout {
+                spacing: Space.s3;
+                alignment: start;
+                HorizontalLayout {
+                    spacing: 4px;
+                    Icon {
+                        source: @image-url("../icons/download.svg");
+                        size: 13px;
+                        colorize: Theme.text-faint;
+                        y: (parent.height - self.height) / 2;
+                    }
+                    Text {
+                        text: root.item.downloads;
+                        color: Theme.text-faint;
+                        font-size: Type.caption;
+                    }
+                }
+                Text {
+                    text: root.item.categories;
+                    color: Theme.text-faint;
+                    font-size: Type.caption;
+                    overflow: elide;
+                }
+            }
+        }
+        if root.item.installing: Rectangle {
+            width: 110px;
+            Spinner { }
+        }
+        if !root.item.installing: Button {
+            y: (parent.height - self.height) / 2;
+            width: 110px;
+            text: root.item.installed ? "Installed" : root.is-pack ? "Install pack" : "Install";
+            kind: root.item.installed ? ButtonKind.ghost : ButtonKind.secondary;
+            icon: root.item.installed ? @image-url("../icons/check.svg") : @image-url("../icons/download.svg");
+            has-icon: true;
+            enabled: !root.item.installed && (root.is-pack || App.browse-target-id != "");
+            clicked => { App.install-project(root.item.id); }
+        }
+    }
+}
+
+export component BrowsePage inherits Rectangle {
+    VerticalLayout {
+        width: parent.width;
+        height: parent.height;
+        padding: Space.s10;
+        padding-top: Space.s4;
+        padding-bottom: 0;
+        spacing: Space.s4;
+
+        HorizontalLayout {
+            spacing: Space.s3;
+            Text {
+                text: "Browse";
+                color: Theme.text;
+                font-size: Type.display;
+                font-weight: 700;
+                letter-spacing: -0.4px;
+                horizontal-stretch: 1;
+            }
+            Text {
+                text: "Powered by Modrinth";
+                color: Theme.text-faint;
+                font-size: Type.small;
+                vertical-alignment: center;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Space.s3;
+            TextField {
+                horizontal-stretch: 1;
+                height: 42px;
+                text <=> App.browse-query;
+                placeholder: "Search mods, packs and shaders";
+                icon: @image-url("../icons/search.svg");
+                has-icon: true;
+                accepted => { App.search(); }
+                edited => { debounce.restart(); }
+            }
+            debounce := Timer {
+                interval: 350ms;
+                running: false;
+                triggered => {
+                    self.running = false;
+                    App.search();
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Space.s3;
+            Segmented {
+                options: ["Mods", "Resource packs", "Shaders", "Modpacks"];
+                item-width: 118px;
+                current <=> App.browse-kind;
+                selected => {
+                    App.browse-category = 0;
+                    App.search();
+                }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            Select {
+                width: 170px;
+                options: App.browse-categories;
+                current-index <=> App.browse-category;
+                selected => { App.search(); }
+            }
+            Select {
+                width: 150px;
+                options: ["Relevance", "Downloads", "Follows", "Newest", "Updated"];
+                current-index <=> App.browse-sort;
+                selected => { App.search(); }
+            }
+        }
+
+        // Install target
+        if App.browse-kind != 3: Rectangle {
+            height: 44px;
+            border-radius: Radius.md;
+            background: Theme.surface-1;
+            border-width: 1px;
+            border-color: Theme.border;
+            HorizontalLayout {
+                padding-left: Space.s4;
+                padding-right: Space.s1;
+                spacing: Space.s3;
+                Text {
+                    text: "Install to";
+                    color: Theme.text-muted;
+                    font-size: Type.small;
+                    vertical-alignment: center;
+                }
+                Select {
+                    y: 3px;
+                    height: 36px;
+                    width: 280px;
+                    placeholder: App.instances.length == 0 ? "Create an instance first" : "Choose an instance";
+                    options: App.instance-names;
+                    current-index: App.browse-target-index;
+                    selected(i) => {
+                        App.browse-target-id = App.instances[i].id;
+                        App.search();
+                    }
+                }
+                Text {
+                    horizontal-stretch: 1;
+                    text: App.browse-target-id == "" ? "" : "Showing results compatible with this instance";
+                    color: Theme.text-faint;
+                    font-size: Type.caption;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+        }
+
+        if App.browse-error != "": Rectangle {
+            height: 40px;
+            border-radius: Radius.md;
+            background: Theme.danger-soft;
+            Text {
+                text: App.browse-error;
+                color: Theme.danger;
+                font-size: Type.small;
+            }
+        }
+
+        results := Flickable {
+            vertical-stretch: 1;
+            viewport-height: list.preferred-height;
+            // Infinite scroll: fetch the next page near the bottom.
+            changed viewport-y => {
+                if App.projects-more && !App.projects-loading && -self.viewport-y + self.height > self.viewport-height - 300px {
+                    App.load-more();
+                }
+            }
+            list := VerticalLayout {
+                alignment: start;
+                spacing: 2px;
+                padding-bottom: Space.s8;
+                if App.projects-total != "": Text {
+                    text: App.projects-total;
+                    color: Theme.text-faint;
+                    font-size: Type.caption;
+                }
+                for p in App.projects: ProjectRow {
+                    item: p;
+                    is-pack: App.browse-kind == 3;
+                }
+                if App.projects-loading: VerticalLayout {
+                    spacing: Space.s2;
+                    for i in (App.projects.length == 0 ? 6 : 2): HorizontalLayout {
+                        padding: Space.s3;
+                        spacing: Space.s4;
+                        height: 92px;
+                        Skeleton {
+                            width: 64px;
+                            height: 64px;
+                            border-radius: Radius.md;
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: Space.s2;
+                            Skeleton { height: 14px; width: 220px; }
+                            Skeleton { height: 12px; }
+                            Skeleton { height: 10px; width: 120px; }
+                        }
+                    }
+                }
+                if !App.projects-loading && App.projects.length == 0 && App.browse-error == "": Text {
+                    text: "No results";
+                    color: Theme.text-muted;
+                    horizontal-alignment: center;
+                }
+            }
+        }
+    }
+}

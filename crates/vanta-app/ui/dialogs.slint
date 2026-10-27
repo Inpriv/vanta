@@ -1,0 +1,801 @@
+import { Theme, Type, Space, Radius, Motion } from "theme.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Segmented, Select, Checkbox, Modal, InstanceIcon, Spinner, Skeleton, Divider, SectionTitle } from "components.slint";
+import { App, Page, VersionItem } from "state.slint";
+import { Avatar } from "shell.slint";
+import { ListView } from "std-widgets.slint";
+
+export global IconKeys {
+    out property <[string]> all: ["grass", "stone", "sand", "ocean", "nether", "end", "ember", "frost", "night", "bloom"];
+}
+
+component IconChoice inherits Rectangle {
+    in property <string> key;
+    in property <string> initial;
+    in property <bool> selected;
+    callback clicked();
+    width: 48px;
+    height: 48px;
+    border-radius: Radius.md + 2px;
+    border-width: selected ? 2px : 0px;
+    border-color: Theme.accent;
+    accessible-role: button;
+    accessible-label: "Icon " + key;
+    accessible-action-default => { clicked(); }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+    InstanceIcon {
+        key: root.key;
+        initial: root.initial;
+        size: ta.has-hover || root.selected ? 40px : 38px;
+        animate size { duration: Motion.fast; easing: Motion.spring; }
+    }
+}
+
+export component CreateInstanceDialog inherits Modal {
+    in-out property <bool> open-state;
+    private property <string> name;
+    private property <string> version-filter;
+    private property <string> selected-version;
+    private property <int> loader: 0;
+    private property <int> loader-version-index: 0;
+    private property <string> icon: "grass";
+
+    open: open-state;
+    title: "New instance";
+    dialog-width: 560px;
+    dismiss => { root.open-state = false; }
+
+    public function reset() {
+        root.name = "";
+        root.version-filter = "";
+        root.selected-version = "";
+        root.loader = 0;
+        root.loader-version-index = 0;
+        root.icon = "grass";
+        App.refresh-versions("");
+    }
+
+    HorizontalLayout {
+        spacing: Space.s3;
+        InstanceIcon {
+            key: root.icon;
+            initial: "V";
+            size: 38px;
+            y: 0;
+        }
+        name-field := TextField {
+            horizontal-stretch: 1;
+            text <=> root.name;
+            placeholder: root.selected-version == "" ? "Instance name" : (root.loader == 0 ? root.selected-version : ["Vanilla", "Fabric", "Quilt", "Forge", "NeoForge"][root.loader] + " " + root.selected-version);
+        }
+    }
+
+    HorizontalLayout {
+        spacing: Space.s1;
+        for k in IconKeys.all: IconChoice {
+            key: k;
+            initial: "";
+            selected: root.icon == k;
+            clicked => { root.icon = k; }
+        }
+    }
+
+    VerticalLayout {
+        spacing: Space.s2;
+        HorizontalLayout {
+            spacing: Space.s3;
+            SectionTitle {
+                text: "GAME VERSION";
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            Checkbox {
+                text: "Snapshots";
+                checked <=> App.show-snapshots;
+                toggled => { App.refresh-versions(root.version-filter); }
+            }
+            Checkbox {
+                text: "Old versions";
+                checked <=> App.show-old;
+                toggled => { App.refresh-versions(root.version-filter); }
+            }
+        }
+        TextField {
+            placeholder: "Search versions";
+            icon: @image-url("icons/search.svg");
+            has-icon: true;
+            text <=> root.version-filter;
+            edited(t) => { App.refresh-versions(t); }
+        }
+        Rectangle {
+            height: 188px;
+            border-radius: Radius.md;
+            border-width: 1px;
+            border-color: Theme.border;
+            background: Theme.surface-2.with-alpha(0.5);
+            clip: true;
+            if App.versions-loading: VerticalLayout {
+                padding: Space.s2;
+                spacing: Space.s2;
+                alignment: start;
+                for i in 5: Skeleton { height: 26px; }
+            }
+            if !App.versions-loading: ListView {
+                for v in App.versions: Rectangle {
+                    height: 36px;
+                    background: v.id == root.selected-version ? Theme.accent-soft : va.has-hover ? Theme.surface-3 : transparent;
+                    animate background { duration: Motion.fast; }
+                    va := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.selected-version = v.id;
+                            root.loader-version-index = 0;
+                            App.request-loader-versions(v.id, root.loader);
+                        }
+                    }
+                    HorizontalLayout {
+                        padding-left: Space.s3;
+                        padding-right: Space.s3;
+                        spacing: Space.s3;
+                        Text {
+                            text: v.id;
+                            color: v.id == root.selected-version ? Theme.accent : Theme.text;
+                            font-weight: v.id == root.selected-version ? 600 : 400;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                        }
+                        Text {
+                            text: v.kind;
+                            color: Theme.text-faint;
+                            font-size: Type.caption;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            text: v.date;
+                            color: Theme.text-faint;
+                            font-size: Type.caption;
+                            vertical-alignment: center;
+                            width: 84px;
+                            horizontal-alignment: right;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    VerticalLayout {
+        spacing: Space.s2;
+        SectionTitle { text: "MOD LOADER"; }
+        Segmented {
+            options: ["Vanilla", "Fabric", "Quilt", "Forge", "NeoForge"];
+            fill: true;
+            current <=> root.loader;
+            selected(i) => {
+                root.loader-version-index = 0;
+                if root.selected-version != "" { App.request-loader-versions(root.selected-version, i); }
+            }
+        }
+        if root.loader != 0: HorizontalLayout {
+            spacing: Space.s2;
+            Text {
+                text: "Loader version";
+                color: Theme.text-muted;
+                font-size: Type.small;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            if App.loader-versions-loading: Spinner { y: (parent.height - self.height) / 2; }
+            Select {
+                width: 240px;
+                enabled: root.selected-version != "" && App.loader-versions.length > 0;
+                placeholder: root.selected-version == "" ? "Pick a game version" : App.loader-versions-loading ? "Loading…" : "Not available";
+                options: App.loader-versions;
+                current-index <=> root.loader-version-index;
+            }
+        }
+    }
+
+    HorizontalLayout {
+        spacing: Space.s2;
+        alignment: end;
+        Button {
+            text: "Cancel";
+            kind: ButtonKind.ghost;
+            clicked => { root.open-state = false; }
+        }
+        Button {
+            text: "Create";
+            kind: ButtonKind.primary;
+            enabled: root.selected-version != "" && (root.loader == 0 || App.loader-versions.length > 0);
+            clicked => {
+                App.create-instance(
+                    root.name == "" ? name-field.placeholder : root.name,
+                    root.selected-version,
+                    root.loader,
+                    root.loader == 0 || App.loader-versions.length == 0 ? "" : App.loader-versions[root.loader-version-index],
+                    root.icon);
+                root.open-state = false;
+            }
+        }
+    }
+}
+
+export component RenameDialog inherits Modal {
+    in-out property <bool> open-state;
+    in-out property <string> value;
+    callback submit(string);
+    open: open-state;
+    title: "Rename instance";
+    dismiss => { root.open-state = false; }
+    field := TextField {
+        text <=> root.value;
+        accepted => {
+            root.submit(root.value);
+            root.open-state = false;
+        }
+    }
+    HorizontalLayout {
+        spacing: Space.s2;
+        alignment: end;
+        Button {
+            text: "Cancel";
+            kind: ButtonKind.ghost;
+            clicked => { root.open-state = false; }
+        }
+        Button {
+            text: "Rename";
+            kind: ButtonKind.primary;
+            enabled: root.value != "";
+            clicked => {
+                root.submit(root.value);
+                root.open-state = false;
+            }
+        }
+    }
+}
+
+export component ConfirmDialog inherits Modal {
+    in-out property <bool> open-state;
+    in property <string> confirm-text: "Delete";
+    callback confirmed();
+    open: open-state;
+    dismiss => { root.open-state = false; }
+    HorizontalLayout {
+        spacing: Space.s2;
+        alignment: end;
+        Button {
+            text: "Cancel";
+            kind: ButtonKind.ghost;
+            clicked => { root.open-state = false; }
+        }
+        Button {
+            text: root.confirm-text;
+            kind: ButtonKind.danger;
+            clicked => {
+                root.confirmed();
+                root.open-state = false;
+            }
+        }
+    }
+}
+
+export component IconDialog inherits Modal {
+    in-out property <bool> open-state;
+    in property <string> current;
+    in property <string> initial;
+    callback picked(string);
+    open: open-state;
+    title: "Choose an icon";
+    dialog-width: 420px;
+    dismiss => { root.open-state = false; }
+    HorizontalLayout {
+        alignment: center;
+        spacing: Space.s1;
+        for k[i] in IconKeys.all: IconChoice {
+            visible: i < 5;
+            key: k;
+            initial: root.initial;
+            selected: root.current == k;
+            clicked => {
+                root.picked(k);
+                root.open-state = false;
+            }
+        }
+    }
+    HorizontalLayout {
+        alignment: center;
+        spacing: Space.s1;
+        for k[i] in IconKeys.all: IconChoice {
+            visible: i >= 5;
+            key: k;
+            initial: root.initial;
+            selected: root.current == k;
+            clicked => {
+                root.picked(k);
+                root.open-state = false;
+            }
+        }
+    }
+}
+
+export component LoginDialog inherits Modal {
+    open: App.login-open;
+    title: "Sign in with Microsoft";
+    subtitle: App.login-error != "" ? "" : "Open the link below, enter the code and approve the sign-in.";
+    dismiss => { App.cancel-login(); }
+
+    if App.login-error != "": Rectangle {
+        border-radius: Radius.md;
+        background: Theme.danger-soft;
+        height: err.preferred-height + 24px;
+        err := Text {
+            x: 12px;
+            width: parent.width - 24px;
+            text: App.login-error;
+            color: Theme.danger;
+            font-size: Type.small;
+            wrap: word-wrap;
+        }
+    }
+    if App.login-error == "" && App.login-code == "": HorizontalLayout {
+        alignment: center;
+        padding: Space.s6;
+        Spinner { size: 24px; }
+    }
+    if App.login-code != "" && App.login-error == "": VerticalLayout {
+        spacing: Space.s4;
+        Rectangle {
+            height: 84px;
+            border-radius: Radius.lg;
+            background: Theme.surface-2;
+            border-width: 1px;
+            border-color: Theme.border;
+            HorizontalLayout {
+                padding-left: Space.s6;
+                padding-right: Space.s3;
+                Text {
+                    horizontal-stretch: 1;
+                    text: App.login-code;
+                    color: Theme.text;
+                    font-size: 30px;
+                    font-weight: 700;
+                    letter-spacing: 4px;
+                    font-family: "monospace";
+                    vertical-alignment: center;
+                }
+                IconButton {
+                    y: (parent.height - self.height) / 2;
+                    icon: @image-url("icons/copy.svg");
+                    label: "Copy code";
+                    size: 40px;
+                    clicked => { App.copy-login-code(); }
+                }
+            }
+        }
+        HorizontalLayout {
+            spacing: Space.s3;
+            Spinner { y: (parent.height - self.height) / 2; size: 16px; }
+            Text {
+                text: "Waiting for you to finish signing in…";
+                color: Theme.text-muted;
+                font-size: Type.small;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: Space.s2;
+        alignment: end;
+        Button {
+            text: "Cancel";
+            kind: ButtonKind.ghost;
+            clicked => { App.cancel-login(); }
+        }
+        if App.login-error != "": Button {
+            text: "Try again";
+            kind: ButtonKind.primary;
+            clicked => { App.add-account(); }
+        }
+        if App.login-code != "" && App.login-error == "": Button {
+            text: "Open " + App.login-url;
+            kind: ButtonKind.primary;
+            icon: @image-url("icons/external.svg");
+            has-icon: true;
+            clicked => {
+                App.copy-login-code();
+                App.open-url(App.login-url);
+            }
+        }
+    }
+}
+
+export component AccountsDialog inherits Modal {
+    in-out property <bool> open-state;
+    open: open-state;
+    title: "Accounts";
+    dialog-width: 420px;
+    dismiss => { root.open-state = false; }
+
+    if App.accounts.length == 0: Text {
+        text: App.msa-configured ? "No accounts yet. Sign in with the Microsoft account that owns Minecraft: Java Edition." : "This build of Vanta has no Microsoft client ID configured, so sign-in is unavailable. See the README to build with VANTA_MSA_CLIENT_ID.";
+        color: Theme.text-muted;
+        font-size: Type.small;
+        wrap: word-wrap;
+    }
+    for a in App.accounts: Rectangle {
+        height: 56px;
+        border-radius: Radius.md;
+        background: a.active ? Theme.accent-soft : aa.has-hover ? Theme.surface-2 : transparent;
+        animate background { duration: Motion.fast; }
+        aa := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { App.switch-account(a.uuid); }
+        }
+        HorizontalLayout {
+            padding-left: Space.s3;
+            padding-right: Space.s2;
+            spacing: Space.s3;
+            Avatar {
+                y: (parent.height - self.height) / 2;
+                account: a;
+                has-account: true;
+                size: 34px;
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                Text {
+                    text: a.name;
+                    color: Theme.text;
+                    font-weight: 600;
+                }
+                Text {
+                    text: a.active ? "Active" : "Microsoft account";
+                    color: a.active ? Theme.accent : Theme.text-faint;
+                    font-size: Type.caption;
+                }
+            }
+            IconButton {
+                y: (parent.height - self.height) / 2;
+                icon: @image-url("icons/logout.svg");
+                label: "Sign out";
+                hover-tint: Theme.danger;
+                clicked => { App.remove-account(a.uuid); }
+            }
+        }
+    }
+    Button {
+        text: "Add Microsoft account";
+        kind: ButtonKind.primary;
+        enabled: App.msa-configured;
+        icon: @image-url("icons/plus.svg");
+        has-icon: true;
+        clicked => {
+            root.open-state = false;
+            App.add-account();
+        }
+    }
+}
+
+export component ExportDialog inherits Modal {
+    in-out property <bool> open-state;
+    in property <string> instance-name;
+    private property <string> pack-version: "1.0.0";
+    private property <bool> mods: true;
+    private property <bool> config: true;
+    private property <bool> packs: true;
+    private property <bool> options: false;
+    open: open-state;
+    title: "Export as Modrinth pack";
+    subtitle: "Files that exist on Modrinth are linked, everything else is bundled.";
+    dismiss => { root.open-state = false; }
+    HorizontalLayout {
+        spacing: Space.s3;
+        Text {
+            text: "Version";
+            color: Theme.text-muted;
+            vertical-alignment: center;
+        }
+        TextField {
+            width: 140px;
+            text <=> root.pack-version;
+        }
+    }
+    Checkbox { text: "Mods"; checked <=> root.mods; }
+    Checkbox { text: "Configuration (config/)"; checked <=> root.config; }
+    Checkbox { text: "Resource packs and shaders"; checked <=> root.packs; }
+    Checkbox { text: "Game options (options.txt)"; checked <=> root.options; }
+    HorizontalLayout {
+        spacing: Space.s2;
+        alignment: end;
+        Button {
+            text: "Cancel";
+            kind: ButtonKind.ghost;
+            clicked => { root.open-state = false; }
+        }
+        Button {
+            text: "Export";
+            kind: ButtonKind.primary;
+            icon: @image-url("icons/upload.svg");
+            has-icon: true;
+            clicked => {
+                App.export-mrpack(App.selected-id, root.pack-version, root.instance-name, root.mods, root.config, root.packs, root.options);
+                root.open-state = false;
+            }
+        }
+    }
+}
+
+export component CrashDialog inherits Modal {
+    open: App.crash-open;
+    title: "Minecraft closed unexpectedly";
+    subtitle: App.crash-summary;
+    dialog-width: 620px;
+    dismiss => { App.crash-open = false; }
+    if App.crash-detail != "": Rectangle {
+        height: 200px;
+        border-radius: Radius.md;
+        background: Theme.bg;
+        border-width: 1px;
+        border-color: Theme.border;
+        clip: true;
+        Flickable {
+            viewport-height: detail.preferred-height + 24px;
+            viewport-width: max(self.width, detail.preferred-width + 24px);
+            detail := Text {
+                x: 12px;
+                y: 12px;
+                text: App.crash-detail;
+                color: Theme.text-muted;
+                font-size: Type.caption;
+                font-family: "monospace";
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: Space.s2;
+        Button {
+            text: "View logs";
+            icon: @image-url("icons/terminal.svg");
+            has-icon: true;
+            clicked => {
+                App.crash-open = false;
+                App.console-open = true;
+            }
+        }
+        Button {
+            text: "Copy details";
+            icon: @image-url("icons/copy.svg");
+            has-icon: true;
+            clicked => { App.copy-crash(); }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        if App.crash-has-report: Button {
+            text: "Open crash report";
+            kind: ButtonKind.primary;
+            clicked => { App.open-crash-report(); }
+        }
+        if !App.crash-has-report: Button {
+            text: "Close";
+            kind: ButtonKind.primary;
+            clicked => { App.crash-open = false; }
+        }
+    }
+}
+
+export component UpdateDialog inherits Modal {
+    open: App.update-open;
+    title: "Vanta " + App.update-version + " is available";
+    subtitle: "The update is verified with Vanta's signing key before it is installed.";
+    dialog-width: 520px;
+    dismiss => { App.update-open = false; }
+    Rectangle {
+        height: min(notes.preferred-height + 24px, 220px);
+        border-radius: Radius.md;
+        background: Theme.surface-2;
+        clip: true;
+        Flickable {
+            viewport-height: notes.preferred-height + 24px;
+            notes := Text {
+                x: 12px;
+                y: 12px;
+                width: parent.width - 24px;
+                text: App.update-notes;
+                color: Theme.text-muted;
+                font-size: Type.small;
+                wrap: word-wrap;
+            }
+        }
+    }
+    if App.update-status != "": Text {
+        text: App.update-status;
+        color: Theme.text-muted;
+        font-size: Type.small;
+    }
+    HorizontalLayout {
+        spacing: Space.s2;
+        alignment: end;
+        Button {
+            text: "Later";
+            kind: ButtonKind.ghost;
+            clicked => { App.update-open = false; }
+        }
+        Button {
+            text: App.update-busy ? "Installing…" : "Install and restart";
+            kind: ButtonKind.primary;
+            enabled: !App.update-busy;
+            clicked => { App.install-update(); }
+        }
+    }
+}
+
+export component Console inherits Rectangle {
+    private property <float> t: App.console-open ? 1 : 0;
+    animate t { duration: Motion.slow; easing: Motion.out; }
+    visible: t > 0.001;
+
+    // Backdrop
+    Rectangle {
+        background: Theme.scrim.with-alpha(Theme.scrim-alpha * 0.6 * root.t);
+        TouchArea { clicked => { App.console-open = false; } }
+    }
+    panel := Rectangle {
+        height: root.height * 0.62;
+        y: root.height - self.height * root.t;
+        background: Theme.surface-1;
+        border-radius: Radius.xl;
+        border-width: 1px;
+        border-color: Theme.border-strong;
+        drop-shadow-blur: 40px;
+        drop-shadow-color: Theme.shadow;
+        clip: true;
+        TouchArea { }
+        FocusScope {
+            key-pressed(e) => {
+                if e.text == Key.Escape {
+                    App.console-open = false;
+                    return accept;
+                }
+                reject
+            }
+        }
+        VerticalLayout {
+            padding: Space.s4;
+            padding-bottom: Space.s6;
+            spacing: Space.s3;
+            HorizontalLayout {
+                spacing: Space.s2;
+                Text {
+                    text: "Game console";
+                    color: Theme.text;
+                    font-size: Type.subtitle;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                }
+                Text {
+                    text: App.logs.length + " lines";
+                    color: Theme.text-faint;
+                    font-size: Type.caption;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+                Segmented {
+                    options: ["All", "Warnings", "Errors"];
+                    item-width: 84px;
+                    current <=> App.log-filter;
+                    selected => { App.apply-log-filter(); }
+                }
+                TextField {
+                    width: 200px;
+                    placeholder: "Filter";
+                    icon: @image-url("icons/search.svg");
+                    has-icon: true;
+                    text <=> App.log-search;
+                    edited => { App.apply-log-filter(); }
+                }
+                IconButton {
+                    icon: @image-url("icons/copy.svg");
+                    label: "Copy log";
+                    size: 36px;
+                    clicked => { App.copy-logs(); }
+                }
+                IconButton {
+                    icon: @image-url("icons/folder.svg");
+                    label: "Open logs folder";
+                    size: 36px;
+                    clicked => { App.open-logs-folder(); }
+                }
+                IconButton {
+                    icon: @image-url("icons/trash.svg");
+                    label: "Clear";
+                    size: 36px;
+                    clicked => { App.clear-logs(); }
+                }
+                IconButton {
+                    icon: @image-url("icons/chevron-down.svg");
+                    label: "Hide";
+                    size: 36px;
+                    clicked => { App.console-open = false; }
+                }
+            }
+            Rectangle {
+                vertical-stretch: 1;
+                border-radius: Radius.md;
+                background: Theme.bg;
+                border-width: 1px;
+                border-color: Theme.border;
+                clip: true;
+                if App.logs.length == 0: Text {
+                    text: "Logs appear here when a game is running.";
+                    color: Theme.text-faint;
+                    font-size: Type.small;
+                }
+                lv := ListView {
+                    for l in App.logs: Text {
+                        x: 12px;
+                        width: parent.width - 24px;
+                        text: l.text;
+                        font-family: "monospace";
+                        font-size: 12px;
+                        color: l.level >= 3 ? Theme.danger : l.level == 2 ? Theme.warning : l.level == 0 ? Theme.text-faint : Theme.text-muted;
+                        overflow: elide;
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component Toast inherits Rectangle {
+    private property <bool> shown: false;
+    private property <int> serial: App.toast-serial;
+    changed serial => {
+        self.shown = true;
+        hide.restart();
+    }
+    hide := Timer {
+        interval: 3200ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.shown = false;
+        }
+    }
+    width: min(msg.preferred-width + 48px, 560px);
+    height: 44px;
+    y: shown ? 0 : 16px;
+    opacity: shown ? 1 : 0;
+    visible: self.opacity > 0.01;
+    animate y, opacity { duration: Motion.base; easing: Motion.out; }
+    border-radius: 22px;
+    background: Theme.dark ? #26282e : #1b1c20;
+    border-width: 1px;
+    border-color: App.toast-error ? Theme.danger.with-alpha(0.5) : #ffffff14;
+    drop-shadow-blur: 24px;
+    drop-shadow-color: Theme.shadow;
+    drop-shadow-offset-y: 6px;
+    accessible-role: text;
+    accessible-label: App.toast-text;
+    HorizontalLayout {
+        padding-left: Space.s5;
+        padding-right: Space.s5;
+        spacing: Space.s2;
+        if App.toast-error: Icon {
+            source: @image-url("icons/alert.svg");
+            size: 16px;
+            colorize: Theme.danger;
+            y: (parent.height - self.height) / 2;
+        }
+        msg := Text {
+            text: App.toast-text;
+            color: #f2f3f5;
+            font-size: Type.small;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+}

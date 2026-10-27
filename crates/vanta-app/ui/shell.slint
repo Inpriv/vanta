@@ -1,0 +1,294 @@
+// Window chrome: custom title bar, sidebar rail and resize handles.
+
+import { Theme, Type, Space, Radius, Motion } from "theme.slint";
+import { Icon, IconButton } from "components.slint";
+import { App, Page, AccountItem } from "state.slint";
+
+component WindowControl inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> danger: false;
+    callback clicked();
+    width: 46px;
+    background: ta.pressed ? (danger ? #c42b1c : Theme.surface-3) : ta.has-hover ? (danger ? #e81123 : Theme.surface-2) : transparent;
+    animate background { duration: Motion.fast; easing: Motion.out; }
+    accessible-role: button;
+    accessible-label: label;
+    accessible-action-default => { clicked(); }
+    ta := TouchArea { clicked => { root.clicked(); } }
+    Icon {
+        source: icon;
+        size: 16px;
+        colorize: danger && ta.has-hover ? #ffffff : Theme.text-muted;
+    }
+}
+
+export component TitleBar inherits Rectangle {
+    in property <string> title;
+    min-height: 44px;
+    max-height: 44px;
+
+    // Drag region (double-click maximizes).
+    TouchArea {
+        pointer-event(e) => {
+            if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
+                App.start-drag();
+            }
+        }
+        double-clicked => { App.toggle-maximize(); }
+    }
+
+    HorizontalLayout {
+        padding-left: Space.s6;
+        Text {
+            text: root.title;
+            color: Theme.text-faint;
+            font-size: Type.small;
+            font-weight: 500;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+        WindowControl {
+            icon: @image-url("icons/win-min.svg");
+            label: "Minimize";
+            clicked => { App.minimize(); }
+        }
+        WindowControl {
+            icon: App.maximized ? @image-url("icons/win-restore.svg") : @image-url("icons/win-max.svg");
+            label: App.maximized ? "Restore" : "Maximize";
+            clicked => { App.toggle-maximize(); }
+        }
+        WindowControl {
+            icon: @image-url("icons/win-close.svg");
+            label: "Close";
+            danger: true;
+            clicked => { App.close(); }
+        }
+    }
+}
+
+component NavItem inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> active;
+    callback clicked();
+
+    width: 56px;
+    height: 52px;
+    border-radius: Radius.md;
+    background: active ? Theme.accent-soft : ta.pressed ? Theme.surface-3 : ta.has-hover ? Theme.surface-2 : transparent;
+    border-width: fs.has-focus ? 2px : 0px;
+    border-color: Theme.focus-ring;
+    animate background { duration: Motion.base; easing: Motion.out; }
+    accessible-role: tab;
+    accessible-label: label;
+    accessible-action-default => { clicked(); }
+
+    fs := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Return || e.text == " " {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+    VerticalLayout {
+        alignment: center;
+        spacing: 3px;
+        HorizontalLayout {
+            alignment: center;
+            Icon {
+                source: root.icon;
+                size: 20px;
+                colorize: root.active ? Theme.accent : ta.has-hover ? Theme.text : Theme.text-muted;
+                animate colorize { duration: Motion.base; easing: Motion.out; }
+            }
+        }
+        Text {
+            text: root.label;
+            horizontal-alignment: center;
+            font-size: 10.5px;
+            font-weight: root.active ? 600 : 500;
+            color: root.active ? Theme.text : Theme.text-faint;
+        }
+    }
+    // Active marker
+    Rectangle {
+        x: -8px;
+        width: 3px;
+        height: root.active ? 20px : 0px;
+        y: (root.height - self.height) / 2;
+        border-radius: 2px;
+        background: Theme.accent;
+        animate height { duration: Motion.slow; easing: Motion.spring; }
+    }
+}
+
+export component Avatar inherits Rectangle {
+    in property <AccountItem> account;
+    in property <bool> has-account;
+    in property <length> size: 32px;
+    width: size;
+    height: size;
+    border-radius: Radius.sm;
+    background: Theme.surface-3;
+    clip: true;
+    if has-account && account.has-head: Image {
+        source: root.account.head;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+    }
+    if !(has-account && account.has-head): Icon {
+        source: @image-url("icons/user.svg");
+        size: root.size * 0.55;
+        colorize: Theme.text-muted;
+    }
+}
+
+export component Sidebar inherits Rectangle {
+    callback open-accounts();
+    width: 72px;
+    background: Theme.surface-1;
+
+    // Logo area doubles as a drag handle.
+    TouchArea {
+        y: 0;
+        height: 56px;
+        pointer-event(e) => {
+            if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
+                App.start-drag();
+            }
+        }
+    }
+    Rectangle {
+        x: parent.width - 1px;
+        width: 1px;
+        background: Theme.border;
+    }
+
+    VerticalLayout {
+        padding-top: 14px;
+        padding-bottom: Space.s3;
+        spacing: Space.s1;
+
+        HorizontalLayout {
+            alignment: center;
+            padding-bottom: Space.s5;
+            Image {
+                source: @image-url("icons/logo.svg");
+                width: 26px;
+                height: 26px;
+                accessible-role: image;
+                accessible-label: "Vanta";
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            NavItem {
+                icon: @image-url("icons/home.svg");
+                label: "Home";
+                active: App.page == Page.home;
+                clicked => { App.page = Page.home; }
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            NavItem {
+                icon: @image-url("icons/grid.svg");
+                label: "Library";
+                active: App.page == Page.instances || App.page == Page.instance;
+                clicked => { App.page = Page.instances; }
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            NavItem {
+                icon: @image-url("icons/compass.svg");
+                label: "Browse";
+                active: App.page == Page.browse;
+                clicked => {
+                    App.page = Page.browse;
+                    App.search();
+                }
+            }
+        }
+        Rectangle { vertical-stretch: 1; }
+        HorizontalLayout {
+            alignment: center;
+            NavItem {
+                icon: @image-url("icons/terminal.svg");
+                label: "Console";
+                active: App.console-open;
+                clicked => { App.console-open = !App.console-open; }
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            NavItem {
+                icon: @image-url("icons/settings.svg");
+                label: "Settings";
+                active: App.page == Page.settings;
+                clicked => { App.page = Page.settings; }
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            padding-top: Space.s2;
+            acc := Rectangle {
+                width: 48px;
+                height: 48px;
+                border-radius: Radius.md;
+                background: ata.has-hover ? Theme.surface-2 : transparent;
+                animate background { duration: Motion.fast; }
+                accessible-role: button;
+                accessible-label: App.has-account ? "Account: " + App.active-account.name : "Sign in";
+                accessible-action-default => { root.open-accounts(); }
+                ata := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { root.open-accounts(); }
+                }
+                Avatar {
+                    account: App.active-account;
+                    has-account: App.has-account;
+                }
+                if !App.has-account: Rectangle {
+                    x: parent.width - 14px;
+                    y: 8px;
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 4px;
+                    background: Theme.accent;
+                }
+            }
+        }
+    }
+}
+
+component Grip inherits TouchArea {
+    in property <int> dir;
+    pointer-event(e) => {
+        if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
+            App.start-resize(self.dir);
+        }
+    }
+}
+
+// Invisible handles along the window edges for a borderless window.
+export component ResizeHandles inherits Rectangle {
+    in property <length> grip: 5px;
+    // Directions follow winit's ResizeDirection order: E, N, NE, NW, S, SE, SW, W.
+    Grip { dir: 0; x: parent.width - root.grip; y: root.grip; width: root.grip; height: parent.height - 2 * root.grip; mouse-cursor: ew-resize; }
+    Grip { dir: 7; x: 0; y: root.grip; width: root.grip; height: parent.height - 2 * root.grip; mouse-cursor: ew-resize; }
+    Grip { dir: 1; x: root.grip; y: 0; width: parent.width - 2 * root.grip; height: root.grip; mouse-cursor: ns-resize; }
+    Grip { dir: 4; x: root.grip; y: parent.height - root.grip; width: parent.width - 2 * root.grip; height: root.grip; mouse-cursor: ns-resize; }
+    Grip { dir: 3; x: 0; y: 0; width: root.grip * 2; height: root.grip * 2; mouse-cursor: nwse-resize; }
+    Grip { dir: 2; x: parent.width - root.grip * 2; y: 0; width: root.grip * 2; height: root.grip * 2; mouse-cursor: nesw-resize; }
+    Grip { dir: 6; x: 0; y: parent.height - root.grip * 2; width: root.grip * 2; height: root.grip * 2; mouse-cursor: nesw-resize; }
+    Grip { dir: 5; x: parent.width - root.grip * 2; y: parent.height - root.grip * 2; width: root.grip * 2; height: root.grip * 2; mouse-cursor: nwse-resize; }
+}

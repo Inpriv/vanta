@@ -1,0 +1,176 @@
+import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Card, InstanceIcon, Skeleton } from "../components.slint";
+import { App, Page, InstanceItem } from "../state.slint";
+
+component InstanceCard inherits Rectangle {
+    in property <InstanceItem> inst;
+    callback open();
+
+    height: 148px;
+    Card {
+        interactive: true;
+        hovered: ta.has-hover;
+        y: ta.has-hover ? -3px : 0px;
+        animate y { duration: Motion.base; easing: Motion.out; }
+        accessible-role: button;
+        accessible-label: root.inst.name;
+        accessible-action-default => { root.open(); }
+
+        ta := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { root.open(); }
+        }
+        VerticalLayout {
+            padding: Space.s4;
+            spacing: Space.s3;
+            HorizontalLayout {
+                InstanceIcon {
+                    key: root.inst.icon;
+                    initial: root.inst.initial;
+                    size: 48px;
+                }
+                Rectangle { horizontal-stretch: 1; }
+                play := Rectangle {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 18px;
+                    background: root.inst.running ? Theme.surface-3 : (pa.has-hover ? Theme.accent.brighter(0.08) : Theme.accent);
+                    opacity: ta.has-hover || pa.has-hover || root.inst.running ? 1 : 0;
+                    y: ta.has-hover || pa.has-hover || root.inst.running ? 0px : 6px;
+                    animate opacity, y, background { duration: Motion.base; easing: Motion.out; }
+                    accessible-role: button;
+                    accessible-label: root.inst.running ? "Stop" : "Play " + root.inst.name;
+                    accessible-action-default => { if root.inst.running { App.stop(root.inst.id); } else { App.play(root.inst.id); } }
+                    pa := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            if root.inst.running { App.stop(root.inst.id); } else { App.play(root.inst.id); }
+                        }
+                    }
+                    Icon {
+                        source: root.inst.running ? @image-url("../icons/stop.svg") : @image-url("../icons/play.svg");
+                        size: 16px;
+                        colorize: root.inst.running ? Theme.text : Theme.on-accent;
+                    }
+                }
+            }
+            Rectangle { vertical-stretch: 1; }
+            VerticalLayout {
+                spacing: 2px;
+                Text {
+                    text: root.inst.name;
+                    color: Theme.text;
+                    font-size: Type.body;
+                    font-weight: 600;
+                    overflow: elide;
+                }
+                Text {
+                    text: root.inst.game-version + " · " + root.inst.loader + (root.inst.last-played != "" ? "  ·  " + root.inst.last-played : "");
+                    color: Theme.text-muted;
+                    font-size: Type.small;
+                    overflow: elide;
+                }
+            }
+        }
+    }
+}
+
+export component InstancesPage inherits Rectangle {
+    callback create-instance();
+    private property <string> filter;
+    private property <int> cols: max(1, floor((root.width - 80px + 16px) / 236px));
+    private property <length> card-w: (root.width - 80px - (cols - 1) * 16px) / cols;
+
+    VerticalLayout {
+        width: parent.width;
+        height: parent.height;
+        padding: Space.s10;
+        padding-top: Space.s4;
+        padding-bottom: 0;
+        spacing: Space.s5;
+
+        HorizontalLayout {
+            spacing: Space.s3;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 2px;
+                Text {
+                    text: "Library";
+                    color: Theme.text;
+                    font-size: Type.display;
+                    font-weight: 700;
+                    letter-spacing: -0.4px;
+                }
+                Text {
+                    text: App.instances.length == 1 ? "1 instance" : App.instances.length + " instances";
+                    color: Theme.text-muted;
+                    font-size: Type.small;
+                }
+            }
+            search := TextField {
+                width: 240px;
+                y: (parent.height - self.height) / 2;
+                placeholder: "Filter";
+                icon: @image-url("../icons/search.svg");
+                has-icon: true;
+                edited(t) => { root.filter = t; }
+            }
+            Button {
+                y: (parent.height - self.height) / 2;
+                text: "Import";
+                icon: @image-url("../icons/import.svg");
+                has-icon: true;
+                clicked => { App.import-mrpack(); }
+            }
+            Button {
+                y: (parent.height - self.height) / 2;
+                text: "New instance";
+                kind: ButtonKind.primary;
+                icon: @image-url("../icons/plus.svg");
+                has-icon: true;
+                clicked => { root.create-instance(); }
+            }
+        }
+
+        Flickable {
+            vertical-stretch: 1;
+            viewport-height: grid.height + Space.s10;
+            grid := Rectangle {
+                y: 4px;
+                height: ceil(App.instances.length / root.cols) * (148px + 16px);
+                for inst[i] in App.instances: InstanceCard {
+                    x: mod(i, root.cols) * (root.card-w + 16px);
+                    y: floor(i / root.cols) * (148px + 16px);
+                    width: root.card-w;
+                    inst: inst;
+                    // Filtering dims non-matching cards instead of reflowing the grid.
+                    opacity: root.filter == "" || App.text-matches(inst.name, root.filter) ? 1 : 0.18;
+                    animate opacity { duration: Motion.base; }
+                    open => {
+                        App.select-instance(inst.id);
+                        App.page = Page.instance;
+                    }
+                }
+            }
+        }
+    }
+
+    if App.instances-loaded && App.instances.length == 0: VerticalLayout {
+        width: parent.width;
+        height: parent.height;
+        alignment: center;
+        spacing: Space.s3;
+        Text {
+            text: "No instances yet";
+            horizontal-alignment: center;
+            color: Theme.text;
+            font-size: Type.title;
+            font-weight: 600;
+        }
+        Text {
+            text: "Create one or import a Modrinth modpack (.mrpack).";
+            horizontal-alignment: center;
+            color: Theme.text-muted;
+        }
+    }
+}

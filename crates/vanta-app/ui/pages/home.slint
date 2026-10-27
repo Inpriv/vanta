@@ -1,0 +1,341 @@
+import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
+import { Button, ButtonKind, IconButton, Icon, ProgressBar, Card, InstanceIcon, Skeleton, Badge } from "../components.slint";
+import { App, Page, InstanceItem } from "../state.slint";
+
+component Hero inherits Rectangle {
+    in property <InstanceItem> inst;
+    private property <bool> launching: App.launch-progress.active && App.launch-instance-id == inst.id;
+    callback create();
+
+    height: 300px;
+    border-radius: Radius.xl;
+    clip: true;
+    background: Theme.surface-1;
+    border-width: 1px;
+    border-color: Theme.border;
+
+    // Ambient glow tinted by the instance icon.
+    Rectangle {
+        x: parent.width - 420px;
+        y: -140px;
+        width: 560px;
+        height: 560px;
+        border-radius: 280px;
+        background: @radial-gradient(circle, Theme.accent.with-alpha(Theme.dark ? 0.16 : 0.12) 0%, Theme.accent.with-alpha(0) 70%);
+    }
+    InstanceIcon {
+            x: parent.width - 250px;
+            y: 65px;
+            key: root.inst.icon;
+            initial: root.inst.initial;
+            size: 170px;
+            drop-shadow-blur: 40px;
+            drop-shadow-color: Theme.shadow;
+            drop-shadow-offset-y: 18px;
+    }
+
+    VerticalLayout {
+        width: parent.width;
+        height: parent.height;
+        padding: Space.s10;
+        padding-right: 300px;
+        spacing: Space.s2;
+        alignment: end;
+
+        Text {
+            text: root.inst.running ? "Now playing" : "Continue playing";
+            color: Theme.accent;
+            font-size: Type.small;
+            font-weight: 600;
+        }
+        Text {
+            text: root.inst.name;
+            color: Theme.text;
+            font-size: Type.hero;
+            font-weight: 700;
+            overflow: elide;
+            letter-spacing: -0.8px;
+        }
+        HorizontalLayout {
+            spacing: Space.s2;
+            alignment: start;
+            Badge { text: root.inst.game-version; }
+            Badge { text: root.inst.loader; }
+            if root.inst.last-played != "": Text {
+                text: "Last played " + root.inst.last-played;
+                color: Theme.text-muted;
+                font-size: Type.small;
+                vertical-alignment: center;
+            }
+        }
+        Rectangle { height: Space.s4; }
+
+        if !root.launching: HorizontalLayout {
+            spacing: Space.s2;
+            alignment: start;
+            if !root.inst.running: Button {
+                text: "Play";
+                kind: ButtonKind.primary;
+                large: true;
+                min-width: 180px;
+                icon: @image-url("../icons/play.svg");
+                has-icon: true;
+                enabled: App.has-account;
+                clicked => { App.play(root.inst.id); }
+            }
+            if root.inst.running: Button {
+                text: "Stop  ·  " + App.running-time;
+                kind: ButtonKind.secondary;
+                large: true;
+                min-width: 180px;
+                icon: @image-url("../icons/stop.svg");
+                has-icon: true;
+                clicked => { App.stop(root.inst.id); }
+            }
+            IconButton {
+                y: (parent.height - self.height) / 2;
+                icon: @image-url("../icons/folder.svg");
+                label: "Open folder";
+                size: 44px;
+                clicked => { App.open-instance-folder(root.inst.id); }
+            }
+            IconButton {
+                y: (parent.height - self.height) / 2;
+                icon: @image-url("../icons/settings.svg");
+                label: "Instance settings";
+                size: 44px;
+                clicked => {
+                    App.select-instance(root.inst.id);
+                    App.page = Page.instance;
+                }
+            }
+            IconButton {
+                y: (parent.height - self.height) / 2;
+                icon: @image-url("../icons/terminal.svg");
+                label: "Console";
+                size: 44px;
+                clicked => { App.console-open = true; }
+            }
+        }
+        if root.launching: VerticalLayout {
+            spacing: Space.s2;
+            max-width: 420px;
+            HorizontalLayout {
+                Text {
+                    text: App.launch-progress.stage;
+                    color: Theme.text;
+                    font-size: Type.body;
+                    font-weight: 600;
+                    horizontal-stretch: 1;
+                }
+                Text {
+                    text: App.launch-progress.fraction >= 0 ? round(App.launch-progress.fraction * 100) + "%" : "";
+                    color: Theme.text-muted;
+                    font-size: Type.small;
+                }
+            }
+            ProgressBar { value: App.launch-progress.fraction; }
+            HorizontalLayout {
+                Text {
+                    text: App.launch-progress.detail;
+                    color: Theme.text-muted;
+                    font-size: Type.small;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+                Button {
+                    text: "Cancel";
+                    kind: ButtonKind.ghost;
+                    height: 28px;
+                    clicked => { App.cancel-launch(); }
+                }
+            }
+        }
+        if !App.has-account && !root.launching: Text {
+            text: "Sign in with a Microsoft account to play.";
+            color: Theme.text-muted;
+            font-size: Type.small;
+        }
+    }
+}
+
+component EmptyHero inherits Rectangle {
+    callback create();
+    height: 300px;
+    border-radius: Radius.xl;
+    background: Theme.surface-1;
+    border-width: 1px;
+    border-color: Theme.border;
+    clip: true;
+    Rectangle {
+        x: (parent.width - 600px) / 2;
+        y: -300px;
+        width: 600px;
+        height: 600px;
+        border-radius: 300px;
+        background: @radial-gradient(circle, Theme.accent.with-alpha(0.12) 0%, Theme.accent.with-alpha(0) 70%);
+    }
+    VerticalLayout {
+        width: parent.width;
+        height: parent.height;
+        alignment: center;
+        spacing: Space.s3;
+        HorizontalLayout {
+            alignment: center;
+            Image {
+                source: @image-url("../icons/logo.svg");
+                width: 44px;
+                height: 44px;
+            }
+        }
+        Text {
+            text: "Welcome to Vanta";
+            horizontal-alignment: center;
+            color: Theme.text;
+            font-size: Type.display;
+            font-weight: 700;
+        }
+        Text {
+            text: "Create an instance to pick a version and start playing.";
+            horizontal-alignment: center;
+            color: Theme.text-muted;
+            font-size: Type.body;
+        }
+        HorizontalLayout {
+            alignment: center;
+            padding-top: Space.s2;
+            spacing: Space.s2;
+            Button {
+                text: "New instance";
+                kind: ButtonKind.primary;
+                icon: @image-url("../icons/plus.svg");
+                has-icon: true;
+                clicked => { root.create(); }
+            }
+            Button {
+                text: "Import modpack";
+                icon: @image-url("../icons/import.svg");
+                has-icon: true;
+                clicked => { App.import-mrpack(); }
+            }
+        }
+    }
+}
+
+component RecentCard inherits Rectangle {
+    in property <InstanceItem> inst;
+    in property <bool> featured;
+    callback clicked();
+    height: 76px;
+    Card {
+        interactive: true;
+        hovered: ta.has-hover;
+        border-color: root.featured ? Theme.accent.with-alpha(0.5) : (ta.has-hover ? Theme.border-strong : Theme.border);
+        y: ta.has-hover ? -2px : 0px;
+        animate y { duration: Motion.base; easing: Motion.out; }
+        accessible-role: button;
+        accessible-label: root.inst.name;
+        accessible-action-default => { root.clicked(); }
+        ta := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { root.clicked(); }
+        }
+        HorizontalLayout {
+            padding: Space.s4;
+            spacing: Space.s3;
+            InstanceIcon {
+                key: root.inst.icon;
+                initial: root.inst.initial;
+                size: 44px;
+                y: (parent.height - self.height) / 2;
+            }
+            VerticalLayout {
+                alignment: center;
+                spacing: 2px;
+                Text {
+                    text: root.inst.name;
+                    color: Theme.text;
+                    font-size: Type.body;
+                    font-weight: 600;
+                    overflow: elide;
+                }
+                Text {
+                    text: root.inst.game-version + " · " + root.inst.loader;
+                    color: Theme.text-muted;
+                    font-size: Type.small;
+                    overflow: elide;
+                }
+            }
+            if root.inst.running: Rectangle {
+                width: 8px;
+                height: 8px;
+                y: (parent.height - self.height) / 2;
+                border-radius: 4px;
+                background: Theme.accent;
+            }
+        }
+    }
+}
+
+export component HomePage inherits Rectangle {
+    callback create-instance();
+
+    private property <int> cols: max(1, min(4, floor((root.width - 80px + 12px) / 232px)));
+    private property <length> card-w: (root.width - 80px - (cols - 1) * 12px) / cols;
+    private property <int> shown: min(App.instances.length, cols * 2);
+
+    Flickable {
+        width: parent.width;
+        height: parent.height;
+        viewport-height: content.preferred-height;
+        content := VerticalLayout {
+            padding: Space.s10;
+            padding-top: Space.s4;
+            spacing: Space.s6;
+            alignment: start;
+
+            if !App.instances-loaded: Skeleton {
+                height: 300px;
+                border-radius: Radius.xl;
+            }
+            if App.instances-loaded && App.has-featured: Hero {
+                inst: App.featured;
+            }
+            if App.instances-loaded && !App.has-featured: EmptyHero {
+                create => { root.create-instance(); }
+            }
+
+            if App.instances.length > 0: VerticalLayout {
+                spacing: Space.s3;
+                HorizontalLayout {
+                    Text {
+                        text: "Recent";
+                        color: Theme.text;
+                        font-size: Type.subtitle;
+                        font-weight: 600;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                    }
+                    Button {
+                        text: "View library";
+                        kind: ButtonKind.ghost;
+                        height: 30px;
+                        clicked => { App.page = Page.instances; }
+                    }
+                }
+                Rectangle {
+                    height: ceil(root.shown / root.cols) * (76px + 12px) - 12px;
+                    for inst[i] in App.instances: RecentCard {
+                        visible: i < root.shown;
+                        x: mod(i, root.cols) * (root.card-w + 12px);
+                        y: floor(i / root.cols) * (76px + 12px);
+                        width: root.card-w;
+                        inst: inst;
+                        featured: inst.id == App.featured-id;
+                        clicked => { App.feature-instance(inst.id); }
+                    }
+                }
+            }
+        }
+    }
+}

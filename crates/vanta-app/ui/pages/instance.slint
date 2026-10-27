@@ -1,0 +1,495 @@
+import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Slider, Segmented, Select, Card, InstanceIcon, Skeleton, Badge, Spinner, FieldRow, Divider, SectionTitle } from "../components.slint";
+import { App, Page, InstanceItem, ContentItem } from "../state.slint";
+
+component ContentRow inherits Rectangle {
+    in property <ContentItem> item;
+    height: 60px;
+    border-radius: Radius.md;
+    background: ta.has-hover ? Theme.surface-2 : transparent;
+    animate background { duration: Motion.fast; }
+    ta := TouchArea { }
+    HorizontalLayout {
+        padding-left: Space.s3;
+        padding-right: Space.s3;
+        spacing: Space.s3;
+        Rectangle {
+            width: 36px;
+            height: 36px;
+            y: (parent.height - self.height) / 2;
+            border-radius: Radius.sm;
+            background: Theme.surface-3;
+            clip: true;
+            if root.item.has-icon: Image {
+                source: root.item.icon;
+                width: 100%;
+                height: 100%;
+            }
+            if !root.item.has-icon: Icon {
+                source: @image-url("../icons/box.svg");
+                size: 18px;
+                colorize: Theme.text-faint;
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 2px;
+            Text {
+                text: root.item.title;
+                color: root.item.enabled ? Theme.text : Theme.text-faint;
+                font-size: Type.body;
+                font-weight: 500;
+                overflow: elide;
+            }
+            Text {
+                text: root.item.subtitle;
+                color: Theme.text-faint;
+                font-size: Type.small;
+                overflow: elide;
+            }
+        }
+        if root.item.updating: Spinner {
+            y: (parent.height - self.height) / 2;
+        }
+        if root.item.has-update && !root.item.updating: Button {
+            y: (parent.height - self.height) / 2;
+            height: 30px;
+            text: "Update";
+            icon: @image-url("../icons/download.svg");
+            has-icon: true;
+            clicked => { App.update-content(root.item.file-name); }
+        }
+        Toggle {
+            y: (parent.height - self.height) / 2;
+            checked: root.item.enabled;
+            label: "Enabled";
+            toggled(v) => { App.toggle-content(root.item.file-name, v); }
+        }
+        IconButton {
+            y: (parent.height - self.height) / 2;
+            icon: @image-url("../icons/trash.svg");
+            label: "Remove";
+            hover-tint: Theme.danger;
+            clicked => { App.remove-content(root.item.file-name); }
+        }
+    }
+}
+
+component ContentTab inherits VerticalLayout {
+    spacing: Space.s4;
+    HorizontalLayout {
+        spacing: Space.s2;
+        Segmented {
+            options: ["Mods", "Resource packs", "Shaders"];
+            item-width: 124px;
+            current <=> App.content-kind;
+            selected => { App.refresh-content(); }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        if App.updates-available > 0: Button {
+            text: "Update all (" + App.updates-available + ")";
+            kind: ButtonKind.primary;
+            clicked => { App.update-all-content(); }
+        }
+        Button {
+            text: App.checking-updates ? "Checking…" : "Check for updates";
+            enabled: !App.checking-updates;
+            icon: @image-url("../icons/refresh.svg");
+            has-icon: true;
+            clicked => { App.check-content-updates(); }
+        }
+        IconButton {
+            icon: @image-url("../icons/folder.svg");
+            label: "Add files";
+            size: 36px;
+            clicked => { App.add-local-content(); }
+        }
+        Button {
+            text: "Browse";
+            icon: @image-url("../icons/compass.svg");
+            has-icon: true;
+            clicked => {
+                App.browse-target-id = App.selected-id;
+                App.browse-kind = App.content-kind;
+                App.page = Page.browse;
+                App.search();
+            }
+        }
+    }
+    Card {
+        vertical-stretch: 1;
+        min-height: 200px;
+        if App.content-loading: VerticalLayout {
+            padding: Space.s4;
+            spacing: Space.s3;
+            alignment: start;
+            for i in 4: Skeleton { height: 44px; }
+        }
+        if !App.content-loading && App.content.length == 0: VerticalLayout {
+            alignment: center;
+            spacing: Space.s2;
+            Text {
+                text: "Nothing installed yet";
+                horizontal-alignment: center;
+                color: Theme.text;
+                font-weight: 600;
+            }
+            Text {
+                text: App.selected.loader-index == 0 && App.content-kind == 0 ? "Mods need a mod loader. Pick one in Settings." : "Find something on the Browse page.";
+                horizontal-alignment: center;
+                color: Theme.text-muted;
+                font-size: Type.small;
+            }
+        }
+        if !App.content-loading && App.content.length > 0: Flickable {
+            viewport-height: list.preferred-height;
+            list := VerticalLayout {
+                padding: Space.s2;
+                alignment: start;
+                for item in App.content: ContentRow { item: item; }
+            }
+        }
+    }
+}
+
+component SettingsTab inherits Flickable {
+    in-out property <InstanceItem> draft;
+    callback save();
+    callback rename();
+    callback pick-icon();
+    callback export();
+    callback delete();
+
+    viewport-height: body.preferred-height + Space.s10;
+    body := VerticalLayout {
+        spacing: Space.s4;
+        alignment: start;
+        Card {
+            VerticalLayout {
+                padding-left: Space.s5;
+                padding-right: Space.s5;
+                padding-top: Space.s2;
+                padding-bottom: Space.s2;
+                FieldRow {
+                    label: "Name and icon";
+                    hint: root.draft.name;
+                    Button {
+                        y: (parent.height - self.height) / 2;
+                        text: "Change icon";
+                        clicked => { root.pick-icon(); }
+                    }
+                    Button {
+                        y: (parent.height - self.height) / 2;
+                        text: "Rename";
+                        icon: @image-url("../icons/edit.svg");
+                        has-icon: true;
+                        clicked => { root.rename(); }
+                    }
+                }
+                Divider { }
+                FieldRow {
+                    label: "Game version";
+                    hint: root.draft.loader-version != "" ? root.draft.game-version + " with " + root.draft.loader + " " + root.draft.loader-version : root.draft.game-version + " · " + root.draft.loader;
+                }
+                Divider { }
+                FieldRow {
+                    label: "Memory";
+                    hint: root.draft.memory-mb == 0 ? "Uses the default from Settings (" + App.default-memory-mb + " MB)" : root.draft.memory-mb + " MB";
+                    Toggle {
+                        y: (parent.height - self.height) / 2;
+                        label: "Custom memory";
+                        checked: root.draft.memory-mb != 0;
+                        toggled(v) => {
+                            root.draft.memory-mb = v ? App.default-memory-mb : 0;
+                            root.save();
+                        }
+                    }
+                }
+                if root.draft.memory-mb != 0: HorizontalLayout {
+                    padding-bottom: Space.s3;
+                    spacing: Space.s3;
+                    Slider {
+                        horizontal-stretch: 1;
+                        minimum: 512;
+                        maximum: App.max-memory-mb;
+                        step: 256;
+                        value: root.draft.memory-mb;
+                        changed(v) => { root.draft.memory-mb = round(v); }
+                    }
+                    Text {
+                        width: 80px;
+                        text: root.draft.memory-mb + " MB";
+                        color: Theme.text-muted;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                    }
+                    Button {
+                        text: "Apply";
+                        clicked => { root.save(); }
+                    }
+                }
+                Divider { }
+                FieldRow {
+                    label: "Custom resolution";
+                    hint: root.draft.custom-resolution ? root.draft.width + " × " + root.draft.height : "Game default";
+                    Toggle {
+                        y: (parent.height - self.height) / 2;
+                        label: "Custom resolution";
+                        checked: root.draft.custom-resolution;
+                        toggled(v) => {
+                            root.draft.custom-resolution = v;
+                            root.save();
+                        }
+                    }
+                }
+                if root.draft.custom-resolution: HorizontalLayout {
+                    padding-bottom: Space.s3;
+                    spacing: Space.s2;
+                    w := TextField {
+                        width: 100px;
+                        text: root.draft.width;
+                        input-type: InputType.number;
+                        edited(t) => { root.draft.width = t.to-float(); }
+                    }
+                    Text {
+                        text: "×";
+                        color: Theme.text-muted;
+                        vertical-alignment: center;
+                    }
+                    h := TextField {
+                        width: 100px;
+                        text: root.draft.height;
+                        input-type: InputType.number;
+                        edited(t) => { root.draft.height = t.to-float(); }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    Button {
+                        text: "Apply";
+                        clicked => { root.save(); }
+                    }
+                }
+                Divider { }
+                VerticalLayout {
+                    padding-top: Space.s3;
+                    padding-bottom: Space.s3;
+                    spacing: Space.s2;
+                    Text {
+                        text: "Java executable";
+                        color: Theme.text;
+                        font-weight: 500;
+                    }
+                    Text {
+                        text: "Leave empty to let Vanta pick and download the right Java.";
+                        color: Theme.text-muted;
+                        font-size: Type.small;
+                    }
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        TextField {
+                            horizontal-stretch: 1;
+                            text: root.draft.java-path;
+                            placeholder: "Automatic";
+                            mono: true;
+                            edited(t) => { root.draft.java-path = t; }
+                            accepted => { root.save(); }
+                        }
+                        Button {
+                            text: "Browse";
+                            clicked => { App.browse-instance-java(); }
+                        }
+                        Button {
+                            text: "Apply";
+                            clicked => { root.save(); }
+                        }
+                    }
+                }
+                Divider { }
+                VerticalLayout {
+                    padding-top: Space.s3;
+                    padding-bottom: Space.s3;
+                    spacing: Space.s2;
+                    Text {
+                        text: "JVM arguments";
+                        color: Theme.text;
+                        font-weight: 500;
+                    }
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        TextField {
+                            horizontal-stretch: 1;
+                            text: root.draft.jvm-args;
+                            placeholder: "-XX:+UseZGC";
+                            mono: true;
+                            edited(t) => { root.draft.jvm-args = t; }
+                            accepted => { root.save(); }
+                        }
+                        Button {
+                            text: "Apply";
+                            clicked => { root.save(); }
+                        }
+                    }
+                }
+            }
+        }
+
+        Card {
+            VerticalLayout {
+                padding: Space.s5;
+                spacing: Space.s3;
+                SectionTitle { text: "ACTIONS"; }
+                HorizontalLayout {
+                    spacing: Space.s2;
+                    alignment: start;
+                    Button {
+                        text: "Open folder";
+                        icon: @image-url("../icons/folder.svg");
+                        has-icon: true;
+                        clicked => { App.open-instance-folder(root.draft.id); }
+                    }
+                    Button {
+                        text: "Duplicate";
+                        icon: @image-url("../icons/copy.svg");
+                        has-icon: true;
+                        clicked => { App.duplicate-instance(root.draft.id); }
+                    }
+                    Button {
+                        text: "Export .mrpack";
+                        icon: @image-url("../icons/upload.svg");
+                        has-icon: true;
+                        clicked => { root.export(); }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    Button {
+                        text: "Delete";
+                        kind: ButtonKind.danger;
+                        icon: @image-url("../icons/trash.svg");
+                        has-icon: true;
+                        clicked => { root.delete(); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component InstancePage inherits Rectangle {
+    callback rename();
+    callback pick-icon();
+    callback export();
+    callback delete();
+    in-out property <int> tab: 0;
+    private property <bool> launching: App.launch-progress.active && App.launch-instance-id == App.selected.id;
+
+    VerticalLayout {
+        width: parent.width;
+        height: parent.height;
+        padding: Space.s10;
+        padding-top: Space.s4;
+        padding-bottom: Space.s4;
+        spacing: Space.s5;
+
+        HorizontalLayout {
+            spacing: Space.s4;
+            IconButton {
+                y: (parent.height - self.height) / 2;
+                icon: @image-url("../icons/chevron-left.svg");
+                label: "Back to library";
+                clicked => { App.page = Page.instances; }
+            }
+            InstanceIcon {
+                key: App.selected.icon;
+                initial: App.selected.initial;
+                size: 56px;
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 4px;
+                Text {
+                    text: App.selected.name;
+                    color: Theme.text;
+                    font-size: Type.display;
+                    font-weight: 700;
+                    overflow: elide;
+                    letter-spacing: -0.4px;
+                }
+                HorizontalLayout {
+                    spacing: Space.s2;
+                    alignment: start;
+                    Badge { text: App.selected.game-version; }
+                    Badge { text: App.selected.loader; }
+                    if App.selected.last-played != "": Text {
+                        text: "Played " + App.selected.last-played;
+                        color: Theme.text-muted;
+                        font-size: Type.small;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+            if !root.launching && !App.selected.running: Button {
+                y: (parent.height - self.height) / 2;
+                text: "Play";
+                kind: ButtonKind.primary;
+                large: true;
+                min-width: 140px;
+                icon: @image-url("../icons/play.svg");
+                has-icon: true;
+                enabled: App.has-account;
+                clicked => { App.play(App.selected.id); }
+            }
+            if App.selected.running: Button {
+                y: (parent.height - self.height) / 2;
+                text: "Stop";
+                large: true;
+                icon: @image-url("../icons/stop.svg");
+                has-icon: true;
+                clicked => { App.stop(App.selected.id); }
+            }
+            if root.launching: HorizontalLayout {
+                spacing: Space.s3;
+                width: 260px;
+                Spinner { y: (parent.height - self.height) / 2; }
+                VerticalLayout {
+                    alignment: center;
+                    Text {
+                        text: App.launch-progress.stage;
+                        color: Theme.text;
+                        font-weight: 600;
+                        overflow: elide;
+                    }
+                    Text {
+                        text: App.launch-progress.detail;
+                        color: Theme.text-muted;
+                        font-size: Type.caption;
+                        overflow: elide;
+                    }
+                }
+            }
+        }
+
+        Segmented {
+            options: ["Content", "Settings"];
+            current <=> root.tab;
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+            content-tab := ContentTab {
+                width: parent.width;
+                height: parent.height;
+                visible: root.tab == 0;
+            }
+            if root.tab == 1: SettingsTab {
+                width: parent.width;
+                height: parent.height;
+                draft: App.selected;
+                save => { App.save-instance(self.draft); }
+                rename => { root.rename(); }
+                pick-icon => { root.pick-icon(); }
+                export => { root.export(); }
+                delete => { root.delete(); }
+            }
+        }
+    }
+}

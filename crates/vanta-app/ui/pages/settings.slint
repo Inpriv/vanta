@@ -1,0 +1,399 @@
+import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Slider, Segmented, Select, Card, FieldRow, Divider, SectionTitle, Spinner } from "../components.slint";
+import { App } from "../state.slint";
+
+component Swatch inherits Rectangle {
+    in property <color> swatch;
+    in property <bool> selected;
+    in property <string> label;
+    callback clicked();
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    background: swatch;
+    border-width: selected ? 3px : (fs.has-focus ? 2px : 0px);
+    border-color: selected ? Theme.surface-1 : Theme.focus-ring;
+    accessible-role: button;
+    accessible-label: label;
+    accessible-action-default => { clicked(); }
+    fs := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Return || e.text == " " {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+    // Outer ring for the selected swatch
+    Rectangle {
+        width: parent.width + 6px;
+        height: parent.height + 6px;
+        border-radius: self.width / 2;
+        border-width: root.selected ? 2px : (ta.has-hover ? 1px : 0px);
+        border-color: root.selected ? root.swatch : Theme.border-strong;
+        animate border-width { duration: Motion.fast; }
+    }
+}
+
+component Section inherits VerticalLayout {
+    in property <string> title;
+    spacing: Space.s3;
+    SectionTitle { text: root.title; }
+    Card {
+        VerticalLayout {
+            padding-left: Space.s5;
+            padding-right: Space.s5;
+            padding-top: Space.s1;
+            padding-bottom: Space.s1;
+            @children
+        }
+    }
+}
+
+export component SettingsPage inherits Rectangle {
+    Flickable {
+        width: parent.width;
+        height: parent.height;
+        viewport-height: body.preferred-height;
+        body := VerticalLayout {
+            padding: Space.s10;
+            padding-top: Space.s4;
+            spacing: Space.s6;
+            alignment: start;
+
+            Text {
+                text: "Settings";
+                color: Theme.text;
+                font-size: Type.display;
+                font-weight: 700;
+                letter-spacing: -0.4px;
+            }
+
+            Section {
+                title: "APPEARANCE";
+                FieldRow {
+                    label: "Theme";
+                    Segmented {
+                        y: (parent.height - self.height) / 2;
+                        options: ["Dark", "Light", "System"];
+                        item-width: 80px;
+                        current <=> App.theme-index;
+                        selected => { App.settings-changed(); }
+                    }
+                }
+                Divider { }
+                FieldRow {
+                    label: "Accent";
+                    HorizontalLayout {
+                        spacing: Space.s3;
+                        padding-right: 3px;
+                        for c[i] in [
+                            { color: Theme.dark ? #74e8bc : #16a46e, name: "Signal" },
+                            { color: Theme.dark ? #a898ff : #6b55f0, name: "Iris" },
+                            { color: Theme.dark ? #ff9a62 : #e2622a, name: "Ember" },
+                            { color: Theme.dark ? #72b8ff : #2a7bd8, name: "Azure" },
+                            { color: Theme.dark ? #ff85ba : #d83f82, name: "Rose" },
+                            { color: Theme.dark ? #f4d265 : #b58a0b, name: "Sun" },
+                        ]: Swatch {
+                            y: (parent.height - self.height) / 2;
+                            swatch: c.color;
+                            label: c.name;
+                            selected: App.accent-index == i;
+                            clicked => {
+                                App.accent-index = i;
+                                App.settings-changed();
+                            }
+                        }
+                    }
+                }
+                Divider { }
+                FieldRow {
+                    label: "Reduce motion";
+                    hint: "Turns off animations and transitions.";
+                    Toggle {
+                        y: (parent.height - self.height) / 2;
+                        label: "Reduce motion";
+                        checked <=> App.reduce-motion;
+                        toggled => { App.settings-changed(); }
+                    }
+                }
+            }
+
+            Section {
+                title: "GAME";
+                FieldRow {
+                    label: "Default memory";
+                    hint: "Used by instances without their own setting.";
+                    HorizontalLayout {
+                        spacing: Space.s3;
+                        width: 320px;
+                        Slider {
+                            horizontal-stretch: 1;
+                            y: (parent.height - self.height) / 2;
+                            minimum: 1024;
+                            maximum: App.max-memory-mb;
+                            step: 512;
+                            value: App.default-memory-mb;
+                            changed(v) => {
+                                App.default-memory-mb = round(v);
+                                save-later.restart();
+                            }
+                        }
+                        Text {
+                            width: 74px;
+                            text: App.default-memory-mb + " MB";
+                            color: Theme.text-muted;
+                            horizontal-alignment: right;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+                save-later := Timer {
+                    interval: 400ms;
+                    running: false;
+                    triggered => {
+                        self.running = false;
+                        App.settings-changed();
+                    }
+                }
+                Divider { }
+                FieldRow {
+                    label: "When the game starts";
+                    Select {
+                        y: (parent.height - self.height) / 2;
+                        width: 200px;
+                        options: ["Keep Vanta open", "Minimize Vanta", "Close Vanta"];
+                        current-index <=> App.close-behavior;
+                        selected => { App.settings-changed(); }
+                    }
+                }
+                Divider { }
+                VerticalLayout {
+                    padding-top: Space.s3;
+                    padding-bottom: Space.s3;
+                    spacing: Space.s2;
+                    HorizontalLayout {
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 2px;
+                            Text {
+                                text: "Java";
+                                color: Theme.text;
+                                font-weight: 500;
+                            }
+                            Text {
+                                text: "Automatic: Vanta downloads the Java version each game version needs.";
+                                color: Theme.text-muted;
+                                font-size: Type.small;
+                                wrap: word-wrap;
+                            }
+                        }
+                        Button {
+                            y: (parent.height - self.height) / 2;
+                            text: App.javas-loading ? "Scanning…" : "Detect installed";
+                            enabled: !App.javas-loading;
+                            icon: @image-url("../icons/search.svg");
+                            has-icon: true;
+                            clicked => { App.detect-java(); }
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        TextField {
+                            horizontal-stretch: 1;
+                            text <=> App.java-path;
+                            placeholder: "Automatic";
+                            mono: true;
+                            accepted => { App.settings-changed(); }
+                        }
+                        Button {
+                            text: "Browse";
+                            clicked => { App.browse-java(); }
+                        }
+                        if App.java-path != "": Button {
+                            text: "Reset";
+                            kind: ButtonKind.ghost;
+                            clicked => {
+                                App.java-path = "";
+                                App.settings-changed();
+                            }
+                        }
+                    }
+                    for j in App.javas: Rectangle {
+                        height: 36px;
+                        border-radius: Radius.sm;
+                        background: ja.has-hover ? Theme.surface-2 : transparent;
+                        ja := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                App.java-path = j.path;
+                                App.settings-changed();
+                            }
+                        }
+                        HorizontalLayout {
+                            padding-left: Space.s2;
+                            padding-right: Space.s2;
+                            spacing: Space.s3;
+                            Text {
+                                text: j.label;
+                                color: Theme.text;
+                                font-size: Type.small;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                                width: 110px;
+                            }
+                            Text {
+                                text: j.path;
+                                color: Theme.text-muted;
+                                font-size: Type.small;
+                                font-family: "monospace";
+                                vertical-alignment: center;
+                                overflow: elide;
+                                horizontal-stretch: 1;
+                            }
+                            if App.java-path == j.path: Icon {
+                                source: @image-url("../icons/check.svg");
+                                size: 16px;
+                                colorize: Theme.accent;
+                                y: (parent.height - self.height) / 2;
+                            }
+                        }
+                    }
+                }
+                Divider { }
+                VerticalLayout {
+                    padding-top: Space.s3;
+                    padding-bottom: Space.s3;
+                    spacing: Space.s2;
+                    Text {
+                        text: "Default JVM arguments";
+                        color: Theme.text;
+                        font-weight: 500;
+                    }
+                    TextField {
+                        text <=> App.global-jvm-args;
+                        placeholder: "Added to every instance";
+                        mono: true;
+                        accepted => { App.settings-changed(); }
+                        edited => { save-later.restart(); }
+                    }
+                }
+            }
+
+            Section {
+                title: "STORAGE";
+                FieldRow {
+                    label: "Data folder";
+                    hint: App.data-dir;
+                    Button {
+                        y: (parent.height - self.height) / 2;
+                        text: "Open";
+                        icon: @image-url("../icons/folder.svg");
+                        has-icon: true;
+                        clicked => { App.open-data-dir(); }
+                    }
+                    Button {
+                        y: (parent.height - self.height) / 2;
+                        text: "Change";
+                        clicked => { App.change-data-dir(); }
+                    }
+                }
+            }
+
+            Section {
+                title: "UPDATES";
+                FieldRow {
+                    label: "Vanta " + App.version;
+                    hint: App.update-status;
+                    if App.update-busy: Spinner { y: (parent.height - self.height) / 2; }
+                    if App.update-available: Button {
+                        y: (parent.height - self.height) / 2;
+                        text: "Install " + App.update-version;
+                        kind: ButtonKind.primary;
+                        clicked => { App.update-open = true; }
+                    }
+                    Button {
+                        y: (parent.height - self.height) / 2;
+                        text: "Check now";
+                        enabled: !App.update-busy;
+                        icon: @image-url("../icons/refresh.svg");
+                        has-icon: true;
+                        clicked => { App.check-for-updates(); }
+                    }
+                }
+                Divider { }
+                FieldRow {
+                    label: "Check for updates on start";
+                    hint: "Only contacts GitHub. Vanta never installs an update without asking.";
+                    Toggle {
+                        y: (parent.height - self.height) / 2;
+                        label: "Check for updates on start";
+                        checked <=> App.auto-update-check;
+                        toggled => { App.settings-changed(); }
+                    }
+                }
+            }
+
+            Section {
+                title: "ABOUT";
+                VerticalLayout {
+                    padding-top: Space.s4;
+                    padding-bottom: Space.s4;
+                    spacing: Space.s3;
+                    HorizontalLayout {
+                        spacing: Space.s3;
+                        Image {
+                            source: @image-url("../icons/logo.svg");
+                            width: 28px;
+                            height: 28px;
+                        }
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            Text {
+                                text: "Vanta";
+                                color: Theme.text;
+                                font-weight: 700;
+                                font-size: Type.subtitle;
+                            }
+                            Text {
+                                text: "Free and open source under GPL-3.0-or-later. No telemetry, ever.";
+                                color: Theme.text-muted;
+                                font-size: Type.small;
+                            }
+                        }
+                        Button {
+                            y: (parent.height - self.height) / 2;
+                            text: "Website";
+                            kind: ButtonKind.ghost;
+                            clicked => { App.open-url("https://getvanta.xyz"); }
+                        }
+                        Button {
+                            y: (parent.height - self.height) / 2;
+                            text: "Source code";
+                            icon: @image-url("../icons/external.svg");
+                            has-icon: true;
+                            clicked => { App.open-url("https://github.com/Inpriv/vanta"); }
+                        }
+                    }
+                    Text {
+                        text: "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Vanta downloads all game files from official sources and never redistributes them.";
+                        color: Theme.text-faint;
+                        font-size: Type.caption;
+                        wrap: word-wrap;
+                    }
+                    Text {
+                        text: "Inter typeface © The Inter Project Authors, SIL Open Font License 1.1. Mod listings provided by Modrinth.";
+                        color: Theme.text-faint;
+                        font-size: Type.caption;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+}

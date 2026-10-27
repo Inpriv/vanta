@@ -1,0 +1,181 @@
+import { Theme, Type, Space, Radius, Motion } from "theme.slint";
+import { App, Page } from "state.slint";
+import { TitleBar, Sidebar, ResizeHandles } from "shell.slint";
+import { HomePage } from "pages/home.slint";
+import { InstancesPage } from "pages/instances.slint";
+import { InstancePage } from "pages/instance.slint";
+import { BrowsePage } from "pages/browse.slint";
+import { SettingsPage } from "pages/settings.slint";
+import {
+    CreateInstanceDialog, RenameDialog, ConfirmDialog, IconDialog, LoginDialog, AccountsDialog,
+    ExportDialog, CrashDialog, UpdateDialog, Console, Toast
+} from "dialogs.slint";
+import { Palette } from "std-widgets.slint";
+
+import "fonts/Inter-Regular.ttf";
+import "fonts/Inter-Medium.ttf";
+import "fonts/Inter-SemiBold.ttf";
+import "fonts/Inter-Bold.ttf";
+
+export { App, Theme }
+
+// Slides and fades a page in when it becomes active.
+component PageHost inherits Rectangle {
+    in property <bool> active;
+    opacity: active ? 1 : 0;
+    animate opacity { duration: Motion.page; easing: Motion.out; }
+    visible: self.opacity > 0.001;
+    @children
+}
+
+export component AppWindow inherits Window {
+    title: "Vanta";
+    icon: @image-url("icons/app-icon.png");
+    no-frame: true;
+    default-font-family: "Inter";
+    default-font-size: Type.body;
+    preferred-width: 1180px;
+    preferred-height: 740px;
+    min-width: 880px;
+    min-height: 580px;
+    background: Theme.bg;
+
+    // Keep std widgets (scroll bars, list views) in sync with the theme.
+    private property <bool> is-dark: Theme.dark;
+    changed is-dark => {
+        Palette.color-scheme = self.is-dark ? ColorScheme.dark : ColorScheme.light;
+    }
+    init => {
+        Palette.color-scheme = Theme.dark ? ColorScheme.dark : ColorScheme.light;
+    }
+
+    private property <bool> create-open;
+    private property <bool> rename-open;
+    private property <string> rename-value;
+    private property <bool> delete-open;
+    private property <bool> icon-open;
+    private property <bool> accounts-open;
+    private property <bool> export-open;
+
+    HorizontalLayout {
+        Sidebar {
+            open-accounts => {
+                if App.accounts.length == 0 && App.msa-configured {
+                    App.add-account();
+                } else {
+                    root.accounts-open = true;
+                }
+            }
+        }
+        VerticalLayout {
+            TitleBar {
+                title: App.page == Page.home ? "Home"
+                    : App.page == Page.instances ? "Library"
+                    : App.page == Page.instance ? "Library  /  " + App.selected.name
+                    : App.page == Page.browse ? "Browse"
+                    : "Settings";
+            }
+            Rectangle {
+                vertical-stretch: 1;
+                PageHost {
+                    width: parent.width;
+                    height: parent.height;
+                    active: App.page == Page.home;
+                    HomePage {
+                        width: parent.width;
+                        height: parent.height;
+                        y: (1 - parent.opacity) * 10px;
+                        create-instance => {
+                            create-dialog.reset();
+                            root.create-open = true;
+                        }
+                    }
+                }
+                PageHost {
+                    width: parent.width;
+                    height: parent.height;
+                    active: App.page == Page.instances;
+                    InstancesPage {
+                        width: parent.width;
+                        height: parent.height;
+                        y: (1 - parent.opacity) * 10px;
+                        create-instance => {
+                            create-dialog.reset();
+                            root.create-open = true;
+                        }
+                    }
+                }
+                PageHost {
+                    width: parent.width;
+                    height: parent.height;
+                    active: App.page == Page.instance;
+                    InstancePage {
+                        width: parent.width;
+                        height: parent.height;
+                        y: (1 - parent.opacity) * 10px;
+                        rename => {
+                            root.rename-value = App.selected.name;
+                            root.rename-open = true;
+                        }
+                        pick-icon => { root.icon-open = true; }
+                        export => { root.export-open = true; }
+                        delete => { root.delete-open = true; }
+                    }
+                }
+                PageHost {
+                    width: parent.width;
+                    height: parent.height;
+                    active: App.page == Page.browse;
+                    BrowsePage { width: parent.width; height: parent.height; y: (1 - parent.opacity) * 10px; }
+                }
+                PageHost {
+                    width: parent.width;
+                    height: parent.height;
+                    active: App.page == Page.settings;
+                    SettingsPage { width: parent.width; height: parent.height; y: (1 - parent.opacity) * 10px; }
+                }
+            }
+        }
+    }
+
+    Console { }
+
+    create-dialog := CreateInstanceDialog {
+        open-state <=> root.create-open;
+    }
+    RenameDialog {
+        open-state <=> root.rename-open;
+        value <=> root.rename-value;
+        submit(name) => { App.rename-instance(App.selected-id, name); }
+    }
+    ConfirmDialog {
+        open-state <=> root.delete-open;
+        title: "Delete " + App.selected.name + "?";
+        subtitle: "The instance folder, including worlds, screenshots and mods, will be removed. This cannot be undone.";
+        confirm-text: "Delete instance";
+        confirmed => { App.delete-instance(App.selected-id); }
+    }
+    IconDialog {
+        open-state <=> root.icon-open;
+        current: App.selected.icon;
+        initial: App.selected.initial;
+        picked(k) => { App.set-instance-icon(App.selected-id, k); }
+    }
+    AccountsDialog {
+        open-state <=> root.accounts-open;
+    }
+    ExportDialog {
+        open-state <=> root.export-open;
+        instance-name: App.selected.name;
+    }
+    LoginDialog { }
+    CrashDialog { }
+    UpdateDialog { }
+
+    Toast {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - self.height - 28px;
+    }
+
+    if !App.maximized: ResizeHandles { }
+}
