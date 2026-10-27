@@ -544,8 +544,8 @@ export component CrashDialog inherits Modal {
         border-color: Theme.border;
         clip: true;
         Flickable {
-            viewport-height: detail.preferred-height + 24px;
-            viewport-width: max(self.width, detail.preferred-width + 24px);
+            content-height: detail.preferred-height + 24px;
+            content-width: max(self.width, detail.preferred-width + 24px);
             detail := Text {
                 x: 12px;
                 y: 12px;
@@ -599,7 +599,7 @@ export component UpdateDialog inherits Modal {
         background: Theme.surface-2;
         clip: true;
         Flickable {
-            viewport-height: notes.preferred-height + 24px;
+            content-height: notes.preferred-height + 24px;
             notes := Text {
                 x: 12px;
                 y: 12px;

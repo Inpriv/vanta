@@ -9,7 +9,7 @@ license = "GPL-3.0-or-later"
 repository = "https://github.com/Inpriv/vanta"
 homepage = "https://getvanta.xyz"
 authors = ["Inpriv"]
-rust-version = "1.89"
+rust-version = "1.92"
 
 [profile.release]
 lto = "fat"

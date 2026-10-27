@@ -215,7 +215,7 @@ fn extract_overrides(pack: &Path, game_dir: &Path) -> Result<()> {
     for prefix in ["overrides/", "client-overrides/"] {
         for i in 0..zip.len() {
             let mut entry = zip.by_index(i)?;
-            let name = entry.name().to_owned();
+            let name = entry.name()?.into_owned();
             let Some(rel) = name.strip_prefix(prefix) else {
                 continue;
             };

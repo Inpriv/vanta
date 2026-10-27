@@ -4,6 +4,14 @@ all-features = false
 [advisories]
 version = 2
 yanked = "deny"
+# Unmaintained (not vulnerable) crates pulled in transitively; no maintained
+# replacement is available upstream yet. Revisit when Slint/zbus update.
+ignore = [
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser: used by Slint's text rendering" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant: D-Bus stack used by accesskit, keyring and xdg portals" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names: D-Bus stack used by accesskit, keyring and xdg portals" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: D-Bus stack used by accesskit, keyring and xdg portals" },
+]
 
 [licenses]
 version = 2

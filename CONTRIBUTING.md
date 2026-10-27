@@ -4,7 +4,7 @@ Thanks for helping! Bug reports, fixes, features and documentation are all welco
 
 ## Getting started
 
-1. Install Rust stable (1.89+) and the system libraries listed in the README.
+1. Install Rust stable (1.92+) and the system libraries listed in the README.
 2. `cargo run -p vanta-app` starts the launcher in debug mode.
 3. Set `VANTA_LOG=debug` for verbose logs (written to the `logs/` folder in the data directory).
 4. To try sign-in you need your own Azure client ID (`VANTA_MSA_CLIENT_ID`, see README).

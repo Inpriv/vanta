@@ -134,7 +134,7 @@ export component InstancesPage inherits Rectangle {
 
         Flickable {
             vertical-stretch: 1;
-            viewport-height: grid.height + Space.s10;
+            content-height: grid.height + Space.s10;
             grid := Rectangle {
                 y: 4px;
                 height: ceil(App.instances.length / root.cols) * (148px + 16px);

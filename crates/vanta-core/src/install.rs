@@ -204,7 +204,7 @@ pub fn extract_natives(natives: &[(PathBuf, Vec<String>)], dest: &Path) -> Resul
         let mut archive = zip::ZipArchive::new(file)?;
         for i in 0..archive.len() {
             let mut entry = archive.by_index(i)?;
-            let name = entry.name().to_owned();
+            let name = entry.name()?.into_owned();
             if entry.is_dir()
                 || name.starts_with("META-INF/")
                 || exclude.iter().any(|e| name.starts_with(e.as_str()))

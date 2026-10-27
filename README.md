@@ -51,7 +51,7 @@ Get them from the [latest release](https://github.com/Inpriv/vanta/releases/late
 
 ## Build from source
 
-Requirements: Rust stable (1.89+). On Linux you also need the development packages for fontconfig, xkbcommon, Wayland and D-Bus:
+Requirements: Rust stable (1.92+). On Linux you also need the development packages for fontconfig, xkbcommon, Wayland and D-Bus:
 
 ```sh
 # Debian / Ubuntu

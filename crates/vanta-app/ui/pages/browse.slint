@@ -232,10 +232,10 @@ export component BrowsePage inherits Rectangle {
 
         results := Flickable {
             vertical-stretch: 1;
-            viewport-height: list.preferred-height;
+            content-height: list.preferred-height;
             // Infinite scroll: fetch the next page near the bottom.
-            changed viewport-y => {
-                if App.projects-more && !App.projects-loading && -self.viewport-y + self.height > self.viewport-height - 300px {
+            changed content-y => {
+                if App.projects-more && !App.projects-loading && -self.content-y + self.height > self.content-height - 300px {
                     App.load-more();
                 }
             }
