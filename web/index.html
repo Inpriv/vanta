@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vanta — a fast, minimal Minecraft launcher</title>
+  <meta name="description" content="Vanta is a free, open-source launcher for Minecraft: Java Edition. Native, tiny, instant. Fabric, Quilt, Forge, NeoForge and Modrinth built in. No telemetry.">
+  <meta name="theme-color" content="#0b0c0e">
+  <link rel="canonical" href="https://getvanta.xyz/">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta property="og:title" content="Vanta — a fast, minimal Minecraft launcher">
+  <meta property="og:description" content="Native, tiny, instant. Mod loaders and Modrinth built in. Open source, no telemetry.">
+  <meta property="og:image" content="https://getvanta.xyz/assets/screenshots/home.png">
+  <meta property="og:type" content="website">
+  <link rel="preload" href="assets/fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/Inter-Bold.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#" aria-label="Vanta home">
+        <img src="assets/logo.svg" width="22" height="22" alt="">
+        <span>Vanta</span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#performance">Performance</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/Inpriv/vanta" rel="noopener">GitHub</a>
+      </nav>
+      <a class="btn btn-small" href="#download">Download</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="glow" aria-hidden="true"></div>
+      <div class="wrap hero-inner">
+        <p class="eyebrow reveal">Open source · No telemetry · Windows &amp; Linux</p>
+        <h1 class="reveal">The Minecraft launcher<br>that gets out of the way.</h1>
+        <p class="lead reveal">Vanta is native, tiny and instant. Sign in with Microsoft, pick a version, add mods from Modrinth and play — without a browser engine humming in the background.</p>
+        <div class="cta reveal">
+          <a class="btn btn-primary btn-large" id="download-primary" href="#download">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5v10M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></svg>
+            <span id="download-label">Download Vanta</span>
+          </a>
+          <a class="btn btn-ghost btn-large" href="https://github.com/Inpriv/vanta" rel="noopener">View source</a>
+        </div>
+        <p class="hint reveal" id="download-hint">Free forever. GPL-3.0.</p>
+        <figure class="shot reveal">
+          <img src="assets/screenshots/home.webp" width="1180" height="740" alt="The Vanta home screen showing the featured instance and a Play button" fetchpriority="high">
+        </figure>
+      </div>
+    </section>
+
+    <section id="features" class="wrap section">
+      <h2 class="reveal">Everything you need. Nothing you don't.</h2>
+      <div class="grid">
+        <article class="card reveal"><div class="ico">⚡</div><h3>Instant</h3><p>A single native binary rendered on the GPU. It opens before you can blink and idles quietly.</p></article>
+        <article class="card reveal"><div class="ico">◇</div><h3>Every loader</h3><p>Vanilla, Fabric, Quilt, Forge and NeoForge — installed and kept up to date for you.</p></article>
+        <article class="card reveal"><div class="ico">⌕</div><h3>Modrinth built in</h3><p>Search mods, resource packs, shaders and modpacks. Dependencies install automatically.</p></article>
+        <article class="card reveal"><div class="ico">⇅</div><h3>.mrpack in and out</h3><p>Import any Modrinth modpack, or export your own instance to share it.</p></article>
+        <article class="card reveal"><div class="ico">☕</div><h3>Java, handled</h3><p>The right Java for each version is downloaded automatically. Bring your own if you prefer.</p></article>
+        <article class="card reveal"><div class="ico">◎</div><h3>Private by design</h3><p>No telemetry. Tokens live in your OS keychain. Updates are signed and always ask first.</p></article>
+      </div>
+    </section>
+
+    <section id="performance" class="section perf">
+      <div class="wrap">
+        <h2 class="reveal">Measured, not promised.</h2>
+        <p class="lead reveal">Numbers from the release build on a mid-range Linux desktop. Method and raw results are in <a href="https://github.com/Inpriv/vanta/blob/main/docs/PERFORMANCE.md">PERFORMANCE.md</a>.</p>
+        <div class="stats">
+          <div class="stat reveal"><span class="num" data-perf="startup">—</span><span class="label">to first frame</span></div>
+          <div class="stat reveal"><span class="num" data-perf="memory">—</span><span class="label">memory when idle</span></div>
+          <div class="stat reveal"><span class="num" data-perf="size">—</span><span class="label">download size</span></div>
+          <div class="stat reveal"><span class="num" data-perf="install">—</span><span class="label">to install a version from scratch</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap section">
+      <h2 class="reveal">A closer look</h2>
+      <div class="gallery">
+        <figure class="reveal"><img src="assets/screenshots/library.webp" width="1180" height="740" loading="lazy" alt="Library with instance cards"><figcaption>Library</figcaption></figure>
+        <figure class="reveal"><img src="assets/screenshots/browse.webp" width="1180" height="740" loading="lazy" alt="Browsing mods from Modrinth"><figcaption>Browse Modrinth</figcaption></figure>
+        <figure class="reveal"><img src="assets/screenshots/instance.webp" width="1180" height="740" loading="lazy" alt="Instance page with installed mods"><figcaption>Manage content</figcaption></figure>
+        <figure class="reveal"><img src="assets/screenshots/home-light.webp" width="1180" height="740" loading="lazy" alt="Vanta in the light theme"><figcaption>Light theme</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="faq" class="wrap section narrow">
+      <h2 class="reveal">Questions</h2>
+      <details class="reveal"><summary>Is Vanta free?</summary><p>Yes. Vanta is free and open source under the GPL-3.0-or-later license.</p></details>
+      <details class="reveal"><summary>Do I need to own Minecraft?</summary><p>Yes. Vanta signs in with your Microsoft account and checks that it owns Minecraft: Java Edition. There is no way to play without a license.</p></details>
+      <details class="reveal"><summary>Can I play offline?</summary><p>If an account has signed in and verified ownership before, Vanta can launch it without a connection. Online servers still need a working session.</p></details>
+      <details class="reveal"><summary>Does Vanta collect any data?</summary><p>No. There is no telemetry or analytics. Vanta only talks to Microsoft, Mojang, the mod loader sites, Modrinth and GitHub (for updates).</p></details>
+      <details class="reveal"><summary>Where are my worlds stored?</summary><p>Each instance has its own folder inside Vanta's data directory. Use “Open folder” on any instance to find it.</p></details>
+      <details class="reveal"><summary>macOS?</summary><p>Not yet. Vanta is built for Windows and Linux first.</p></details>
+    </section>
+
+    <section id="download" class="section download">
+      <div class="wrap narrow">
+        <h2 class="reveal">Download</h2>
+        <p class="lead reveal" id="release-line">Latest release from GitHub.</p>
+        <div class="downloads">
+          <a class="dl reveal" data-asset="setup" href="https://github.com/Inpriv/vanta/releases/latest"><strong>Windows installer</strong><span>.exe · per-user, no admin needed</span></a>
+          <a class="dl reveal" data-asset="portable" href="https://github.com/Inpriv/vanta/releases/latest"><strong>Windows portable</strong><span>.exe · single file</span></a>
+          <a class="dl reveal" data-asset="appimage" href="https://github.com/Inpriv/vanta/releases/latest"><strong>Linux AppImage</strong><span>any distribution</span></a>
+          <a class="dl reveal" data-asset="deb" href="https://github.com/Inpriv/vanta/releases/latest"><strong>Ubuntu / Debian</strong><span>.deb · opens in your software center</span></a>
+          <a class="dl reveal" data-asset="arch" href="https://github.com/Inpriv/vanta/releases/latest"><strong>Arch Linux</strong><span>.pkg.tar.zst · <code>pacman -U</code></span></a>
+          <a class="dl reveal" data-asset="tar" href="https://github.com/Inpriv/vanta/releases/latest"><strong>Linux binary</strong><span>.tar.gz</span></a>
+        </div>
+        <p class="note reveal">On Arch you can also use the AUR: <code>yay -S vanta-bin</code>. Every release ships <code>SHA256SUMS.txt</code> and signed update packages.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div class="brand"><img src="assets/logo.svg" width="18" height="18" alt=""><span>Vanta</span></div>
+      <p>NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Vanta downloads game files from official sources and never redistributes them.</p>
+      <p><a href="https://github.com/Inpriv/vanta">GitHub</a> · <a href="https://github.com/Inpriv/vanta/blob/main/LICENSE">GPL-3.0-or-later</a> · <a href="https://github.com/Inpriv/vanta/blob/main/SECURITY.md">Security</a></p>
+    </div>
+  </footer>
+  <script src="assets/site.js" defer></script>
+</body>
+</html>
