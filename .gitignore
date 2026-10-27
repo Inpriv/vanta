@@ -1,0 +1,10 @@
+/target
+**/*.rs.bk
+/dist
+/.claude/
+.env
+*.minisign.key
+*.key
+/web/node_modules
+/web/dist
+.DS_Store

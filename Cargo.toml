@@ -1,0 +1,19 @@
+[workspace]
+resolver = "3"
+members = ["crates/vanta-core", "crates/vanta-modrinth", "crates/vanta-app"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/Inpriv/vanta"
+homepage = "https://getvanta.xyz"
+authors = ["Inpriv"]
+rust-version = "1.85"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+opt-level = 3
