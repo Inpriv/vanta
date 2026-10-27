@@ -1,0 +1,85 @@
+import { App } from "state.slint";
+
+// Vanta design tokens. Mirrored on the website in web/assets/tokens.css and
+// documented in docs/DESIGN.md — keep the three in sync.
+
+export global Theme {
+    in-out property <bool> dark: true;
+    // 0 Signal · 1 Iris · 2 Ember · 3 Azure · 4 Rose · 5 Sun
+    in-out property <int> accent-index: 0;
+
+    // Surfaces: near-black with a faint cool cast.
+    out property <color> bg: dark ? #0b0c0e : #f5f5f3;
+    out property <color> surface-1: dark ? #111215 : #ffffff;
+    out property <color> surface-2: dark ? #17191d : #efefec;
+    out property <color> surface-3: dark ? #1e2025 : #e6e6e2;
+    // Modal backdrop: a colour plus an opacity fraction (0..1).
+    out property <color> scrim: dark ? #000000 : #141518;
+    out property <float> scrim-alpha: dark ? 0.72 : 0.5;
+
+    out property <color> border: dark ? #ffffff0d : #0000000f;
+    out property <color> border-strong: dark ? #ffffff1c : #0000001f;
+
+    out property <color> text: dark ? #ecedf0 : #141518;
+    out property <color> text-muted: dark ? #9a9da6 : #5c5f67;
+    out property <color> text-faint: dark ? #686b74 : #8d9097;
+
+    out property <color> accent: accent-index == 1 ? (dark ? #a898ff : #6b55f0)
+        : accent-index == 2 ? (dark ? #ff9a62 : #e2622a)
+        : accent-index == 3 ? (dark ? #72b8ff : #2a7bd8)
+        : accent-index == 4 ? (dark ? #ff85ba : #d83f82)
+        : accent-index == 5 ? (dark ? #f4d265 : #b58a0b)
+        : (dark ? #74e8bc : #16a46e);
+    // Text drawn on top of the accent.
+    out property <color> on-accent: dark ? #0b0c0e : #ffffff;
+    out property <color> accent-soft: accent.with-alpha(dark ? 0.14 : 0.12);
+
+    out property <color> danger: dark ? #ff6b6b : #d93636;
+    out property <color> danger-soft: danger.with-alpha(0.14);
+    out property <color> warning: dark ? #f5b94a : #b7790b;
+
+    out property <color> focus-ring: accent.with-alpha(0.55);
+    out property <color> shadow: dark ? #00000099 : #0000001f;
+}
+
+export global Type {
+    out property <length> caption: 12px;
+    out property <length> small: 13px;
+    out property <length> body: 14px;
+    out property <length> subtitle: 16px;
+    out property <length> title: 20px;
+    out property <length> display: 28px;
+    out property <length> hero: 40px;
+}
+
+// 4 px grid.
+export global Space {
+    out property <length> s1: 4px;
+    out property <length> s2: 8px;
+    out property <length> s3: 12px;
+    out property <length> s4: 16px;
+    out property <length> s5: 20px;
+    out property <length> s6: 24px;
+    out property <length> s8: 32px;
+    out property <length> s10: 40px;
+    out property <length> s12: 48px;
+}
+
+export global Radius {
+    out property <length> sm: 6px;
+    out property <length> md: 10px;
+    out property <length> lg: 14px;
+    out property <length> xl: 20px;
+}
+
+export global Motion {
+    out property <bool> reduce: App.reduce-motion;
+    out property <duration> fast: reduce ? 0ms : 120ms;
+    out property <duration> base: reduce ? 0ms : 180ms;
+    out property <duration> slow: reduce ? 0ms : 260ms;
+    out property <duration> page: reduce ? 0ms : 220ms;
+    // Expressive ease-out: fast start, long soft landing.
+    out property <easing> out: cubic-bezier(0.22, 1, 0.36, 1);
+    // Slight overshoot for things that "settle" (toggles, pressed states).
+    out property <easing> spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
