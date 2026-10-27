@@ -1,0 +1,41 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Create an instance with …\n2. Click Play\n3. …"
+  - type: input
+    id: version
+    attributes:
+      label: Vanta version
+      placeholder: "0.1.0 (Settings → Updates)"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows 11, Windows 10, Ubuntu / Debian, Arch Linux, Fedora, Other Linux]
+    validations:
+      required: true
+  - type: input
+    id: instance
+    attributes:
+      label: Minecraft version and mod loader
+      placeholder: "1.21.1 with Fabric 0.16.9"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Vanta's log is in the data folder under `logs/`. Game logs can be copied from the console. Please remove anything personal.
+      render: text
