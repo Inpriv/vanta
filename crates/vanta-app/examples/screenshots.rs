@@ -101,15 +101,15 @@ fn fill(ui: &AppWindow) {
     let instances = vec![
         inst(
             "survival",
-            "Survival 1.21",
+            "Latest 26.3",
             "grass",
-            "1.21.1",
+            "26.3",
             "Fabric",
             "2 hours ago",
         ),
         inst(
             "create",
-            "Cozy Builds",
+            "Forge 1.20.1",
             "planks",
             "1.20.1",
             "Forge",
