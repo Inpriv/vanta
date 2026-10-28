@@ -91,3 +91,17 @@ scripts/bench.sh target/release/vanta 15
 
 `VANTA_BENCH_STARTUP=1 vanta` prints `first_frame_ms=…` and exits after the
 first frame. Size analysis: `cargo bloat --profile bloat -p vanta-app --bin vanta --crates`.
+
+## Website
+
+Lighthouse 13 (headless Chrome 156) on `web/`, 2026-10-28:
+
+| Form factor | Performance | Accessibility | Best practices | SEO |
+| --- | --- | --- | --- | --- |
+| Mobile | 100 | 100 | 96 | 100 |
+| Desktop | 100 | 100 | 96 | 100 |
+
+The page is plain HTML/CSS with one small deferred script, self-hosted Latin
+subsets of Inter (≈ 25 KB per weight) and WebP screenshots. The best-practices
+point was a console error from the GitHub releases API returning 404 before the
+first release existed.

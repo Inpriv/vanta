@@ -26,7 +26,7 @@ so it stays sharp at 16 px.
 | `border-strong` | `#ffffff1c` | `#0000001f` | Hovered cards, dialogs |
 | `text` | `#ecedf0` | `#141518` | Primary text |
 | `text-muted` | `#9a9da6` | `#5c5f67` | Secondary text |
-| `text-faint` | `#686b74` | `#8d9097` | Captions, placeholders |
+| `text-faint` | `#7e818a` | `#6a6d74` | Captions, placeholders (≥ 4.5:1 on `bg`, `surface-1`, `surface-2`) |
 | `danger` | `#ff6b6b` | `#d93636` | Destructive actions, errors |
 | `warning` | `#f5b94a` | `#b7790b` | Warnings in logs |
 
