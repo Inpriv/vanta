@@ -18,8 +18,9 @@ Measured on 2026-10-28.
 | Idle memory, Vanta's own (anonymous) | < 60 MB | **28 MiB** (GPU renderer) | ✅ |
 | Idle memory, whole process RSS | < 60 MB | **148 MiB** GPU renderer | ⚠️ see below |
 | Release binary (Linux x86_64) | < 20 MB | **28.4 MiB** | ❌ see below |
-| Install vanilla 1.20.1 from scratch | — | 3,629 files / 733 MB in **≈10 s** (network-bound) | |
-| Re-verify an installed version before launch | — | **0.01 s** | |
+| Install vanilla 26.3 from scratch | — | 5,215 files / 610 MB in **8.7 s** (network-bound) | |
+| Install vanilla 1.20.1 from scratch | — | 3,629 files / 733 MB in **10.0 s** (network-bound) | |
+| Re-verify an installed version before launch | — | **0.02 s** (26.3) · **0.01 s** (1.20.1) | |
 | Animations | 60 fps | GPU-rendered; durations 120–260 ms, no layout work during animation | ✅ |
 
 ### Startup
