@@ -2,6 +2,13 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.8 (2026-10-28)
+
+### Fixes
+
+- Block icons have rounded corners with software rendering too, instead of a square block over a rounded tile
+- The glow on the home screen stays centred behind the instance icon in smaller windows
+
 ## 0.1.7 (2026-10-28)
 
 ### New features
