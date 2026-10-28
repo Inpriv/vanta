@@ -10,6 +10,9 @@
     addEventListener("load", () => { if (scrollY < 200) scrollTo(0, 0); }, { once: true });
   }
 
+  // No pinch zoom: Safari ignores user-scalable=no, so stop its gestures too.
+  for (const g of ["gesturestart", "gesturechange"]) addEventListener(g, (e) => e.preventDefault(), { passive: false });
+
   // Mobile menu.
   const menu = document.querySelector(".menu");
   const nav = document.getElementById("site-nav");
