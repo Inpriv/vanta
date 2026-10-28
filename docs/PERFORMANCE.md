@@ -1,7 +1,7 @@
 # Performance
 
-All numbers are real measurements of the v0.1.0 release build
-(`cargo build --release`) taken with [`scripts/bench.sh`](../scripts/bench.sh).
+All numbers are real measurements of the v0.1.6 release binary
+(`Vanta-linux-x86_64.tar.gz` from the GitHub release) taken with [`scripts/bench.sh`](../scripts/bench.sh).
 
 **Machine:** Intel Core i5-12500H laptop (12 cores / 16 threads), 16 GB RAM,
 NVMe SSD, NVIDIA GPU with the proprietary 615.78 driver, Arch Linux
@@ -12,14 +12,14 @@ Measured on 2026-10-28.
 
 | Metric | Target | Measured | |
 | --- | --- | --- | --- |
-| Cold start → first painted frame | < 200 ms (aim < 100 ms) | **142 ms** median (136–148 ms, 15 runs) | ✅ |
-| Process start → exit right after first frame (wall clock) | — | 177 ms median | |
+| Cold start → first painted frame | < 200 ms (aim < 100 ms) | **134 ms** median (128–150 ms, 15 runs) | ✅ |
+| Process start → exit right after first frame (wall clock) | — | 168 ms median | |
 | Idle CPU | none | **0** clock ticks over 5 s | ✅ |
-| Idle memory, Vanta's own (anonymous) | < 60 MB | **27 MiB** (GPU renderer), **9 MiB** (software renderer) | ✅ |
-| Idle memory, whole process RSS | < 60 MB | **130 MiB** GPU renderer · **43 MiB** software renderer | ⚠️ see below |
-| Release binary (Linux x86_64) | < 20 MB | **25.9 MiB** | ❌ see below |
+| Idle memory, Vanta's own (anonymous) | < 60 MB | **28 MiB** (GPU renderer) | ✅ |
+| Idle memory, whole process RSS | < 60 MB | **148 MiB** GPU renderer | ⚠️ see below |
+| Release binary (Linux x86_64) | < 20 MB | **28.4 MiB** | ❌ see below |
 | Install vanilla 1.20.1 from scratch | — | 3,629 files / 733 MB in **≈10 s** (network-bound) | |
-| Re-verify an installed version before launch | — | **0.04 s** | |
+| Re-verify an installed version before launch | — | **0.01 s** | |
 | Animations | 60 fps | GPU-rendered; durations 120–260 ms, no layout work during animation | ✅ |
 
 ### Startup
@@ -27,7 +27,7 @@ Measured on 2026-10-28.
 The UI is compiled to native code by Slint, fonts and icons are embedded, and
 nothing that touches the network or scans the disk runs before the first frame:
 instances, accounts and update checks load on the Tokio runtime afterwards and
-stream into the UI. The 142 ms are measured inside the process from `main()` to
+stream into the UI. The 134 ms are measured inside the process from `main()` to
 the end of the first `AfterRendering` callback of the OpenGL renderer, so they
 include creating the GPU context. (Slint only reports rendering callbacks for
 OpenGL, so this benchmark measures the default GPU renderer.)
@@ -44,8 +44,8 @@ Per mapping (GPU renderer, `/proc/<pid>/smaps`):
 | Heap and other anonymous memory (Vanta + driver) | ≈ 27 MiB |
 
 So the RSS target is missed **because of the GPU driver**, not Vanta: the app's
-own memory is about 27 MiB, and with **Settings → Appearance → Software
-rendering** the whole process uses 43 MiB RSS. Memory-saving measures in the
+own memory is about 28 MiB, and with **Settings → Appearance → Software
+rendering** the whole process used 43 MiB RSS in the v0.1.0 measurement. Memory-saving measures in the
 app itself:
 
 - Modrinth icons are decoded off the UI thread and downscaled to 96 px; skin
@@ -56,7 +56,8 @@ app itself:
 
 ### Binary size
 
-The Linux binary is 25.9 MiB (stripped, fat LTO, `panic = "abort"`).
+The Linux binary is 28.4 MiB (stripped, fat LTO, `panic = "abort"`); it was
+25.9 MiB in v0.1.0.
 `cargo bloat` shows the size is spread across many medium-sized parts rather
 than one outlier: Rust std (1.5 MiB), Slint core/backend/renderers (≈ 2 MiB),
 Slint-generated UI code, the text stack (skrifa, harfrust, swash, parley),
