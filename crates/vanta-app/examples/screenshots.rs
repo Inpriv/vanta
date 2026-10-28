@@ -377,7 +377,7 @@ fn main() {
             (width() as f32 * SCALE) as usize,
             (height() as f32 * SCALE) as usize,
         );
-        for ms in [200u64, 450, 700, 950] {
+        for ms in [120u64, 240, 360, 480, 640, 900] {
             while CLOCK.with(|c| c.get()) < Duration::from_millis(ms) {
                 CLOCK.with(|c| c.set(c.get() + Duration::from_millis(10)));
                 slint::platform::update_timers_and_animations();
