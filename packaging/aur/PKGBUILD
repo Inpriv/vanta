@@ -1,6 +1,6 @@
 # Maintainer: Inpriv
 pkgname=vanta-bin
-pkgver=0.1.9
+pkgver=0.1.10
 pkgrel=1
 pkgdesc="Fast, minimal launcher for Minecraft: Java Edition"
 arch=('x86_64')

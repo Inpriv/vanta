@@ -2,6 +2,14 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.10 (2026-10-28)
+
+### Fixes
+
+- After resizing or moving the window, the resize cursor no longer sticks and clicks no longer start another resize
+- Double-clicking the title bar maximizes the window again
+- The About section in Settings keeps its links on their own row and shows the app version
+
 ## 0.1.9 (2026-10-28)
 
 ### New features
