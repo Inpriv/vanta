@@ -1000,12 +1000,16 @@ export component Console inherits Rectangle {
                 }
                 Segmented {
                     options: ["All", "Warnings", "Errors"];
-                    item-width: 84px;
+                    item-width: 76px;
                     current <=> App.log-filter;
                     selected => { App.apply-log-filter(); }
                 }
+                // Shrinks first in narrow windows so the buttons always fit.
                 TextField {
-                    width: 200px;
+                    min-width: 120px;
+                    preferred-width: 200px;
+                    max-width: 240px;
+                    horizontal-stretch: 1;
                     placeholder: "Filter";
                     icon: @image-url("icons/px/search.png");
                     has-icon: true;
