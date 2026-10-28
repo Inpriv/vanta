@@ -226,3 +226,6 @@ code { border-radius: var(--r-sm); }
   h2 { font-size: 26px; }
 }
 
+
+.btn.is-disabled, .btn.is-disabled:hover, .btn.is-disabled:active { background: var(--surface-3); color: var(--text-muted); border-color: var(--surface-3); box-shadow: none; transform: none; cursor: default; }
+.btn.is-disabled svg { display: none; }

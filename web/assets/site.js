@@ -40,7 +40,7 @@
 
   // Download detection.
   const ua = navigator.userAgent;
-  const os = /Windows/i.test(ua) ? "windows" : /Linux|X11/i.test(ua) && !/Android/i.test(ua) ? "linux" : "other";
+  const os = /Windows/i.test(ua) ? "windows" : /Linux/i.test(ua) && !/Android/i.test(ua) ? "linux" : "other";
   const matchers = {
     setup: (n) => /^Vanta-Setup-.*\.exe$/.test(n),
     portable: (n) => /-portable\.exe$/.test(n),
@@ -56,7 +56,9 @@
   const hint = document.getElementById("download-hint");
 
   // Phones can't run Vanta: offer to send the link to a computer instead.
-  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  // iPads report themselves as a Mac; touch support gives them away.
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  const mac = !mobile && /Macintosh|Mac OS X/i.test(ua);
   if (mobile) {
     label.textContent = "Send to my computer";
     const secondary = document.getElementById("secondary-cta");
@@ -78,6 +80,15 @@
         /* share sheet dismissed */
       }
     });
+  }
+
+  // No macOS build yet: say so instead of offering a file that won't run.
+  if (mac) {
+    label.textContent = "Not available on macOS";
+    primary.classList.add("is-disabled");
+    primary.setAttribute("aria-disabled", "true");
+    primary.removeAttribute("href");
+    hint.textContent = "Vanta runs on Windows and Linux for now.";
   }
 
   // Hotbar: the selected slot steps along, like scrolling through blocks.
