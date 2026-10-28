@@ -17,16 +17,16 @@ component Hero inherits Rectangle {
     border-width: 1px;
     border-color: Theme.border;
 
-    // Ambient glow tinted by the instance icon.
+    // Ambient glow, centred on the icon in both layouts.
     Rectangle {
-        x: parent.width - 420px;
-        y: -140px;
+        x: hero-icon.x + hero-icon.width / 2 - self.width / 2;
+        y: hero-icon.y + hero-icon.height / 2 - self.height / 2;
         width: 560px;
         height: 560px;
         border-radius: 280px;
         background: @radial-gradient(circle, Theme.accent.with-alpha(Theme.dark ? 0.16 : 0.12) 0%, Theme.accent.with-alpha(0) 70%);
     }
-    InstanceIcon {
+    hero-icon := InstanceIcon {
             x: parent.width - self.width - (root.compact ? 48px : 80px);
             y: (parent.height - self.height) / 2;
             key: root.inst.icon;

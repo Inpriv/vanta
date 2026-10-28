@@ -789,29 +789,29 @@ export component InstanceIcon inherits Rectangle {
         return k == "grass" || k == "dirt" || k == "stone" || k == "cobblestone" || k == "bedrock" || k == "sand" || k == "gravel" || k == "oak_log" || k == "planks" || k == "coal_ore" || k == "iron_ore" || k == "gold_ore" || k == "diamond_ore" || k == "emerald_ore" || k == "redstone_ore" || k == "netherrack" || k == "end_stone" || k == "obsidian" || k == "ice" || k == "snow" || k == "glowstone" || k == "tnt";
     }
     pure function block-image(k: string) -> image {
-        if k == "grass" { return @image-url("blocks/grass.png"); }
-        if k == "dirt" { return @image-url("blocks/dirt.png"); }
-        if k == "stone" { return @image-url("blocks/stone.png"); }
-        if k == "cobblestone" { return @image-url("blocks/cobblestone.png"); }
-        if k == "bedrock" { return @image-url("blocks/bedrock.png"); }
-        if k == "sand" { return @image-url("blocks/sand.png"); }
-        if k == "gravel" { return @image-url("blocks/gravel.png"); }
-        if k == "oak_log" { return @image-url("blocks/oak_log.png"); }
-        if k == "planks" { return @image-url("blocks/planks.png"); }
-        if k == "coal_ore" { return @image-url("blocks/coal_ore.png"); }
-        if k == "iron_ore" { return @image-url("blocks/iron_ore.png"); }
-        if k == "gold_ore" { return @image-url("blocks/gold_ore.png"); }
-        if k == "diamond_ore" { return @image-url("blocks/diamond_ore.png"); }
-        if k == "emerald_ore" { return @image-url("blocks/emerald_ore.png"); }
-        if k == "redstone_ore" { return @image-url("blocks/redstone_ore.png"); }
-        if k == "netherrack" { return @image-url("blocks/netherrack.png"); }
-        if k == "end_stone" { return @image-url("blocks/end_stone.png"); }
-        if k == "obsidian" { return @image-url("blocks/obsidian.png"); }
-        if k == "ice" { return @image-url("blocks/ice.png"); }
-        if k == "snow" { return @image-url("blocks/snow.png"); }
-        if k == "glowstone" { return @image-url("blocks/glowstone.png"); }
-        if k == "tnt" { return @image-url("blocks/tnt.png"); }
-        return @image-url("blocks/grass.png");
+        if k == "grass" { return @image-url("blocks/rounded/grass.png"); }
+        if k == "dirt" { return @image-url("blocks/rounded/dirt.png"); }
+        if k == "stone" { return @image-url("blocks/rounded/stone.png"); }
+        if k == "cobblestone" { return @image-url("blocks/rounded/cobblestone.png"); }
+        if k == "bedrock" { return @image-url("blocks/rounded/bedrock.png"); }
+        if k == "sand" { return @image-url("blocks/rounded/sand.png"); }
+        if k == "gravel" { return @image-url("blocks/rounded/gravel.png"); }
+        if k == "oak_log" { return @image-url("blocks/rounded/oak_log.png"); }
+        if k == "planks" { return @image-url("blocks/rounded/planks.png"); }
+        if k == "coal_ore" { return @image-url("blocks/rounded/coal_ore.png"); }
+        if k == "iron_ore" { return @image-url("blocks/rounded/iron_ore.png"); }
+        if k == "gold_ore" { return @image-url("blocks/rounded/gold_ore.png"); }
+        if k == "diamond_ore" { return @image-url("blocks/rounded/diamond_ore.png"); }
+        if k == "emerald_ore" { return @image-url("blocks/rounded/emerald_ore.png"); }
+        if k == "redstone_ore" { return @image-url("blocks/rounded/redstone_ore.png"); }
+        if k == "netherrack" { return @image-url("blocks/rounded/netherrack.png"); }
+        if k == "end_stone" { return @image-url("blocks/rounded/end_stone.png"); }
+        if k == "obsidian" { return @image-url("blocks/rounded/obsidian.png"); }
+        if k == "ice" { return @image-url("blocks/rounded/ice.png"); }
+        if k == "snow" { return @image-url("blocks/rounded/snow.png"); }
+        if k == "glowstone" { return @image-url("blocks/rounded/glowstone.png"); }
+        if k == "tnt" { return @image-url("blocks/rounded/tnt.png"); }
+        return @image-url("blocks/rounded/grass.png");
     }
     pure function brush-for(k: string) -> brush {
         if k == "accent" || k == "vanta" { return @linear-gradient(145deg, Theme.accent.brighter(0.25) 0%, Theme.accent.darker(0.35) 100%); }
@@ -827,8 +827,11 @@ export component InstanceIcon inherits Rectangle {
         return @linear-gradient(145deg, #72e3a4 0%, #2b8a59 100%);
     }
 
-    background: root.is-block(root.key) ? #000 : root.brush-for(root.key);
+    background: root.is-block(root.key) ? transparent : root.brush-for(root.key);
 
+    // Block textures carry their own rounded corners (see
+    // scripts/gen_rounded_blocks.py): the software renderer ignores the
+    // radius when clipping.
     if root.is-block(root.key): Image {
         width: 100%;
         height: 100%;
@@ -836,7 +839,9 @@ export component InstanceIcon inherits Rectangle {
         image-rendering: pixelated;
     }
     // Soft top highlight and a hairline edge give every tile some depth.
-    Rectangle {
+    // Block textures have their own shading, and the software renderer would
+    // draw this gradient over their rounded corners.
+    if !root.is-block(root.key): Rectangle {
         y: 0;
         height: parent.height * 0.5;
         background: @linear-gradient(180deg, #ffffff26 0%, #ffffff00 100%);
