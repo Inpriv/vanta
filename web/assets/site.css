@@ -157,9 +157,9 @@ details p { color: var(--text-muted); margin: var(--s3) 0 0; }
   .num { font-size: 28px; }
   .label { font-size: var(--fs-small); }
   /* Swipeable screenshot carousel */
-  .gallery { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: var(--s3); padding-bottom: var(--s2); margin-inline: -16px; padding-inline: 16px; scrollbar-width: none; }
+  .gallery { position: relative; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: var(--s3); padding-bottom: var(--s2); margin-inline: -16px; padding-inline: 16px; scrollbar-width: none; }
   .gallery::-webkit-scrollbar { display: none; }
-  .gallery figure { flex: 0 0 85%; scroll-snap-align: center; }
+  .gallery figure { flex: 0 0 85%; scroll-snap-align: center; transform-origin: center; will-change: transform, opacity; }
   .downloads { grid-template-columns: 1fr; }
   .download { padding-bottom: var(--s16); }
   h2 { margin-bottom: var(--s6); }
