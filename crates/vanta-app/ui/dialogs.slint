@@ -815,7 +815,7 @@ export component Console inherits Rectangle {
     }
     panel := Rectangle {
         height: root.height * 0.62;
-        y: root.height - self.height * root.t;
+        y: round((root.height - self.height * root.t) / 1phx) * 1phx;
         background: Theme.surface-1;
         border-radius: Radius.xl;
         border-width: 1px;

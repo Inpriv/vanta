@@ -824,9 +824,11 @@ export component Modal inherits Rectangle {
     dialog := Rectangle {
         width: min(root.dialog-width, root.width - 32px);
         height: min(body.preferred-height, root.height - 32px);
-        x: (root.width - self.width) / 2;
-        y: (root.height - self.height) / 2 + (1 - root.t) * 16px;
-        opacity: root.t;
+        // Whole physical pixels keep text sharp; opacity 1 at rest avoids
+        // rendering through an offscreen layer.
+        x: round((root.width - self.width) / 2 / 1phx) * 1phx;
+        y: round(((root.height - self.height) / 2 + (1 - root.t) * 16px) / 1phx) * 1phx;
+        opacity: root.t > 0.995 ? 1 : root.t;
         background: Theme.surface-1;
         border-radius: Radius.xl;
         border-width: 1px;

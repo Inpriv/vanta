@@ -173,7 +173,7 @@ export component AppWindow inherits Window {
         UpdateDialog { }
 
         Toast {
-            x: (parent.width - self.width) / 2;
+            x: round((parent.width - self.width) / 2 / 1phx) * 1phx;
             y: parent.height - self.height - 24px;
         }
 
