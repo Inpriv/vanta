@@ -1,5 +1,5 @@
 import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
-import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Slider, Segmented, Select, Card, FieldRow, Divider, SectionTitle, Spinner, ScrollArea } from "../components.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Slider, Segmented, Select, Card, FieldRow, Divider, SectionTitle, Spinner, ScrollArea, Badge } from "../components.slint";
 import { App } from "../state.slint";
 
 component Swatch inherits Rectangle {
@@ -366,30 +366,46 @@ export component SettingsPage inherits Rectangle {
                             colorize: Theme.text;
                             width: 28px;
                             height: 28px;
+                            y: 2px;
                         }
                         VerticalLayout {
                             horizontal-stretch: 1;
-                            Text {
-                                text: "Vanta";
-                                color: Theme.text;
-                                font-family: Type.pixel;
-                                font-weight: 700;
-                                font-size: Type.subtitle;
+                            spacing: 2px;
+                            HorizontalLayout {
+                                spacing: Space.s2;
+                                alignment: start;
+                                Text {
+                                    text: "Vanta";
+                                    color: Theme.text;
+                                    font-family: Type.pixel;
+                                    font-weight: 700;
+                                    font-size: Type.subtitle;
+                                    vertical-alignment: center;
+                                }
+                                Badge {
+                                    y: (parent.height - self.height) / 2;
+                                    text: "v" + App.version;
+                                }
                             }
                             Text {
                                 text: "Free and open source under GPL-3.0-or-later. No telemetry, ever.";
                                 color: Theme.text-muted;
                                 font-size: Type.small;
+                                wrap: word-wrap;
                             }
                         }
+                    }
+                    // Links get their own row so they never squeeze the text.
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        alignment: start;
                         Button {
-                            y: (parent.height - self.height) / 2;
                             text: "Website";
-                            kind: ButtonKind.ghost;
+                            icon: @image-url("../icons/px/external.png");
+                            has-icon: true;
                             clicked => { App.open-url("https://getvanta.xyz"); }
                         }
                         Button {
-                            y: (parent.height - self.height) / 2;
                             text: "Source code";
                             icon: @image-url("../icons/px/external.png");
                             has-icon: true;
