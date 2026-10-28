@@ -2,6 +2,18 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.11 (2026-10-28)
+
+### New features
+
+- New opening animation: the pixel V is drawn block by block like a pen stroke, while the name and the block bar load in step with it
+- Compact Library cards: the name and details sit beside the icon, so more instances fit on screen
+
+### Fixes
+
+- The console header fits narrow windows; its buttons are no longer cut off
+- The home screen fits the smallest window size, and the Recent cards line up with the card above them
+
 ## 0.1.10 (2026-10-28)
 
 ### Fixes
