@@ -32,7 +32,7 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 .lead { color: var(--text-muted); font-size: 18px; max-width: 60ch; }
 
 /* Nav */
-.nav { position: sticky; top: 0; z-index: 5; backdrop-filter: saturate(140%) blur(14px); background: rgba(11, 12, 14, 0.72); border-bottom: 1px solid var(--border); }
+.nav { position: sticky; top: 0; z-index: 5; backdrop-filter: saturate(140%) blur(14px); background: linear-gradient(180deg, rgba(114, 184, 255, 0.07) 0%, rgba(114, 184, 255, 0) 100%), rgba(11, 12, 14, 0.72); border-bottom: 1px solid var(--border); }
 .nav-inner { display: flex; align-items: center; gap: var(--s6); height: 72px; }
 .brand span { font-size: 18px; }
 .brand { display: inline-flex; align-items: center; gap: var(--s2); color: var(--text); font-weight: 700; }
@@ -67,7 +67,7 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 
 /* Hero */
 .hero { position: relative; overflow: hidden; padding-top: var(--s6); }
-.glow { position: absolute; inset: -320px 0 auto; height: 760px; background: radial-gradient(closest-side, rgba(114, 184, 255, 0.16), transparent 70%); pointer-events: none; }
+.glow { display: none; }
 .hero-inner { position: relative; text-align: center; }
 .eyebrow { color: var(--accent); font-size: var(--fs-small); font-weight: 600; letter-spacing: 0.02em; margin: 0 0 var(--s3); }
 .hero h1 { font-size: clamp(38px, 6.4vw, 72px); font-weight: 700; letter-spacing: -0.035em; }
