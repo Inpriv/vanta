@@ -2,6 +2,12 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.9 (2026-10-28)
+
+### New features
+
+- The pixel Vanta logo is now the app icon everywhere: the window and taskbar, the Windows .exe and installer, Linux menus and the AppImage
+
 ## 0.1.8 (2026-10-28)
 
 ### Fixes

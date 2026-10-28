@@ -5821,7 +5821,7 @@ dependencies = [
 
 [[package]]
 name = "vanta-app"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "anyhow",
  "arboard",
@@ -5855,7 +5855,7 @@ dependencies = [
 
 [[package]]
 name = "vanta-core"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "chrono",
  "dirs",
@@ -5883,7 +5883,7 @@ dependencies = [
 
 [[package]]
 name = "vanta-modrinth"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "reqwest",
  "rustls",
