@@ -17,7 +17,7 @@ body {
 }
 img { max-width: 100%; height: auto; display: block; }
 a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
+@media (hover: hover) { a:hover { text-decoration: underline; } }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 code { font: 500 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface-3); padding: 1px 6px; border-radius: 4px; color: var(--text); }
 
@@ -40,7 +40,7 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 .brand:hover { text-decoration: none; }
 .nav nav { display: flex; gap: var(--s5); margin-left: auto; }
 .nav nav a { color: var(--text-muted); font-size: var(--fs-body); transition: color var(--dur-fast) var(--ease-out); }
-.nav nav a:hover { color: var(--text); text-decoration: none; }
+@media (hover: hover) { .nav nav a:hover { color: var(--text); text-decoration: none; } }
 .menu { display: none; width: 40px; height: 40px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); padding: 0; cursor: pointer; position: relative; }
 .menu span { position: absolute; left: 11px; right: 11px; height: 2px; border-radius: 1px; background: var(--text); transition: transform var(--dur-base) var(--ease-out), top var(--dur-base) var(--ease-out); }
 .menu span:first-child { top: 15px; }
@@ -57,14 +57,15 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
   background: var(--surface-3); border: 1px solid var(--border);
   transition: transform var(--dur-fast) var(--ease-out), background var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
-.btn:hover { text-decoration: none; background: #262930; }
+.btn:hover { text-decoration: none; }
+@media (hover: hover) { .btn:hover { background: #262930; } }
 .btn:active { transform: translateY(1px); }
 .btn-small { height: 34px; padding: 0 var(--s4); font-size: var(--fs-small); }
 .btn-large { height: 52px; padding: 0 var(--s8); font-size: var(--fs-subtitle); border-radius: var(--r-lg); }
 .btn-primary { background: var(--accent); color: var(--on-accent); border-color: transparent; box-shadow: 0 8px 30px rgba(114, 184, 255, 0.18); }
-.btn-primary:hover { background: #93c9ff; box-shadow: 0 10px 40px rgba(114, 184, 255, 0.3); transform: translateY(-1px); }
+@media (hover: hover) { .btn-primary:hover { background: #93c9ff; box-shadow: 0 10px 40px rgba(114, 184, 255, 0.3); transform: translateY(-1px); } }
 .btn-ghost { background: transparent; }
-.btn-ghost:hover { background: var(--surface-2); }
+@media (hover: hover) { .btn-ghost:hover { background: var(--surface-2); } }
 
 /* Hero */
 .hero { position: relative; overflow: hidden; padding-top: var(--s6); }
@@ -80,7 +81,7 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 /* Features */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s4); }
 .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--s6); transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out); }
-.card:hover { transform: translateY(-3px); border-color: var(--border-strong); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
+@media (hover: hover) { .card:hover { transform: translateY(-3px); border-color: var(--border-strong); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); } }
 .card p { color: var(--text-muted); margin: 0; font-size: 15px; }
 .ico { width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--r-md); background: var(--accent-soft); color: var(--accent); margin-bottom: var(--s4); font-size: 18px; }
 
@@ -95,7 +96,7 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--s5); }
 .gallery figure { margin: 0; }
 .gallery img { border-radius: var(--r-lg); border: 1px solid var(--border-strong); transition: transform var(--dur-slow) var(--ease-out); }
-.gallery figure:hover img { transform: scale(1.015); }
+@media (hover: hover) { .gallery figure:hover img { transform: scale(1.015); } }
 figcaption { color: var(--text-muted); font-size: var(--fs-small); margin-top: var(--s2); }
 
 /* FAQ */
@@ -110,7 +111,7 @@ details p { color: var(--text-muted); margin: var(--s3) 0 0; }
 .download { padding-bottom: var(--s24); }
 .downloads { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s3); }
 .dl { display: flex; flex-direction: column; gap: 2px; padding: var(--s4) var(--s5); border-radius: var(--r-lg); background: var(--surface-1); border: 1px solid var(--border); color: var(--text); transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
-.dl:hover { text-decoration: none; border-color: var(--accent); transform: translateY(-2px); }
+@media (hover: hover) { .dl:hover { text-decoration: none; border-color: var(--accent); transform: translateY(-2px); } }
 .dl span { color: var(--text-muted); font-size: var(--fs-small); }
 .dl.recommended { border-color: rgba(114, 184, 255, 0.5); background: linear-gradient(180deg, var(--accent-soft), var(--surface-1)); }
 .note { color: var(--text-muted); font-size: var(--fs-small); margin-top: var(--s5); }
@@ -182,17 +183,18 @@ h2 { font-weight: 600; }
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), inset 0 -3px 0 rgba(0, 0, 0, 0.22), 0 3px 0 rgba(0, 0, 0, 0.45);
   transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background var(--dur-base) var(--ease-out);
 }
-.btn:hover { transform: translateY(-1px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), inset 0 -3px 0 rgba(0, 0, 0, 0.22), 0 4px 0 rgba(0, 0, 0, 0.45); }
+@media (hover: hover) { .btn:hover { transform: translateY(-1px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), inset 0 -3px 0 rgba(0, 0, 0, 0.22), 0 4px 0 rgba(0, 0, 0, 0.45); } }
 .btn:active { transform: translateY(2px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), inset 0 -2px 0 rgba(0, 0, 0, 0.22), 0 1px 0 rgba(0, 0, 0, 0.45); }
 .btn-primary { border: 0; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -3px 0 rgba(0, 0, 0, 0.18), 0 3px 0 #2b5f9e; }
-.btn-primary:hover { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -3px 0 rgba(0, 0, 0, 0.18), 0 4px 0 #2b5f9e; }
+@media (hover: hover) { .btn-primary:hover { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -3px 0 rgba(0, 0, 0, 0.18), 0 4px 0 #2b5f9e; } }
 .btn-primary:active { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 1px 0 #2b5f9e; }
 .btn-ghost { box-shadow: none; }
-.btn-ghost:hover, .btn-ghost:active { box-shadow: none; }
+@media (hover: hover) { .btn-ghost:hover { box-shadow: none; } }
+.btn-ghost:active { box-shadow: none; }
 
 /* Cards and download tiles: pixel highlight and hard shadow on hover. */
 .card, .stat, .dl { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); }
-.card:hover, .dl:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 0 rgba(0, 0, 0, 0.5); }
+@media (hover: hover) { .card:hover, .dl:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 0 rgba(0, 0, 0, 0.5); } }
 .ico { width: 40px; height: 40px; border-radius: var(--r-sm); background: none; margin-bottom: var(--s4); display: block; }
 .shot, .gallery img { border-radius: var(--r-xl); }
 code { border-radius: var(--r-sm); }
@@ -203,17 +205,11 @@ code { border-radius: var(--r-sm); }
 .slot img { width: 26px; height: 26px; }
 .slot.on { border-color: var(--accent); transform: translateY(-2px); }
 
-/* Press feedback without the mobile tap highlight. */
+/* Press feedback without the mobile tap highlight. Hover effects only apply
+   with a mouse (above), so nothing stays lit after a tap. */
 @media (hover: none) {
   .btn:active, .dl:active, .card:active, .menu:active { filter: brightness(0.92); }
-  .btn:hover, .card:hover, .dl:hover { transform: none; }
-  /* A tap leaves :hover stuck on, so keep the resting shadow there. */
-  .btn:hover { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), inset 0 -3px 0 rgba(0, 0, 0, 0.22), 0 3px 0 rgba(0, 0, 0, 0.45); }
-  .btn-primary:hover { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -3px 0 rgba(0, 0, 0, 0.18), 0 3px 0 #2b5f9e; }
-  /* Pressing pushes the button down onto its shadow. */
-  .btn:active { transform: translateY(2px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), inset 0 -2px 0 rgba(0, 0, 0, 0.22), 0 1px 0 rgba(0, 0, 0, 0.45); }
-  .btn-primary:active { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 1px 0 #2b5f9e; }
-  .btn-ghost:hover, .btn-ghost:active { box-shadow: none; }
+  .btn-ghost:active { background: var(--surface-2); }
 }
 
 @media (max-width: 720px) {
