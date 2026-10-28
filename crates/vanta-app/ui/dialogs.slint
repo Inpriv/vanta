@@ -120,18 +120,6 @@ export component CreateInstanceDialog inherits Modal {
                 mouse-cursor: pointer;
                 clicked => { root.picking-icon = !root.picking-icon; }
             }
-            if ita.has-hover && !root.picking-icon: Rectangle {
-                y: parent.height + 6px;
-                width: tip.preferred-width + 16px;
-                height: 26px;
-                border-radius: Radius.sm;
-                background: Theme.dark ? #26282e : #1b1c20;
-                tip := Text {
-                    text: "Change icon";
-                    color: #f2f3f5;
-                    font-size: Type.caption;
-                }
-            }
         }
         TextField {
             horizontal-stretch: 1;
