@@ -2,6 +2,23 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.2 (2026-10-28)
+
+### New features
+
+- Rounded window corners and rounded window controls
+- Clicking a Browse result opens its details inside Vanta; Install always works and asks which instance to use, or offers to create one
+- Compact new-instance dialog with a working mod loader picker; Enter creates the instance
+- Play starts Microsoft sign-in when you are not signed in yet
+- Slim, draggable scrollbars; memory shown in GB; the first Java download is labelled
+- Smaller default window and a crisp vector logo
+
+### Fixes
+
+- Dragging a slider no longer scrolls the page
+- The loading spinner is smooth and sits inside its button
+- Dialogs scroll when the window is too small, so their buttons stay reachable
+
 ## 0.1.1 (2026-10-28)
 
 ### New features
