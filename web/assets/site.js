@@ -4,6 +4,18 @@
   const doc = document.documentElement;
   doc.classList.add("js");
 
+  // Mobile menu.
+  const menu = document.querySelector(".menu");
+  const nav = document.getElementById("site-nav");
+  if (menu && nav) {
+    const setOpen = (open) => {
+      menu.setAttribute("aria-expanded", String(open));
+      nav.classList.toggle("open", open);
+    };
+    menu.addEventListener("click", () => setOpen(menu.getAttribute("aria-expanded") !== "true"));
+    nav.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => setOpen(false)));
+  }
+
   // Reveal on scroll.
   const items = document.querySelectorAll(".reveal");
   if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
