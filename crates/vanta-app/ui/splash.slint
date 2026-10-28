@@ -1,7 +1,6 @@
-// Opening animation: the V mark rises and is revealed from the bottom while
-// an accent glow blooms, the wordmark appears letter by letter, then the
-// splash dissolves into the app. About 1.2 s; click to skip; skipped with
-// "Reduce motion".
+// Opening animation in Vanta's pixel style: the pixel V builds up in
+// steps, the name types in, and a block bar fills before the splash fades.
+// About 1.2 s; click to skip; skipped with "Reduce motion".
 
 import { Theme, Motion } from "theme.slint";
 
@@ -12,10 +11,12 @@ export component Splash inherits Rectangle {
     init => { root.t = 1; }
 
     pure function clamp01(x: float) -> float { return max(0, min(1, x)); }
-    pure function ease-out(x: float) -> float { return 1 - pow(1 - root.clamp01(x), 3); }
+    // Quantised progress gives the stepped, pixel feel.
+    pure function steps(x: float, n: int) -> float { return floor(root.clamp01(x) * n) / n; }
 
-    private property <float> mark: root.ease-out(root.t / 0.45);
-    private property <float> fade: root.ease-out((root.t - 0.72) / 0.28);
+    private property <float> mark: root.steps(root.t / 0.4, 12);
+    private property <float> bar: root.steps((root.t - 0.3) / 0.45, 10);
+    private property <float> fade: root.steps((root.t - 0.8) / 0.2, 4);
 
     visible: !Motion.reduce && !root.skipped && root.t < 1;
     background: Theme.bg;
@@ -26,46 +27,49 @@ export component Splash inherits Rectangle {
         clicked => { root.skipped = true; }
     }
 
-    // Accent glow
-    Rectangle {
-        width: 360px + 120px * root.mark;
-        height: self.width;
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2 - 24px;
-        border-radius: self.width / 2;
-        background: @radial-gradient(circle, Theme.accent.with-alpha(0.22 * root.mark) 0%, Theme.accent.with-alpha(0) 70%);
-    }
-
-    // The mark, revealed bottom-up while it rises into place.
+    // Pixel V, revealed bottom-up in 12 steps.
     reveal := Rectangle {
-        width: 84px;
-        height: 84px * root.mark;
+        width: 96px;
+        height: 96px * root.mark;
         x: (parent.width - self.width) / 2;
-        y: (parent.height - 84px) / 2 - 24px + (84px - self.height) + (1 - root.mark) * 14px;
+        y: (parent.height - 96px) / 2 - 40px + (96px - self.height);
         clip: true;
         Image {
-            y: reveal.height - 84px;
-            width: 84px;
-            height: 84px;
-            source: @image-url("icons/logo.svg");
+            y: reveal.height - 96px;
+            width: 96px;
+            height: 96px;
+            source: @image-url("icons/logo-px24.png");
+            image-rendering: pixelated;
             colorize: Theme.text;
         }
     }
 
-    // Wordmark, letter by letter.
+    // Name, typed letter by letter.
     HorizontalLayout {
         x: (parent.width - self.width) / 2;
-        y: (parent.height) / 2 + 44px;
+        y: parent.height / 2 + 28px;
         width: self.preferred-width;
-        spacing: 10px;
+        spacing: 6px;
         for ch[i] in ["V", "A", "N", "T", "A"]: Text {
-            private property <float> k: root.ease-out((root.t - 0.28 - i * 0.06) / 0.2);
             text: ch;
             color: Theme.text;
-            font-size: 20px;
+            font-family: "Pixelify Sans";
+            font-size: 28px;
             font-weight: 600;
-            opacity: self.k;
-            y: (1 - self.k) * 8px;
+            opacity: root.t > 0.25 + i * 0.07 ? 1 : 0;
+        }
+    }
+
+    // Block loading bar.
+    HorizontalLayout {
+        x: (parent.width - self.width) / 2;
+        y: parent.height / 2 + 82px;
+        width: self.preferred-width;
+        spacing: 4px;
+        for i in 10: Rectangle {
+            width: 12px;
+            height: 12px;
+            background: i < root.bar * 10 ? Theme.accent : Theme.surface-3;
         }
     }
 }

@@ -190,10 +190,11 @@ export component Sidebar inherits Rectangle {
             alignment: center;
             padding-bottom: Space.s5;
             Image {
-                source: @image-url("icons/logo.svg");
+                source: @image-url("icons/logo-px16.png");
+                image-rendering: pixelated;
                 colorize: Theme.text;
-                width: 30px;
-                height: 30px;
+                width: 32px;
+                height: 32px;
                 accessible-role: image;
                 accessible-label: "Vanta";
             }
