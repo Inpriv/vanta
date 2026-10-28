@@ -4,6 +4,12 @@
   const doc = document.documentElement;
   doc.classList.add("js");
 
+  // Belt and braces for the reload position: once fonts and images have
+  // settled, make sure a reload without a #section link is at the top.
+  if (!location.hash) {
+    addEventListener("load", () => { if (scrollY < 200) scrollTo(0, 0); }, { once: true });
+  }
+
   // Mobile menu.
   const menu = document.querySelector(".menu");
   const nav = document.getElementById("site-nav");
