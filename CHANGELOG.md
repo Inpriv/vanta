@@ -2,6 +2,12 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.7 (2026-10-28)
+
+### New features
+
+- Mod, pack and shader icons are rounded squares in Browse, the project page and an instance's content list (also with software rendering)
+
 ## 0.1.6 (2026-10-28)
 
 ### New features
