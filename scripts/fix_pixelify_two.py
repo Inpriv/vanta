@@ -33,7 +33,7 @@ VT_BOX = (56, 0, 344, 560)
 # Extra stroke weight per Pixelify weight, in font units: every block grows by
 # this much on each side (kept inside the 2's box) so the 2 is as heavy as
 # the digits around it.
-GROW = {"Regular": 14, "SemiBold": 24}
+GROW = {"Regular": 7, "SemiBold": 12}
 
 
 def main(paths):
