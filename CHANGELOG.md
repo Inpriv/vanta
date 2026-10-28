@@ -2,6 +2,13 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.1 (2026-10-28)
+
+### New features
+
+- New Vanta icon for the program, the in-app logo and the website favicon
+- Azure is now the default accent color
+
 ## 0.1.0 (2026-10-28)
 
 ### New features
