@@ -41,7 +41,8 @@ component Hero inherits Rectangle {
         width: parent.width;
         height: parent.height;
         padding: Space.s8;
-        padding-right: root.compact ? 220px : 290px;
+        // Room for the icon: 128px + its 48px margin + a gap when compact.
+        padding-right: root.compact ? 184px : 290px;
         spacing: Space.s2;
         alignment: end;
 
@@ -81,7 +82,8 @@ component Hero inherits Rectangle {
             PlayControl {
                 instance-id: root.inst.id;
                 running: root.inst.running;
-                control-width: 248px;
+                // Narrower when compact so the row fits the minimum window.
+                control-width: root.compact ? 200px : 248px;
             }
             IconButton {
                 y: (parent.height - self.height) / 2;
@@ -249,8 +251,10 @@ component RecentCard inherits Rectangle {
 export component HomePage inherits Rectangle {
     callback create-instance();
 
-    private property <int> cols: max(1, min(4, floor((root.width - 80px + 12px) / 232px)));
-    private property <length> card-w: (root.width - 80px - (cols - 1) * 12px) / cols;
+    // Same side padding as the page content, so the cards line up with the hero.
+    private property <length> inner: root.width - 2 * Space.s8;
+    private property <int> cols: max(1, min(4, floor((root.inner + 12px) / 232px)));
+    private property <length> card-w: (root.inner - (cols - 1) * 12px) / cols;
     private property <int> shown: min(App.instances.length, cols * 2);
 
     ScrollArea {
