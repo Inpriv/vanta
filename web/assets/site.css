@@ -70,7 +70,6 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 .hero { position: relative; overflow: hidden; padding-top: var(--s6); }
 .glow { display: none; }
 .hero-inner { position: relative; text-align: center; }
-.eyebrow { color: var(--accent); font-size: var(--fs-small); font-weight: 600; letter-spacing: 0.02em; margin: 0 0 var(--s3); }
 .hero h1 { font-size: clamp(38px, 6.4vw, 72px); font-weight: 700; letter-spacing: -0.035em; }
 .hero .lead { margin: var(--s5) auto 0; }
 .cta { display: flex; gap: var(--s3); justify-content: center; flex-wrap: wrap; margin-top: var(--s6); }
@@ -146,7 +145,7 @@ details p { color: var(--text-muted); margin: var(--s3) 0 0; }
 
   br.wide { display: none; }
   .section { padding-top: var(--s16); }
-  .hero { padding-top: var(--s2); }
+  .hero { padding-top: var(--s5); }
   .hero .lead { font-size: 16px; }
   .lead { font-size: 16px; }
   .cta { flex-direction: column; align-items: stretch; width: 100%; max-width: 360px; margin-inline: auto; }
@@ -169,7 +168,7 @@ details p { color: var(--text-muted); margin: var(--s3) 0 0; }
 /* ---- Pixel style (matches the launcher) ---- */
 body { background: var(--bg) url("../grain.png") repeat; image-rendering: auto; }
 .pixel { image-rendering: pixelated; image-rendering: crisp-edges; }
-h1, h2, h3, .eyebrow, .btn, .nav nav a, .brand span, .num, summary, .dl strong, figcaption, .hint {
+h1, h2, h3, .btn, .nav nav a, .brand span, .num, summary, .dl strong, figcaption, .hint, .footer-tag {
   font-family: var(--pixel);
   letter-spacing: 0;
 }
@@ -212,7 +211,6 @@ code { border-radius: var(--r-sm); }
 @media (max-width: 720px) {
   .hero h1 { font-size: clamp(30px, 9vw, 40px); line-height: 1.1; text-wrap: balance; }
   .hero .lead { font-size: 15px; line-height: 1.55; margin-top: var(--s4); }
-  .eyebrow { font-size: 12px; }
   .hotbar { margin-top: var(--s6); gap: 3px; padding: 3px; }
   .slot { width: calc((100vw - 32px - 6px - 24px - 8px) / 9); height: auto; aspect-ratio: 1; max-width: 40px; }
   .slot img { width: 62%; height: 62%; }
@@ -229,3 +227,4 @@ code { border-radius: var(--r-sm); }
 
 .btn.is-disabled, .btn.is-disabled:hover, .btn.is-disabled:active { background: var(--surface-3); color: var(--text-muted); border-color: var(--surface-3); box-shadow: none; transform: none; cursor: default; }
 .btn.is-disabled svg { display: none; }
+.footer .footer-tag { color: var(--accent); }
