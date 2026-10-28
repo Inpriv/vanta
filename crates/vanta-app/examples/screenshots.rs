@@ -40,6 +40,14 @@ impl Platform for Headless {
 const W: u32 = 800;
 const H: u32 = 520;
 
+/// Window width; `VANTA_SHOT_WIDTH` checks narrow layouts (minimum 720).
+fn width() -> u32 {
+    std::env::var("VANTA_SHOT_WIDTH")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(W)
+}
+
 /// Window height; `VANTA_SHOT_HEIGHT` renders taller pages in one image.
 fn height() -> u32 {
     std::env::var("VANTA_SHOT_HEIGHT")
@@ -327,7 +335,10 @@ fn render(window: &MinimalSoftwareWindow, path: &std::path::Path) {
         window.request_redraw();
         window.draw_if_needed(|_| {});
     }
-    let (w, h) = ((W as f32 * SCALE) as usize, (height() as f32 * SCALE) as usize);
+    let (w, h) = (
+        (width() as f32 * SCALE) as usize,
+        (height() as f32 * SCALE) as usize,
+    );
     let mut buf = vec![PremultipliedRgbaColor::default(); w * h];
     window.request_redraw();
     window.draw_if_needed(|r| {
@@ -351,7 +362,7 @@ fn main() {
     .unwrap();
     window.dispatch_event(WindowEvent::ScaleFactorChanged { scale_factor: SCALE });
     window.set_size(PhysicalSize::new(
-        (W as f32 * SCALE) as u32,
+        (width() as f32 * SCALE) as u32,
         (height() as f32 * SCALE) as u32,
     ));
 
@@ -362,7 +373,10 @@ fn main() {
 
     // Opening animation frames (the clock starts at 0 when the window is created).
     if only.as_deref() == Some("splash") {
-        let (w, h) = ((W as f32 * SCALE) as usize, (height() as f32 * SCALE) as usize);
+        let (w, h) = (
+            (width() as f32 * SCALE) as usize,
+            (height() as f32 * SCALE) as usize,
+        );
         for ms in [200u64, 450, 700, 950] {
             while CLOCK.with(|c| c.get()) < Duration::from_millis(ms) {
                 CLOCK.with(|c| c.set(c.get() + Duration::from_millis(10)));
