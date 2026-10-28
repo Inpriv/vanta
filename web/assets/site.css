@@ -124,6 +124,7 @@ details p { color: var(--text-muted); margin: var(--s3) 0 0; }
 /* Scroll reveal (JS adds .in; without JS everything is visible). */
 .js .reveal { opacity: 0; transform: translateY(12px); transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out); }
 .js .reveal.in { opacity: 1; transform: none; }
+.js .gallery.reveal { transform: none; }
 @media (prefers-reduced-motion: reduce) { .js .reveal { opacity: 1; transform: none; transition: none; } }
 
 /* Phones and small tablets */
@@ -159,7 +160,7 @@ details p { color: var(--text-muted); margin: var(--s3) 0 0; }
   /* Swipeable screenshot carousel */
   .gallery { position: relative; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: var(--s3); padding-bottom: var(--s2); margin-inline: -16px; padding-inline: 16px; scrollbar-width: none; }
   .gallery::-webkit-scrollbar { display: none; }
-  .gallery figure { flex: 0 0 85%; scroll-snap-align: center; transform-origin: center; will-change: transform, opacity; }
+  .gallery figure { flex: 0 0 85%; scroll-snap-align: center; will-change: opacity; }
   .downloads { grid-template-columns: 1fr; }
   .download { padding-bottom: var(--s16); }
   h2 { margin-bottom: var(--s6); }

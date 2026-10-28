@@ -102,8 +102,8 @@
     }, 1400);
   }
 
-  // Swipeable gallery (phones): the centred shot is full size and the others
-  // shrink and fade with their distance from the middle, in both directions.
+  // Swipeable gallery (phones): the centred shot is fully lit and the others
+  // fade with their distance from the middle, in both directions.
   const gallery = document.querySelector(".gallery");
   if (gallery && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     const shots = [...gallery.children];
@@ -113,10 +113,9 @@
       const swipeable = gallery.scrollWidth > gallery.clientWidth + 1;
       const mid = gallery.scrollLeft + gallery.clientWidth / 2;
       for (const s of shots) {
-        if (!swipeable) { s.style.transform = s.style.opacity = ""; continue; }
+        if (!swipeable) { s.style.opacity = ""; continue; }
         const d = Math.min(1, Math.abs(s.offsetLeft + s.offsetWidth / 2 - mid) / s.offsetWidth);
-        s.style.transform = `scale(${1 - 0.1 * d})`;
-        s.style.opacity = String(1 - 0.5 * d);
+        s.style.opacity = String(1 - 0.6 * d);
       }
     };
     const queue = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
