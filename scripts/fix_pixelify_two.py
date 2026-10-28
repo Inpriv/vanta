@@ -3,7 +3,8 @@
 
 Pixelify Sans draws "2" with a closed lower bowl, so at stat sizes "28" reads
 as "88". This replaces just that glyph with an open, classic pixel 2 built on
-the font's own grid and stroke widths; every other glyph is untouched. The
+the font's own grid and stroke widths, with a one-block gap in the bottom
+bar; every other glyph is untouched. The
 fonts are OFL-1.1 with no Reserved Font Name, so the family name stays.
 
 Usage: scripts/fix_pixelify_two.py web/assets/fonts/PixelifySans-*.woff2
@@ -34,8 +35,11 @@ def rects(g, steps=3):
         (g["l"], g["top_lo"], g["r"], g["top"]),            # top bar
         (g["L"], g["tip_lo"], g["li"], g["top_lo"] + 1),    # left tip
         (g["ri"], g["mid_hi"], g["R"], g["top_lo"] + 1),    # right shoulder
-        (g["L"], g["bot"], g["R"], g["bar"]),               # bottom bar
     ]
+    # Bottom bar with a one-block gap in the middle.
+    gap = g["l"] - g["L"]
+    gx = (g["L"] + g["R"] - gap) // 2
+    out += [(g["L"], g["bot"], gx, g["bar"]), (gx + gap, g["bot"], g["R"], g["bar"])]
     # Diagonal from under the shoulder down to the bottom-left, one stroke
     # wide, as a staircase of equal steps (each overlaps the next by 1 unit).
     h = (g["mid_hi"] - g["bar"]) / steps
