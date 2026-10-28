@@ -35,6 +35,7 @@ pub fn bind(ctrl: &Ctrl, ui: &AppWindow) {
         CloseBehavior::Close => 2,
     });
     app.set_auto_update_check(s.auto_update_check);
+    app.set_software_rendering(s.software_rendering);
     app.set_data_dir(ctrl.shared.launcher.paths.root().display().to_string().into());
     apply_theme(ui);
 
@@ -62,6 +63,7 @@ pub fn bind(ctrl: &Ctrl, ui: &AppWindow) {
                     _ => CloseBehavior::KeepOpen,
                 };
                 s.auto_update_check = app.get_auto_update_check();
+                s.software_rendering = app.get_software_rendering();
                 s.clone()
             };
             apply_theme(&ui);

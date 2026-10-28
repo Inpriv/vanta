@@ -122,6 +122,17 @@ export component SettingsPage inherits Rectangle {
                         toggled => { App.settings-changed(); }
                     }
                 }
+                Divider { }
+                FieldRow {
+                    label: "Software rendering";
+                    hint: "Draws on the CPU instead of the GPU. Uses less memory with some graphics drivers. Applies after restarting Vanta.";
+                    Toggle {
+                        y: (parent.height - self.height) / 2;
+                        label: "Software rendering";
+                        checked <=> App.software-rendering;
+                        toggled => { App.settings-changed(); }
+                    }
+                }
             }
 
             Section {

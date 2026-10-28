@@ -25,7 +25,7 @@ slint::include_modules!();
 pub const MSA_CLIENT_ID: Option<&str> = option_env!("VANTA_MSA_CLIENT_ID");
 
 fn init_logging(dir: &std::path::Path) -> Option<tracing_appender::non_blocking::WorkerGuard> {
-    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::filter::LevelFilter;
     std::fs::create_dir_all(dir).ok()?;
     let appender = tracing_appender::rolling::Builder::new()
         .rotation(tracing_appender::rolling::Rotation::DAILY)
@@ -35,9 +35,13 @@ fn init_logging(dir: &std::path::Path) -> Option<tracing_appender::non_blocking:
         .build(dir)
         .ok()?;
     let (writer, guard) = tracing_appender::non_blocking(appender);
-    let filter = EnvFilter::try_from_env("VANTA_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
+    // `VANTA_LOG=debug` (or trace/info/warn/error) raises or lowers verbosity.
+    let level = std::env::var("VANTA_LOG")
+        .ok()
+        .and_then(|v| v.parse::<LevelFilter>().ok())
+        .unwrap_or(LevelFilter::INFO);
     tracing_subscriber::fmt()
-        .with_env_filter(filter)
+        .with_max_level(level)
         .with_writer(writer)
         .with_ansi(false)
         .init();
@@ -46,8 +50,12 @@ fn init_logging(dir: &std::path::Path) -> Option<tracing_appender::non_blocking:
 
 /// winit backend with the application id set, so desktop environments match
 /// the window to `xyz.getvanta.Vanta.desktop` (icon, grouping).
-fn select_backend() {
-    let selector = slint::BackendSelector::new().with_winit_window_attributes_hook(|attrs| {
+fn select_backend(software: bool) {
+    let mut selector = slint::BackendSelector::new();
+    if software {
+        selector = selector.renderer_name("software".into());
+    }
+    let selector = selector.with_winit_window_attributes_hook(|attrs| {
         #[cfg(target_os = "linux")]
         let attrs = {
             use slint::winit_030::winit::platform::{wayland, x11};
@@ -95,7 +103,7 @@ fn main() -> anyhow::Result<()> {
         .build()
         .context("could not start the async runtime")?;
 
-    select_backend();
+    select_backend(settings.software_rendering);
     let ui = AppWindow::new().context("could not create the window")?;
 
     let launcher = Launcher::new(paths.clone());

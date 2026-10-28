@@ -20,13 +20,6 @@
     items.forEach((el) => el.classList.add("in"));
   }
 
-  // Measured performance numbers (kept in one place: docs/PERFORMANCE.md).
-  const perf = { startup: "PERF_STARTUP", memory: "PERF_MEMORY", size: "PERF_SIZE", install: "PERF_INSTALL" };
-  for (const [k, v] of Object.entries(perf)) {
-    const el = document.querySelector(`[data-perf="${k}"]`);
-    if (el && !v.startsWith("PERF_")) el.textContent = v;
-  }
-
   // Download detection.
   const ua = navigator.userAgent;
   const os = /Windows/i.test(ua) ? "windows" : /Linux|X11/i.test(ua) && !/Android/i.test(ua) ? "linux" : "other";

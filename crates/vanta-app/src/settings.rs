@@ -36,6 +36,8 @@ pub struct Settings {
     pub data_dir: Option<PathBuf>,
     pub auto_update_check: bool,
     pub featured_instance: Option<String>,
+    /// Render on the CPU instead of OpenGL (lower memory with some GPU drivers).
+    pub software_rendering: bool,
 }
 
 impl Default for Settings {
@@ -51,6 +53,7 @@ impl Default for Settings {
             data_dir: None,
             auto_update_check: true,
             featured_instance: None,
+            software_rendering: false,
         }
     }
 }

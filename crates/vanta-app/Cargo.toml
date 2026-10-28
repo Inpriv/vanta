@@ -36,7 +36,7 @@ tar = "0.4.46"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "process"] }
 tracing = "0.1.44"
 tracing-appender = "0.2.5"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }
 vanta-core = { version = "0.1.0", path = "../vanta-core" }
 vanta-modrinth = { version = "0.1.0", path = "../vanta-modrinth" }
 

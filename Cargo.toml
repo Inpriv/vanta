@@ -17,3 +17,41 @@ codegen-units = 1
 panic = "abort"
 strip = true
 opt-level = 3
+
+# UI, font, SVG and D-Bus code is not on any hot path (rendering runs on the
+# GPU, the launcher's work is I/O-bound), so dependencies are optimised for
+# size. Everything Vanta itself runs hot stays at opt-level 3.
+[profile.release.package."*"]
+opt-level = "s"
+
+[profile.release.package.vanta-core]
+opt-level = 3
+[profile.release.package.vanta-modrinth]
+opt-level = 3
+[profile.release.package.tokio]
+opt-level = 3
+[profile.release.package.rustls]
+opt-level = 3
+[profile.release.package.ring]
+opt-level = 3
+[profile.release.package.sha1]
+opt-level = 3
+[profile.release.package.sha2]
+opt-level = 3
+[profile.release.package.zip]
+opt-level = 3
+[profile.release.package.flate2]
+opt-level = 3
+[profile.release.package.zlib-rs]
+opt-level = 3
+[profile.release.package.serde_json]
+opt-level = 3
+[profile.release.package.h2]
+opt-level = 3
+[profile.release.package.hyper]
+opt-level = 3
+
+# Release build with symbols kept, for size analysis (`cargo bloat --profile bloat`).
+[profile.bloat]
+inherits = "release"
+strip = false
