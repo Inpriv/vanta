@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Straighten the middle stroke of the digit 2 in the website's Pixelify Sans.
+"""Give the digit 2 in the website's Pixelify Sans a handwritten diagonal.
 
-Pixelify Sans steps the middle of its "2" (the side strokes reach into it at
-different heights), so it reads as curved. This keeps the font's own top and
-bottom halves and replaces the middle with one even bar; every other glyph is
-untouched. The fonts
+Pixelify Sans draws "2" with a closed lower bowl, so "28" reads as "88". This
+keeps the font's own top curve and bottom bar and replaces the middle with a
+stepped diagonal, like a 2 written by hand; every other glyph is untouched. The fonts
 are OFL-1.1 with no Reserved Font Name, so the family name stays.
 
 Usage: scripts/fix_pixelify_two.py web/assets/fonts/PixelifySans-*.woff2
@@ -17,13 +16,12 @@ import pathops
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTFont
 
-# The middle stroke in each weight, read from the original "2": inner left to
-# outer-right-column edge, bottom to top of the stroke. Above it the font's top
-# half is kept as is, below it the bottom half; the side strokes that poked
-# into the middle at different heights are cut back to the bar.
-MIDDLE = {
-    "Regular": (151, 260, 433, 359),
-    "SemiBold": (150, 251, 446, 374),
+# Per weight, from the original "2": where the top curve ends (bottom of the
+# right column), the top of the bottom bar, the top and inner edge of the
+# bottom-right tick, the outer left/right edges and the stroke width.
+GRID = {
+    "Regular": dict(curve=359, bar=88, tick=179, ri=423, L=60, R=525, stroke=101),
+    "SemiBold": dict(curve=374, bar=113, tick=200, ri=417, L=61, R=536, stroke=118),
 }
 
 
@@ -45,11 +43,23 @@ def main(paths):
 
         orig = pathops.Path()
         glyphs["two"].draw(orig.getPen())
-        x0, y0, x1, y1 = MIDDLE[weight]
-        top = pathops.op(orig, rect(-1000, y1, 2000, 2000), pathops.PathOp.INTERSECTION)
-        bottom = pathops.op(orig, rect(-1000, -1000, 2000, y0), pathops.PathOp.INTERSECTION)
+        g = GRID[weight]
+        top = pathops.op(orig, rect(-1000, g["curve"], 2000, 2000), pathops.PathOp.INTERSECTION)
+        keep = pathops.op(rect(-1000, -1000, 2000, g["bar"]), rect(g["ri"], -1000, 2000, g["tick"]), pathops.PathOp.UNION)
+        bottom = pathops.op(orig, keep, pathops.PathOp.INTERSECTION)  # bar + tick
         path = pathops.op(top, bottom, pathops.PathOp.UNION)
-        path = pathops.op(path, rect(x0, y0, x1, y1), pathops.PathOp.UNION)
+        # A stepped diagonal from under the curve down to the bottom-left,
+        # like a handwritten 2: three steps, each about one and a half strokes
+        # wide so neighbours overlap into one solid stroke.
+        steps = 3
+        w = round(g["stroke"] * 1.5)
+        h = (g["curve"] - g["bar"]) / steps
+        x_top = g["R"] - w
+        for i in range(steps):
+            x = round(x_top + (g["L"] - x_top) * i / (steps - 1))
+            y1 = round(g["curve"] - h * i) + 1
+            y0 = round(g["curve"] - h * (i + 1)) - 1
+            path = pathops.op(path, rect(x, y0, x + w, y1), pathops.PathOp.UNION)
 
         pen = TTGlyphPen(glyphs)
         path.draw(pen)
