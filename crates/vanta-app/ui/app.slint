@@ -7,7 +7,7 @@ import { InstancePage } from "pages/instance.slint";
 import { BrowsePage } from "pages/browse.slint";
 import { SettingsPage } from "pages/settings.slint";
 import {
-    CreateInstanceDialog, RenameDialog, ConfirmDialog, IconDialog, LoginDialog, AccountsDialog,
+    CreateInstanceDialog, ProjectDialog, RenameDialog, ConfirmDialog, IconDialog, LoginDialog, AccountsDialog,
     ExportDialog, CrashDialog, UpdateDialog, Console, Toast
 } from "dialogs.slint";
 import { Palette } from "std-widgets.slint";
@@ -34,11 +34,14 @@ export component AppWindow inherits Window {
     no-frame: true;
     default-font-family: "Inter";
     default-font-size: Type.body;
-    preferred-width: 1180px;
-    preferred-height: 740px;
-    min-width: 880px;
-    min-height: 580px;
-    background: Theme.bg;
+    preferred-width: 960px;
+    preferred-height: 620px;
+    min-width: 800px;
+    min-height: 520px;
+    // With rounded corners the window itself is transparent and `frame`
+    // paints the background.
+    private property <length> corner: App.rounded-window && !App.maximized ? 12px : 0px;
+    background: root.corner > 0 ? transparent : Theme.bg;
 
     // Keep std widgets (scroll bars, list views) in sync with the theme.
     private property <bool> is-dark: Theme.dark;
@@ -49,7 +52,6 @@ export component AppWindow inherits Window {
         Palette.color-scheme = Theme.dark ? ColorScheme.dark : ColorScheme.light;
     }
 
-    private property <bool> create-open;
     private property <bool> rename-open;
     private property <string> rename-value;
     private property <bool> delete-open;
@@ -57,124 +59,130 @@ export component AppWindow inherits Window {
     private property <bool> accounts-open;
     private property <bool> export-open;
 
-    HorizontalLayout {
-        Sidebar {
-            open-accounts => {
-                if App.accounts.length == 0 && App.msa-configured {
-                    App.add-account();
-                } else {
-                    root.accounts-open = true;
+    frame := Rectangle {
+        border-radius: root.corner;
+        clip: root.corner > 0;
+        background: Theme.bg;
+
+        HorizontalLayout {
+            Sidebar {
+                open-accounts => {
+                    if App.accounts.length == 0 && App.msa-configured {
+                        App.add-account();
+                    } else {
+                        root.accounts-open = true;
+                    }
+                }
+            }
+            VerticalLayout {
+                TitleBar {
+                    title: App.page == Page.home ? "Home"
+                        : App.page == Page.instances ? "Library"
+                        : App.page == Page.instance ? "Library  /  " + App.selected.name
+                        : App.page == Page.browse ? "Browse"
+                        : "Settings";
+                }
+                Rectangle {
+                    vertical-stretch: 1;
+                    PageHost {
+                        width: parent.width;
+                        height: parent.height;
+                        active: App.page == Page.home;
+                        HomePage {
+                            width: parent.width;
+                            height: parent.height;
+                            y: (1 - parent.opacity) * 10px;
+                            create-instance => { App.create-open = true; }
+                        }
+                    }
+                    PageHost {
+                        width: parent.width;
+                        height: parent.height;
+                        active: App.page == Page.instances;
+                        InstancesPage {
+                            width: parent.width;
+                            height: parent.height;
+                            y: (1 - parent.opacity) * 10px;
+                            create-instance => { App.create-open = true; }
+                        }
+                    }
+                    PageHost {
+                        width: parent.width;
+                        height: parent.height;
+                        active: App.page == Page.instance;
+                        InstancePage {
+                            width: parent.width;
+                            height: parent.height;
+                            y: (1 - parent.opacity) * 10px;
+                            rename => {
+                                root.rename-value = App.selected.name;
+                                root.rename-open = true;
+                            }
+                            pick-icon => { root.icon-open = true; }
+                            export => { root.export-open = true; }
+                            delete => { root.delete-open = true; }
+                        }
+                    }
+                    PageHost {
+                        width: parent.width;
+                        height: parent.height;
+                        active: App.page == Page.browse;
+                        BrowsePage { width: parent.width; height: parent.height; y: (1 - parent.opacity) * 10px; }
+                    }
+                    PageHost {
+                        width: parent.width;
+                        height: parent.height;
+                        active: App.page == Page.settings;
+                        SettingsPage { width: parent.width; height: parent.height; y: (1 - parent.opacity) * 10px; }
+                    }
                 }
             }
         }
-        VerticalLayout {
-            TitleBar {
-                title: App.page == Page.home ? "Home"
-                    : App.page == Page.instances ? "Library"
-                    : App.page == Page.instance ? "Library  /  " + App.selected.name
-                    : App.page == Page.browse ? "Browse"
-                    : "Settings";
-            }
-            Rectangle {
-                vertical-stretch: 1;
-                PageHost {
-                    width: parent.width;
-                    height: parent.height;
-                    active: App.page == Page.home;
-                    HomePage {
-                        width: parent.width;
-                        height: parent.height;
-                        y: (1 - parent.opacity) * 10px;
-                        create-instance => {
-                            create-dialog.reset();
-                            root.create-open = true;
-                        }
-                    }
-                }
-                PageHost {
-                    width: parent.width;
-                    height: parent.height;
-                    active: App.page == Page.instances;
-                    InstancesPage {
-                        width: parent.width;
-                        height: parent.height;
-                        y: (1 - parent.opacity) * 10px;
-                        create-instance => {
-                            create-dialog.reset();
-                            root.create-open = true;
-                        }
-                    }
-                }
-                PageHost {
-                    width: parent.width;
-                    height: parent.height;
-                    active: App.page == Page.instance;
-                    InstancePage {
-                        width: parent.width;
-                        height: parent.height;
-                        y: (1 - parent.opacity) * 10px;
-                        rename => {
-                            root.rename-value = App.selected.name;
-                            root.rename-open = true;
-                        }
-                        pick-icon => { root.icon-open = true; }
-                        export => { root.export-open = true; }
-                        delete => { root.delete-open = true; }
-                    }
-                }
-                PageHost {
-                    width: parent.width;
-                    height: parent.height;
-                    active: App.page == Page.browse;
-                    BrowsePage { width: parent.width; height: parent.height; y: (1 - parent.opacity) * 10px; }
-                }
-                PageHost {
-                    width: parent.width;
-                    height: parent.height;
-                    active: App.page == Page.settings;
-                    SettingsPage { width: parent.width; height: parent.height; y: (1 - parent.opacity) * 10px; }
-                }
-            }
+
+        Console { }
+
+        CreateInstanceDialog { }
+        ProjectDialog { }
+        RenameDialog {
+            open-state <=> root.rename-open;
+            value <=> root.rename-value;
+            submit(name) => { App.rename-instance(App.selected-id, name); }
         }
-    }
+        ConfirmDialog {
+            open-state <=> root.delete-open;
+            title: "Delete " + App.selected.name + "?";
+            subtitle: "The instance folder, including worlds, screenshots and mods, will be removed. This cannot be undone.";
+            confirm-text: "Delete instance";
+            confirmed => { App.delete-instance(App.selected-id); }
+        }
+        IconDialog {
+            open-state <=> root.icon-open;
+            current: App.selected.icon;
+            initial: App.selected.initial;
+            picked(k) => { App.set-instance-icon(App.selected-id, k); }
+        }
+        AccountsDialog {
+            open-state <=> root.accounts-open;
+        }
+        ExportDialog {
+            open-state <=> root.export-open;
+            instance-name: App.selected.name;
+        }
+        LoginDialog { }
+        CrashDialog { }
+        UpdateDialog { }
 
-    Console { }
+        Toast {
+            x: (parent.width - self.width) / 2;
+            y: parent.height - self.height - 24px;
+        }
 
-    create-dialog := CreateInstanceDialog {
-        open-state <=> root.create-open;
-    }
-    RenameDialog {
-        open-state <=> root.rename-open;
-        value <=> root.rename-value;
-        submit(name) => { App.rename-instance(App.selected-id, name); }
-    }
-    ConfirmDialog {
-        open-state <=> root.delete-open;
-        title: "Delete " + App.selected.name + "?";
-        subtitle: "The instance folder, including worlds, screenshots and mods, will be removed. This cannot be undone.";
-        confirm-text: "Delete instance";
-        confirmed => { App.delete-instance(App.selected-id); }
-    }
-    IconDialog {
-        open-state <=> root.icon-open;
-        current: App.selected.icon;
-        initial: App.selected.initial;
-        picked(k) => { App.set-instance-icon(App.selected-id, k); }
-    }
-    AccountsDialog {
-        open-state <=> root.accounts-open;
-    }
-    ExportDialog {
-        open-state <=> root.export-open;
-        instance-name: App.selected.name;
-    }
-    LoginDialog { }
-    CrashDialog { }
-    UpdateDialog { }
-
-    Toast {
-        x: (parent.width - self.width) / 2;
-        y: parent.height - self.height - 28px;
+        // Hairline edge so the rounded window reads against any wallpaper.
+        if root.corner > 0: Rectangle {
+            border-radius: root.corner;
+            border-width: 1px;
+            border-color: Theme.border-strong;
+        }
     }
 
     if !App.maximized: ResizeHandles { }

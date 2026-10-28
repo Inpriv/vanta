@@ -19,17 +19,20 @@ pub enum Stage {
     InstallingLoader,
     Downloading,
     PreparingJava,
+    /// First launch of a version needing a Java the user does not have yet.
+    DownloadingJava(u32),
     Starting,
 }
 
 impl Stage {
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            Stage::Resolving => "Resolving version",
-            Stage::InstallingLoader => "Installing mod loader",
-            Stage::Downloading => "Downloading game files",
-            Stage::PreparingJava => "Preparing Java",
-            Stage::Starting => "Starting game",
+            Stage::Resolving => "Resolving version".into(),
+            Stage::InstallingLoader => "Installing mod loader".into(),
+            Stage::Downloading => "Downloading game files".into(),
+            Stage::PreparingJava => "Preparing Java".into(),
+            Stage::DownloadingJava(major) => format!("Downloading Java {major} (first launch only)"),
+            Stage::Starting => "Starting game".into(),
         }
     }
 }
@@ -141,6 +144,7 @@ impl Launcher {
         installed: &InstalledVersion,
         global: &GlobalLaunchSettings,
         progress: &Progress,
+        on_stage: &(dyn Fn(Stage) + Send + Sync),
     ) -> Result<PathBuf> {
         if let Some(p) = inst.java_path.clone().or_else(|| global.java_path.clone()) {
             if p.is_file() {
@@ -152,6 +156,11 @@ impl Launcher {
             )));
         }
         let req = installed.version.java();
+        if let Some(java) = java::installed_runtime(&self.paths, &req.component, req.major_version) {
+            return Ok(java);
+        }
+        // Nothing suitable yet: download Mojang's runtime (or Adoptium's) automatically.
+        on_stage(Stage::DownloadingJava(req.major_version));
         java::ensure_runtime(
             &self.paths,
             &self.downloader,
@@ -176,7 +185,9 @@ impl Launcher {
 
         on_stage(Stage::PreparingJava);
         progress.reset();
-        let java = self.java_for(&inst, &installed, global, progress).await?;
+        let java = self
+            .java_for(&inst, &installed, global, progress, on_stage)
+            .await?;
 
         on_stage(Stage::Starting);
         let game_dir = self.instances.game_dir(&inst.id);

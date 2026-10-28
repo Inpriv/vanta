@@ -1,9 +1,11 @@
 import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
-import { Button, ButtonKind, IconButton, Icon, ProgressBar, Card, InstanceIcon, Skeleton, Badge } from "../components.slint";
+import { Button, ButtonKind, IconButton, Icon, ProgressBar, Card, InstanceIcon, Skeleton, Badge, ScrollArea } from "../components.slint";
 import { App, Page, InstanceItem } from "../state.slint";
 
 component Hero inherits Rectangle {
     in property <InstanceItem> inst;
+    // Set by the page from its width (avoids a layout binding loop).
+    in property <bool> compact;
     private property <bool> launching: App.launch-progress.active && App.launch-instance-id == inst.id;
     callback create();
 
@@ -24,11 +26,11 @@ component Hero inherits Rectangle {
         background: @radial-gradient(circle, Theme.accent.with-alpha(Theme.dark ? 0.16 : 0.12) 0%, Theme.accent.with-alpha(0) 70%);
     }
     InstanceIcon {
-            x: parent.width - 250px;
-            y: 65px;
+            x: parent.width - self.width - (root.compact ? 48px : 80px);
+            y: (parent.height - self.height) / 2;
             key: root.inst.icon;
             initial: root.inst.initial;
-            size: 170px;
+            size: root.compact ? 128px : 160px;
             drop-shadow-blur: 40px;
             drop-shadow-color: Theme.shadow;
             drop-shadow-offset-y: 18px;
@@ -37,8 +39,8 @@ component Hero inherits Rectangle {
     VerticalLayout {
         width: parent.width;
         height: parent.height;
-        padding: Space.s10;
-        padding-right: 300px;
+        padding: Space.s8;
+        padding-right: root.compact ? 220px : 290px;
         spacing: Space.s2;
         alignment: end;
 
@@ -80,7 +82,6 @@ component Hero inherits Rectangle {
                 min-width: 180px;
                 icon: @image-url("../icons/play.svg");
                 has-icon: true;
-                enabled: App.has-account;
                 clicked => { App.play(root.inst.id); }
             }
             if root.inst.running: Button {
@@ -152,7 +153,7 @@ component Hero inherits Rectangle {
             }
         }
         if !App.has-account && !root.launching: Text {
-            text: "Sign in with a Microsoft account to play.";
+            text: "You'll be asked to sign in with Microsoft when you press Play.";
             color: Theme.text-muted;
             font-size: Type.small;
         }
@@ -183,7 +184,7 @@ component EmptyHero inherits Rectangle {
         HorizontalLayout {
             alignment: center;
             Image {
-                source: @image-url("../icons/logo.png");
+                source: @image-url("../icons/logo.svg");
                 colorize: Theme.text;
                 width: 44px;
                 height: 44px;
@@ -285,12 +286,12 @@ export component HomePage inherits Rectangle {
     private property <length> card-w: (root.width - 80px - (cols - 1) * 12px) / cols;
     private property <int> shown: min(App.instances.length, cols * 2);
 
-    Flickable {
+    ScrollArea {
         width: parent.width;
         height: parent.height;
         content-height: content.preferred-height;
         content := VerticalLayout {
-            padding: Space.s10;
+            padding: Space.s8;
             padding-top: Space.s4;
             spacing: Space.s6;
             alignment: start;
@@ -301,6 +302,7 @@ export component HomePage inherits Rectangle {
             }
             if App.instances-loaded && App.has-featured: Hero {
                 inst: App.featured;
+                compact: root.width < 900px;
             }
             if App.instances-loaded && !App.has-featured: EmptyHero {
                 create => { root.create-instance(); }

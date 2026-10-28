@@ -1,5 +1,5 @@
 import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
-import { Button, ButtonKind, IconButton, Icon, TextField, Segmented, Select, Card, Skeleton, Spinner } from "../components.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Segmented, Select, Card, Skeleton, Spinner, ScrollArea } from "../components.slint";
 import { App, ProjectItem } from "../state.slint";
 
 component ProjectRow inherits Rectangle {
@@ -87,19 +87,23 @@ component ProjectRow inherits Rectangle {
                 }
             }
         }
-        if root.item.installing: Rectangle {
-            width: 110px;
-            Spinner { }
-        }
-        if !root.item.installing: Button {
+        Button {
             y: (parent.height - self.height) / 2;
-            width: 110px;
-            text: root.item.installed ? "Installed" : root.is-pack ? "Install pack" : "Install";
+            width: 118px;
+            text: root.item.installing ? "Installing" : root.item.installed ? "Installed" : root.is-pack ? "Install pack" : "Install";
             kind: root.item.installed ? ButtonKind.ghost : ButtonKind.secondary;
+            loading: root.item.installing;
             icon: root.item.installed ? @image-url("../icons/check.svg") : @image-url("../icons/download.svg");
             has-icon: true;
-            enabled: !root.item.installed && (root.is-pack || App.browse-target-id != "");
-            clicked => { App.install-project(root.item.id); }
+            enabled: !root.item.installed;
+            clicked => {
+                // Without a target instance, ask where to install it.
+                if root.is-pack || App.browse-target-id != "" {
+                    App.install-project(root.item.id);
+                } else {
+                    App.open-project(root.item.id);
+                }
+            }
         }
     }
 }
@@ -108,7 +112,7 @@ export component BrowsePage inherits Rectangle {
     VerticalLayout {
         width: parent.width;
         height: parent.height;
-        padding: Space.s10;
+        padding: Space.s8;
         padding-top: Space.s4;
         padding-bottom: 0;
         spacing: Space.s4;
@@ -157,7 +161,7 @@ export component BrowsePage inherits Rectangle {
             spacing: Space.s3;
             Segmented {
                 options: ["Mods", "Resource packs", "Shaders", "Modpacks"];
-                item-width: 118px;
+                item-width: 104px;
                 current <=> App.browse-kind;
                 selected => {
                     App.browse-category = 0;
@@ -166,13 +170,13 @@ export component BrowsePage inherits Rectangle {
             }
             Rectangle { horizontal-stretch: 1; }
             Select {
-                width: 170px;
+                width: 160px;
                 options: App.browse-categories;
                 current-index <=> App.browse-category;
                 selected => { App.search(); }
             }
             Select {
-                width: 150px;
+                width: 136px;
                 options: ["Relevance", "Downloads", "Follows", "Newest", "Updated"];
                 current-index <=> App.browse-sort;
                 selected => { App.search(); }
@@ -196,11 +200,19 @@ export component BrowsePage inherits Rectangle {
                     font-size: Type.small;
                     vertical-alignment: center;
                 }
-                Select {
+                if App.instances.length == 0: Button {
+                    y: 4px;
+                    height: 34px;
+                    text: "Create an instance";
+                    icon: @image-url("../icons/plus.svg");
+                    has-icon: true;
+                    clicked => { App.create-open = true; }
+                }
+                if App.instances.length > 0: Select {
                     y: 3px;
                     height: 36px;
-                    width: 280px;
-                    placeholder: App.instances.length == 0 ? "Create an instance first" : "Choose an instance";
+                    width: 260px;
+                    placeholder: "Choose an instance";
                     options: App.instance-names;
                     current-index: App.browse-target-index;
                     selected(i) => {
@@ -210,7 +222,7 @@ export component BrowsePage inherits Rectangle {
                 }
                 Text {
                     horizontal-stretch: 1;
-                    text: App.browse-target-id == "" ? "" : "Showing results compatible with this instance";
+                    text: App.instances.length == 0 ? "Mods are installed into an instance." : App.browse-target-id == "" ? "" : "Showing results that work with this instance";
                     color: Theme.text-faint;
                     font-size: Type.caption;
                     vertical-alignment: center;
@@ -230,7 +242,7 @@ export component BrowsePage inherits Rectangle {
             }
         }
 
-        results := Flickable {
+        results := ScrollArea {
             vertical-stretch: 1;
             content-height: list.preferred-height;
             // Infinite scroll: fetch the next page near the bottom.

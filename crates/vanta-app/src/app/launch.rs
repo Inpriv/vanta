@@ -106,8 +106,9 @@ async fn run(ctrl: &Ctrl, id: &str) -> anyhow::Result<()> {
         accounts.active().map(|a| a.uuid.clone())
     };
     let Some(uuid) = active else {
+        // Not signed in yet: start sign-in instead of failing.
         ctrl.with_ui(|ui| ui.global::<App>().invoke_add_account());
-        anyhow::bail!("sign in with a Microsoft account first");
+        return Ok(());
     };
     let (auth, kind) = ctrl.shared.accounts.lock().await.session(&uuid).await?;
     if matches!(kind, SessionKind::Offline) {

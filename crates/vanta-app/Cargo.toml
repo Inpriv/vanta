@@ -44,7 +44,7 @@ vanta-modrinth = { version = "0.1.0", path = "../vanta-modrinth" }
 slint-build = "1.18.1"
 
 [target."cfg(windows)".dependencies]
-windows-sys = { version = "0.61.2", features = ["Win32_System_SystemInformation", "Win32_Foundation"] }
+windows-sys = { version = "0.61.2", features = ["Win32_System_SystemInformation", "Win32_Foundation", "Win32_Graphics_Dwm"] }
 
 [target."cfg(windows)".build-dependencies]
 winresource = "0.1.34"

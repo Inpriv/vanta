@@ -1,5 +1,5 @@
 import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
-import { Button, ButtonKind, IconButton, Icon, TextField, Card, InstanceIcon, Skeleton } from "../components.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Card, InstanceIcon, Skeleton, ScrollArea } from "../components.slint";
 import { App, Page, InstanceItem } from "../state.slint";
 
 component InstanceCard inherits Rectangle {
@@ -84,7 +84,7 @@ export component InstancesPage inherits Rectangle {
     VerticalLayout {
         width: parent.width;
         height: parent.height;
-        padding: Space.s10;
+        padding: Space.s8;
         padding-top: Space.s4;
         padding-bottom: 0;
         spacing: Space.s5;
@@ -132,7 +132,7 @@ export component InstancesPage inherits Rectangle {
             }
         }
 
-        Flickable {
+        ScrollArea {
             vertical-stretch: 1;
             content-height: grid.height + Space.s10;
             grid := Rectangle {

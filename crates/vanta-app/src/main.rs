@@ -5,6 +5,7 @@ mod app;
 mod format;
 mod images;
 mod keychain;
+mod markdown;
 mod settings;
 mod single_instance;
 mod sys;
@@ -60,13 +61,42 @@ fn select_backend(software: bool) {
         let attrs = {
             use slint::winit_030::winit::platform::{wayland, x11};
             let attrs = wayland::WindowAttributesExtWayland::with_name(attrs, "xyz.getvanta.Vanta", "vanta");
+            // Transparent so the UI can draw rounded window corners.
             x11::WindowAttributesExtX11::with_name(attrs, "xyz.getvanta.Vanta", "vanta")
+                .with_transparent(true)
         };
         attrs
     });
     if let Err(e) = selector.select() {
         tracing::warn!(error = %e, "falling back to the default backend");
     }
+}
+
+/// Ask Windows 11 to round the corners of our borderless window (keeps the
+/// native shadow). Older Windows versions ignore the request.
+#[cfg(windows)]
+fn round_window_corners(ui: &AppWindow) {
+    use slint::winit_030::WinitWindowAccessor;
+    use slint::winit_030::winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use windows_sys::Win32::Graphics::Dwm::{
+        DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND, DwmSetWindowAttribute,
+    };
+    ui.window().with_winit_window(|w| {
+        if let Ok(handle) = w.window_handle()
+            && let RawWindowHandle::Win32(h) = handle.as_raw()
+        {
+            let preference = DWMWCP_ROUND;
+            // SAFETY: valid HWND from winit; the attribute is a 4-byte enum.
+            unsafe {
+                DwmSetWindowAttribute(
+                    h.hwnd.get() as _,
+                    DWMWA_WINDOW_CORNER_PREFERENCE as _,
+                    &preference as *const _ as *const _,
+                    std::mem::size_of_val(&preference) as u32,
+                );
+            }
+        }
+    });
 }
 
 fn main() -> anyhow::Result<()> {
@@ -134,7 +164,10 @@ fn main() -> anyhow::Result<()> {
         })
         .ok();
 
+    ui.global::<App>().set_rounded_window(cfg!(target_os = "linux"));
     ui.show()?;
+    #[cfg(windows)]
+    round_window_corners(&ui);
     slint::run_event_loop_until_quit()?;
     let _ = ui.hide();
     rt.shutdown_timeout(Duration::from_secs(2));

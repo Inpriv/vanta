@@ -9,17 +9,24 @@ component WindowControl inherits Rectangle {
     in property <string> label;
     in property <bool> danger: false;
     callback clicked();
-    width: 46px;
-    background: ta.pressed ? (danger ? #c42b1c : Theme.surface-3) : ta.has-hover ? (danger ? #e81123 : Theme.surface-2) : transparent;
-    animate background { duration: Motion.fast; easing: Motion.out; }
+    width: 40px;
     accessible-role: button;
     accessible-label: label;
     accessible-action-default => { clicked(); }
     ta := TouchArea { clicked => { root.clicked(); } }
+    // Rounded hover shape inset from the edges.
+    Rectangle {
+        width: 34px;
+        height: 28px;
+        border-radius: 8px;
+        background: ta.pressed ? (root.danger ? #c42b1c : Theme.surface-3) : ta.has-hover ? (root.danger ? #e5484d : Theme.surface-2) : transparent;
+        animate background { duration: Motion.fast; easing: Motion.out; }
+    }
     Icon {
         source: icon;
         size: 16px;
-        colorize: danger && ta.has-hover ? #ffffff : Theme.text-muted;
+        colorize: root.danger && ta.has-hover ? #ffffff : ta.has-hover ? Theme.text : Theme.text-muted;
+        animate colorize { duration: Motion.fast; }
     }
 }
 
@@ -40,6 +47,8 @@ export component TitleBar inherits Rectangle {
 
     HorizontalLayout {
         padding-left: Space.s6;
+        padding-right: 6px;
+        spacing: 2px;
         Text {
             text: root.title;
             color: Theme.text-faint;
@@ -181,10 +190,10 @@ export component Sidebar inherits Rectangle {
             alignment: center;
             padding-bottom: Space.s5;
             Image {
-                source: @image-url("icons/logo.png");
+                source: @image-url("icons/logo.svg");
                 colorize: Theme.text;
-                width: 28px;
-                height: 28px;
+                width: 30px;
+                height: 30px;
                 accessible-role: image;
                 accessible-label: "Vanta";
             }

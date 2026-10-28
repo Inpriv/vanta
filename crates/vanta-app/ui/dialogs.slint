@@ -1,5 +1,5 @@
 import { Theme, Type, Space, Radius, Motion } from "theme.slint";
-import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Segmented, Select, Checkbox, Modal, InstanceIcon, Spinner, Skeleton, Divider, SectionTitle } from "components.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Segmented, Select, Checkbox, Modal, InstanceIcon, Spinner, Skeleton, Divider, SectionTitle, Badge, ScrollArea } from "components.slint";
 import { App, Page, VersionItem } from "state.slint";
 import { Avatar } from "shell.slint";
 import { ListView } from "std-widgets.slint";
@@ -34,51 +34,104 @@ component IconChoice inherits Rectangle {
 }
 
 export component CreateInstanceDialog inherits Modal {
-    in-out property <bool> open-state;
     private property <string> name;
     private property <string> version-filter;
     private property <string> selected-version;
     private property <int> loader: 0;
     private property <int> loader-version-index: 0;
     private property <string> icon: "grass";
+    private property <bool> picking-icon;
+    private property <bool> can-create: root.selected-version != "" && (root.loader == 0 || App.loader-versions.length > 0);
+    private property <[string]> loader-names: ["Vanilla", "Fabric", "Quilt", "Forge", "NeoForge"];
+    private property <string> default-name: root.selected-version == "" ? "New instance" : (root.loader == 0 ? root.selected-version : root.loader-names[root.loader] + " " + root.selected-version);
 
-    open: open-state;
+    open: App.create-open;
     title: "New instance";
-    dialog-width: 560px;
-    dismiss => { root.open-state = false; }
+    dialog-width: 540px;
+    dismiss => { App.create-open = false; }
 
-    public function reset() {
-        root.name = "";
-        root.version-filter = "";
-        root.selected-version = "";
-        root.loader = 0;
-        root.loader-version-index = 0;
-        root.icon = "grass";
-        App.refresh-versions("");
+    private property <bool> is-open: App.create-open;
+    changed is-open => {
+        if self.is-open {
+            root.name = "";
+            root.version-filter = "";
+            root.loader-version-index = 0;
+            root.icon = "grass";
+            root.picking-icon = false;
+            root.loader = App.create-preset-loader >= 0 ? App.create-preset-loader : 0;
+            root.selected-version = App.create-preset-version;
+            App.create-preset-loader = -1;
+            App.create-preset-version = "";
+            App.refresh-versions("");
+            if root.selected-version != "" && root.loader != 0 {
+                App.request-loader-versions(root.selected-version, root.loader);
+            }
+        }
+    }
+
+    function create() {
+        if !root.can-create { return; }
+        App.create-instance(
+            root.name == "" ? root.default-name : root.name,
+            root.selected-version,
+            root.loader,
+            root.loader == 0 || App.loader-versions.length == 0 ? "" : App.loader-versions[root.loader-version-index],
+            root.icon);
+        App.create-open = false;
     }
 
     HorizontalLayout {
         spacing: Space.s3;
-        InstanceIcon {
-            key: root.icon;
-            initial: "V";
-            size: 38px;
-            y: 0;
+        Rectangle {
+            width: 38px;
+            height: 38px;
+            accessible-role: button;
+            accessible-label: "Choose icon";
+            accessible-action-default => { root.picking-icon = !root.picking-icon; }
+            InstanceIcon {
+                key: root.icon;
+                initial: "V";
+                size: ita.has-hover ? 40px : 38px;
+                animate size { duration: Motion.fast; easing: Motion.spring; }
+            }
+            ita := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.picking-icon = !root.picking-icon; }
+            }
         }
-        name-field := TextField {
+        TextField {
             horizontal-stretch: 1;
             text <=> root.name;
-            placeholder: root.selected-version == "" ? "Instance name" : (root.loader == 0 ? root.selected-version : ["Vanilla", "Fabric", "Quilt", "Forge", "NeoForge"][root.loader] + " " + root.selected-version);
+            placeholder: root.default-name;
+            accepted => { root.create(); }
         }
     }
 
-    HorizontalLayout {
+    if root.picking-icon: HorizontalLayout {
         spacing: Space.s1;
+        alignment: start;
         for k in IconKeys.all: IconChoice {
             key: k;
             initial: "";
             selected: root.icon == k;
-            clicked => { root.icon = k; }
+            clicked => {
+                root.icon = k;
+                root.picking-icon = false;
+            }
+        }
+    }
+
+    VerticalLayout {
+        spacing: Space.s2;
+        SectionTitle { text: "MOD LOADER"; }
+        Segmented {
+            options: root.loader-names;
+            fill: true;
+            current <=> root.loader;
+            selected(i) => {
+                root.loader-version-index = 0;
+                if root.selected-version != "" { App.request-loader-versions(root.selected-version, i); }
+            }
         }
     }
 
@@ -110,7 +163,7 @@ export component CreateInstanceDialog inherits Modal {
             edited(t) => { App.refresh-versions(t); }
         }
         Rectangle {
-            height: 188px;
+            height: 150px;
             border-radius: Radius.md;
             border-width: 1px;
             border-color: Theme.border;
@@ -120,11 +173,11 @@ export component CreateInstanceDialog inherits Modal {
                 padding: Space.s2;
                 spacing: Space.s2;
                 alignment: start;
-                for i in 5: Skeleton { height: 26px; }
+                for i in 4: Skeleton { height: 26px; }
             }
             if !App.versions-loading: ListView {
                 for v in App.versions: Rectangle {
-                    height: 36px;
+                    height: 34px;
                     background: v.id == root.selected-version ? Theme.accent-soft : va.has-hover ? Theme.surface-3 : transparent;
                     animate background { duration: Motion.fast; }
                     va := TouchArea {
@@ -132,13 +185,23 @@ export component CreateInstanceDialog inherits Modal {
                         clicked => {
                             root.selected-version = v.id;
                             root.loader-version-index = 0;
-                            App.request-loader-versions(v.id, root.loader);
+                            if root.loader != 0 { App.request-loader-versions(v.id, root.loader); }
+                        }
+                        double-clicked => {
+                            root.selected-version = v.id;
+                            if root.loader == 0 { root.create(); }
                         }
                     }
                     HorizontalLayout {
                         padding-left: Space.s3;
                         padding-right: Space.s3;
                         spacing: Space.s3;
+                        if v.id == root.selected-version: Icon {
+                            source: @image-url("icons/check.svg");
+                            size: 14px;
+                            colorize: Theme.accent;
+                            y: (parent.height - self.height) / 2;
+                        }
                         Text {
                             text: v.id;
                             color: v.id == root.selected-version ? Theme.accent : Theme.text;
@@ -157,7 +220,7 @@ export component CreateInstanceDialog inherits Modal {
                             color: Theme.text-faint;
                             font-size: Type.caption;
                             vertical-alignment: center;
-                            width: 84px;
+                            width: 80px;
                             horizontal-alignment: right;
                         }
                     }
@@ -166,59 +229,165 @@ export component CreateInstanceDialog inherits Modal {
         }
     }
 
-    VerticalLayout {
-        spacing: Space.s2;
-        SectionTitle { text: "MOD LOADER"; }
-        Segmented {
-            options: ["Vanilla", "Fabric", "Quilt", "Forge", "NeoForge"];
-            fill: true;
-            current <=> root.loader;
-            selected(i) => {
-                root.loader-version-index = 0;
-                if root.selected-version != "" { App.request-loader-versions(root.selected-version, i); }
-            }
+    if root.loader != 0: HorizontalLayout {
+        spacing: Space.s3;
+        Text {
+            text: root.loader-names[root.loader] + " version";
+            color: Theme.text-muted;
+            font-size: Type.small;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
         }
-        if root.loader != 0: HorizontalLayout {
-            spacing: Space.s2;
-            Text {
-                text: "Loader version";
-                color: Theme.text-muted;
-                font-size: Type.small;
-                vertical-alignment: center;
-                horizontal-stretch: 1;
-            }
-            if App.loader-versions-loading: Spinner { y: (parent.height - self.height) / 2; }
-            Select {
-                width: 240px;
-                enabled: root.selected-version != "" && App.loader-versions.length > 0;
-                placeholder: root.selected-version == "" ? "Pick a game version" : App.loader-versions-loading ? "Loading…" : "Not available";
-                options: App.loader-versions;
-                current-index <=> root.loader-version-index;
-            }
+        if App.loader-versions-loading: Spinner { y: (parent.height - self.height) / 2; }
+        Select {
+            width: 220px;
+            enabled: root.selected-version != "" && App.loader-versions.length > 0;
+            placeholder: root.selected-version == "" ? "Pick a game version first" : App.loader-versions-loading ? "Loading…" : "Not available for this version";
+            options: App.loader-versions;
+            current-index <=> root.loader-version-index;
         }
     }
 
     HorizontalLayout {
         spacing: Space.s2;
         alignment: end;
+        Text {
+            horizontal-stretch: 1;
+            text: root.selected-version == "" ? "Pick a game version to continue." : "";
+            color: Theme.text-faint;
+            font-size: Type.small;
+            vertical-alignment: center;
+        }
         Button {
             text: "Cancel";
             kind: ButtonKind.ghost;
-            clicked => { root.open-state = false; }
+            clicked => { App.create-open = false; }
         }
         Button {
             text: "Create";
             kind: ButtonKind.primary;
-            enabled: root.selected-version != "" && (root.loader == 0 || App.loader-versions.length > 0);
-            clicked => {
-                App.create-instance(
-                    root.name == "" ? name-field.placeholder : root.name,
-                    root.selected-version,
-                    root.loader,
-                    root.loader == 0 || App.loader-versions.length == 0 ? "" : App.loader-versions[root.loader-version-index],
-                    root.icon);
-                root.open-state = false;
+            enabled: root.can-create;
+            clicked => { root.create(); }
+        }
+    }
+}
+
+export component ProjectDialog inherits Modal {
+    open: App.project-open;
+    title: App.project.title;
+    subtitle: "by " + App.project.author;
+    dialog-width: 560px;
+    dismiss => { App.project-open = false; }
+    private property <bool> is-pack: App.browse-kind == 3;
+
+    HorizontalLayout {
+        spacing: Space.s4;
+        Rectangle {
+            width: 72px;
+            height: 72px;
+            border-radius: Radius.lg;
+            background: Theme.surface-3;
+            clip: true;
+            if App.project.has-icon: Image {
+                source: App.project.icon;
+                width: 100%;
+                height: 100%;
             }
+            if !App.project.has-icon: Icon {
+                source: @image-url("icons/box.svg");
+                size: 28px;
+                colorize: Theme.text-faint;
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: Space.s2;
+            alignment: center;
+            Text {
+                text: App.project.description;
+                color: Theme.text;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                spacing: Space.s2;
+                alignment: start;
+                Badge { text: App.project.downloads + " downloads"; }
+                if App.project.categories != "": Badge { text: App.project.categories; }
+            }
+        }
+    }
+
+    if App.project-body-loading: VerticalLayout {
+        spacing: Space.s2;
+        Skeleton { height: 12px; }
+        Skeleton { height: 12px; width: 60%; }
+    }
+    if !App.project-body-loading && App.project-body != "": Text {
+        text: App.project-body;
+        color: Theme.text-muted;
+        font-size: Type.small;
+        wrap: word-wrap;
+    }
+
+    if !root.is-pack: VerticalLayout {
+        spacing: Space.s2;
+        SectionTitle { text: "INSTALL TO"; }
+        if App.instances.length > 0: Select {
+            options: App.instance-names;
+            current-index: App.browse-target-index;
+            placeholder: "Choose an instance";
+            selected(i) => { App.browse-target-id = App.instances[i].id; }
+        }
+        if App.instances.length == 0: Rectangle {
+            height: 56px;
+            border-radius: Radius.md;
+            background: Theme.surface-2;
+            HorizontalLayout {
+                padding-left: Space.s4;
+                padding-right: Space.s2;
+                spacing: Space.s3;
+                Text {
+                    horizontal-stretch: 1;
+                    text: "You don't have an instance yet. Create one to install this into.";
+                    color: Theme.text-muted;
+                    font-size: Type.small;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                }
+                Button {
+                    y: (parent.height - self.height) / 2;
+                    text: "Create instance";
+                    icon: @image-url("icons/plus.svg");
+                    has-icon: true;
+                    clicked => {
+                        App.create-preset-version = App.project-best-version;
+                        App.create-preset-loader = App.project-loader-index;
+                        App.project-open = false;
+                        App.create-open = true;
+                    }
+                }
+            }
+        }
+    }
+
+    HorizontalLayout {
+        spacing: Space.s2;
+        Button {
+            text: "View on Modrinth";
+            kind: ButtonKind.ghost;
+            icon: @image-url("icons/external.svg");
+            has-icon: true;
+            clicked => { App.open-project-page(App.project.id); }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        Button {
+            text: App.project.installed ? "Installed" : root.is-pack ? "Install modpack" : "Install";
+            kind: ButtonKind.primary;
+            loading: App.project.installing;
+            enabled: !App.project.installed && (root.is-pack || App.browse-target-id != "");
+            icon: App.project.installed ? @image-url("icons/check.svg") : @image-url("icons/download.svg");
+            has-icon: true;
+            clicked => { App.install-project(App.project.id); }
         }
     }
 }
@@ -543,12 +712,13 @@ export component CrashDialog inherits Modal {
         border-width: 1px;
         border-color: Theme.border;
         clip: true;
-        Flickable {
+        ScrollArea {
             content-height: detail.preferred-height + 24px;
-            content-width: max(self.width, detail.preferred-width + 24px);
             detail := Text {
                 x: 12px;
                 y: 12px;
+                width: parent.width - 32px;
+                wrap: word-wrap;
                 text: App.crash-detail;
                 color: Theme.text-muted;
                 font-size: Type.caption;
@@ -598,7 +768,7 @@ export component UpdateDialog inherits Modal {
         border-radius: Radius.md;
         background: Theme.surface-2;
         clip: true;
-        Flickable {
+        ScrollArea {
             content-height: notes.preferred-height + 24px;
             notes := Text {
                 x: 12px;

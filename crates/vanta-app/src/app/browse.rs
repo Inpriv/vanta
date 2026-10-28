@@ -57,6 +57,10 @@ pub fn bind(ctrl: &Ctrl, ui: &AppWindow) {
     });
     app.on_open_project({
         let ctrl = ctrl.clone();
+        move |id| open_project(&ctrl, id.to_string())
+    });
+    app.on_open_project_page({
+        let ctrl = ctrl.clone();
         move |id| {
             let ty = ctrl
                 .shared
@@ -72,7 +76,68 @@ pub fn bind(ctrl: &Ctrl, ui: &AppWindow) {
     });
     app.on_install_project({
         let ctrl = ctrl.clone();
-        move |id| install(&ctrl, id.to_string())
+        move |id| {
+            // Install into whatever instance is chosen right now (the
+            // details dialog can change it after the search ran).
+            if let Some(ui) = ctrl.ui.upgrade() {
+                let target = ui.global::<App>().get_browse_target_id().to_string();
+                ctrl.shared.browse.lock().unwrap().target = target;
+            }
+            install(&ctrl, id.to_string())
+        }
+    });
+}
+
+/// Show the details dialog immediately from the search result, then fill in
+/// the long description and supported versions.
+fn open_project(ctrl: &Ctrl, id: String) {
+    let Some(ui) = ctrl.ui.upgrade() else { return };
+    let app = ui.global::<App>();
+    {
+        let s = ctrl.shared.browse.lock().unwrap();
+        let Some(hit) = s.hits.iter().find(|h| h.project_id == id) else {
+            return;
+        };
+        app.set_project(item(hit, &s));
+    }
+    app.set_project_body("".into());
+    app.set_project_body_loading(true);
+    app.set_project_best_version("".into());
+    app.set_project_loader_index(-1);
+    app.set_project_open(true);
+
+    let ctrl = ctrl.clone();
+    ctrl.clone().spawn(async move {
+        let project = ctrl.shared.modrinth.project(&id).await;
+        ctrl.with_ui(move |ui| {
+            let app = ui.global::<App>();
+            if app.get_project().id != id.as_str() {
+                return;
+            }
+            app.set_project_body_loading(false);
+            let Ok(p) = project else { return };
+            app.set_project_body(crate::markdown::summary(&p.body, 700).into());
+            // Newest stable game version it supports, for "Create instance".
+            let best = p
+                .game_versions
+                .iter()
+                .rev()
+                .find(|v| v.chars().all(|c| c.is_ascii_digit() || c == '.'))
+                .cloned()
+                .unwrap_or_default();
+            app.set_project_best_version(best.into());
+            let loader = ["fabric", "neoforge", "forge", "quilt"]
+                .iter()
+                .find(|l| p.loaders.iter().any(|x| x == *l))
+                .map(|l| match *l {
+                    "fabric" => 1,
+                    "quilt" => 2,
+                    "forge" => 3,
+                    _ => 4,
+                })
+                .unwrap_or(-1);
+            app.set_project_loader_index(loader);
+        });
     });
 }
 
@@ -291,8 +356,19 @@ fn item(h: &SearchHit, s: &BrowseState) -> ProjectItem {
 /// Re-render rows after install state changed.
 fn refresh_rows(ctrl: &Ctrl) {
     let ctrl2 = ctrl.clone();
-    ctrl.with_ui(move |_| {
+    ctrl.with_ui(move |ui| {
         let s = ctrl2.shared.browse.lock().unwrap();
+        // Keep the details dialog in sync too.
+        let app = ui.global::<App>();
+        let mut open = app.get_project();
+        if let Some(h) = s.hits.iter().find(|h| h.project_id == open.id.as_str()) {
+            let fresh = item(h, &s);
+            if open.installed != fresh.installed || open.installing != fresh.installing {
+                open.installed = fresh.installed;
+                open.installing = fresh.installing;
+                app.set_project(open);
+            }
+        }
         MODEL.with(|m| {
             for (i, h) in s.hits.iter().enumerate() {
                 if let Some(mut it) = m.row_data(i) {

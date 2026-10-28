@@ -126,6 +126,9 @@ pub struct Project {
     #[serde(default)]
     pub followers: u64,
     pub project_type: String,
+    /// Long description (Markdown).
+    #[serde(default)]
+    pub body: String,
     #[serde(default)]
     pub game_versions: Vec<String>,
     #[serde(default)]

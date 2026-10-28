@@ -82,6 +82,8 @@ export global App {
     // ---- navigation & window ----
     in-out property <Page> page: Page.home;
     in-out property <bool> maximized: false;
+    // Linux draws its own rounded window; Windows 11 rounds corners natively.
+    in property <bool> rounded-window: false;
     in property <string> version: "0.1.0";
     callback start-drag();
     callback start-resize(int);
@@ -141,6 +143,10 @@ export global App {
     callback browse-instance-java();
 
     // ---- versions (create dialog) ----
+    in-out property <bool> create-open: false;
+    // Game version and loader to preselect when the dialog opens (optional).
+    in-out property <string> create-preset-version;
+    in-out property <int> create-preset-loader: -1;
     in property <[VersionItem]> versions;
     in property <bool> versions-loading;
     in-out property <bool> show-snapshots: false;
@@ -182,6 +188,15 @@ export global App {
     callback load-more();
     callback install-project(string);
     callback open-project(string);
+    callback open-project-page(string);
+    // Project shown in the details dialog.
+    in-out property <bool> project-open;
+    in property <ProjectItem> project;
+    in property <string> project-body;
+    in property <bool> project-body-loading;
+    // Newest game version / loader index the project supports (for "Create instance").
+    in property <string> project-best-version;
+    in property <int> project-loader-index: -1;
 
     // ---- console ----
     in-out property <bool> console-open: false;

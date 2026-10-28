@@ -1,5 +1,5 @@
 import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
-import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Slider, Segmented, Select, Card, FieldRow, Divider, SectionTitle, Spinner } from "../components.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Slider, Segmented, Select, Card, FieldRow, Divider, SectionTitle, Spinner, ScrollArea } from "../components.slint";
 import { App } from "../state.slint";
 
 component Swatch inherits Rectangle {
@@ -56,12 +56,13 @@ component Section inherits VerticalLayout {
 }
 
 export component SettingsPage inherits Rectangle {
-    Flickable {
+    pure function gb(mb: int) -> string { return (round(mb / 1024 * 10) / 10) + " GB"; }
+    ScrollArea {
         width: parent.width;
         height: parent.height;
         content-height: body.preferred-height;
         body := VerticalLayout {
-            padding: Space.s10;
+            padding: Space.s8;
             padding-top: Space.s4;
             spacing: Space.s6;
             alignment: start;
@@ -157,7 +158,7 @@ export component SettingsPage inherits Rectangle {
                         }
                         Text {
                             width: 74px;
-                            text: App.default-memory-mb + " MB";
+                            text: root.gb(App.default-memory-mb);
                             color: Theme.text-muted;
                             horizontal-alignment: right;
                             vertical-alignment: center;
@@ -206,8 +207,8 @@ export component SettingsPage inherits Rectangle {
                         }
                         Button {
                             y: (parent.height - self.height) / 2;
-                            text: App.javas-loading ? "Scanning…" : "Detect installed";
-                            enabled: !App.javas-loading;
+                            text: App.javas-loading ? "Scanning" : "Detect installed";
+                            loading: App.javas-loading;
                             icon: @image-url("../icons/search.svg");
                             has-icon: true;
                             clicked => { App.detect-java(); }
@@ -321,7 +322,6 @@ export component SettingsPage inherits Rectangle {
                 FieldRow {
                     label: "Vanta " + App.version;
                     hint: App.update-status;
-                    if App.update-busy: Spinner { y: (parent.height - self.height) / 2; }
                     if App.update-available: Button {
                         y: (parent.height - self.height) / 2;
                         text: "Install " + App.update-version;
@@ -330,8 +330,8 @@ export component SettingsPage inherits Rectangle {
                     }
                     Button {
                         y: (parent.height - self.height) / 2;
-                        text: "Check now";
-                        enabled: !App.update-busy;
+                        text: App.update-busy ? "Checking" : "Check now";
+                        loading: App.update-busy;
                         icon: @image-url("../icons/refresh.svg");
                         has-icon: true;
                         clicked => { App.check-for-updates(); }
@@ -359,7 +359,7 @@ export component SettingsPage inherits Rectangle {
                     HorizontalLayout {
                         spacing: Space.s3;
                         Image {
-                            source: @image-url("../icons/logo.png");
+                            source: @image-url("../icons/logo.svg");
                             colorize: Theme.text;
                             width: 28px;
                             height: 28px;

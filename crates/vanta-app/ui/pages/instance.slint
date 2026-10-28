@@ -1,5 +1,5 @@
 import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
-import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Slider, Segmented, Select, Card, InstanceIcon, Skeleton, Badge, Spinner, FieldRow, Divider, SectionTitle } from "../components.slint";
+import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Slider, Segmented, Select, Card, InstanceIcon, Skeleton, Badge, Spinner, FieldRow, Divider, SectionTitle, ScrollArea } from "../components.slint";
 import { App, Page, InstanceItem, ContentItem } from "../state.slint";
 
 component ContentRow inherits Rectangle {
@@ -82,7 +82,7 @@ component ContentTab inherits VerticalLayout {
         spacing: Space.s2;
         Segmented {
             options: ["Mods", "Resource packs", "Shaders"];
-            item-width: 124px;
+            item-width: 112px;
             current <=> App.content-kind;
             selected => { App.refresh-content(); }
         }
@@ -93,8 +93,8 @@ component ContentTab inherits VerticalLayout {
             clicked => { App.update-all-content(); }
         }
         Button {
-            text: App.checking-updates ? "Checking…" : "Check for updates";
-            enabled: !App.checking-updates;
+            text: App.checking-updates ? "Checking" : "Updates";
+            loading: App.checking-updates;
             icon: @image-url("../icons/refresh.svg");
             has-icon: true;
             clicked => { App.check-content-updates(); }
@@ -142,7 +142,7 @@ component ContentTab inherits VerticalLayout {
                 font-size: Type.small;
             }
         }
-        if !App.content-loading && App.content.length > 0: Flickable {
+        if !App.content-loading && App.content.length > 0: ScrollArea {
             content-height: list.preferred-height;
             list := VerticalLayout {
                 padding: Space.s2;
@@ -153,7 +153,8 @@ component ContentTab inherits VerticalLayout {
     }
 }
 
-component SettingsTab inherits Flickable {
+component SettingsTab inherits ScrollArea {
+    pure function gb(mb: int) -> string { return (round(mb / 1024 * 10) / 10) + " GB"; }
     in-out property <InstanceItem> draft;
     callback save();
     callback rename();
@@ -195,7 +196,7 @@ component SettingsTab inherits Flickable {
                 Divider { }
                 FieldRow {
                     label: "Memory";
-                    hint: root.draft.memory-mb == 0 ? "Uses the default from Settings (" + App.default-memory-mb + " MB)" : root.draft.memory-mb + " MB";
+                    hint: root.draft.memory-mb == 0 ? "Uses the default from Settings (" + root.gb(App.default-memory-mb) + ")" : root.gb(root.draft.memory-mb);
                     Toggle {
                         y: (parent.height - self.height) / 2;
                         label: "Custom memory";
@@ -219,7 +220,7 @@ component SettingsTab inherits Flickable {
                     }
                     Text {
                         width: 80px;
-                        text: root.draft.memory-mb + " MB";
+                        text: root.gb(root.draft.memory-mb);
                         color: Theme.text-muted;
                         horizontal-alignment: right;
                         vertical-alignment: center;
@@ -384,7 +385,7 @@ export component InstancePage inherits Rectangle {
     VerticalLayout {
         width: parent.width;
         height: parent.height;
-        padding: Space.s10;
+        padding: Space.s8;
         padding-top: Space.s4;
         padding-bottom: Space.s4;
         spacing: Space.s5;
@@ -435,7 +436,6 @@ export component InstancePage inherits Rectangle {
                 min-width: 140px;
                 icon: @image-url("../icons/play.svg");
                 has-icon: true;
-                enabled: App.has-account;
                 clicked => { App.play(App.selected.id); }
             }
             if App.selected.running: Button {

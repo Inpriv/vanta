@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType};
 use slint::platform::{Platform, WindowAdapter, WindowEvent};
-use slint::{ComponentHandle, Image, ModelRc, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, VecModel};
+use slint::{ComponentHandle, Image, Model, ModelRc, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, VecModel};
 
 slint::include_modules!();
 
@@ -30,8 +30,8 @@ impl Platform for Headless {
     }
 }
 
-const W: u32 = 1180;
-const H: u32 = 740;
+const W: u32 = 960;
+const H: u32 = 620;
 const SCALE: f32 = 2.0;
 
 fn gradient(a: [u8; 3], b: [u8; 3]) -> Image {
@@ -309,6 +309,18 @@ fn main() {
     let only = std::env::args().nth(2);
 
     let app = ui.global::<App>();
+    let versions: Vec<VersionItem> = ["1.21.4", "1.21.1", "1.20.6", "1.20.1", "1.19.4", "1.18.2"]
+        .iter()
+        .map(|v| VersionItem {
+            id: (*v).into(),
+            kind: "Release".into(),
+            date: "2024-12-03".into(),
+        })
+        .collect();
+    app.set_versions(ModelRc::new(VecModel::from(versions)));
+    app.set_loader_versions(ModelRc::new(VecModel::from(vec![slint::SharedString::from(
+        "0.16.9",
+    )])));
     let shots: [(&str, Page, bool); 6] = [
         ("home", Page::Home, false),
         ("library", Page::Instances, false),
@@ -324,6 +336,26 @@ fn main() {
         app.set_page(page);
         app.set_console_open(console);
         render(&window, &out.join(format!("{name}.png")));
+    }
+    // Dialogs
+    if only.as_deref().is_none_or(|o| o == "create") {
+        app.set_page(Page::Home);
+        app.set_console_open(false);
+        app.set_create_preset_version("1.21.1".into());
+        app.set_create_preset_loader(1);
+        app.set_create_open(true);
+        render(&window, &out.join("create.png"));
+        app.set_create_open(false);
+    }
+    if only.as_deref().is_none_or(|o| o == "project") {
+        app.set_page(Page::Browse);
+        app.set_console_open(false);
+        let first = app.get_projects().row_data(0).unwrap();
+        app.set_project(first);
+        app.set_project_body("Sodium is a powerful rendering engine for Minecraft which greatly improves frame rates and stuttering while fixing many graphical issues.\n\n• Faster chunk rendering\n• Lower memory use".into());
+        app.set_project_open(true);
+        render(&window, &out.join("project.png"));
+        app.set_project_open(false);
     }
     let theme = ui.global::<Theme>();
     theme.set_dark(false);

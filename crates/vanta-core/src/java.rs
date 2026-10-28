@@ -285,6 +285,12 @@ struct RuntimeRaw {
     url: String,
 }
 
+/// A previously downloaded runtime for `component`/`major`, if any.
+pub fn installed_runtime(paths: &Paths, component: &str, major: u32) -> Option<PathBuf> {
+    find_java_in(&paths.runtimes_dir().join(component))
+        .or_else(|| find_java_in(&paths.runtimes_dir().join(format!("adoptium-{major}"))))
+}
+
 /// Ensure a Java runtime for `component`/`major` exists, downloading it if
 /// needed. Returns the `java` executable.
 pub async fn ensure_runtime(
