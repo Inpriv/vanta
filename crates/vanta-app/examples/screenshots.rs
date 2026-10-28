@@ -91,6 +91,13 @@ fn inst(id: &str, name: &str, icon: &str, version: &str, loader: &str, played: &
 fn fill(ui: &AppWindow) {
     let app = ui.global::<App>();
     app.on_text_matches(|a, b| a.to_lowercase().contains(&b.to_lowercase()));
+    app.on_initial_of(|n| {
+        n.chars()
+            .find(|c| c.is_alphanumeric())
+            .map(|c| c.to_uppercase().collect::<String>())
+            .unwrap_or_else(|| "V".into())
+            .into()
+    });
     let instances = vec![
         inst(
             "survival",

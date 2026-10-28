@@ -5,7 +5,7 @@ import { Avatar } from "shell.slint";
 import { ListView } from "std-widgets.slint";
 
 export global IconKeys {
-    out property <[string]> all: ["grass", "stone", "sand", "ocean", "nether", "end", "ember", "frost", "night", "bloom"];
+    out property <[string]> all: ["accent", "grass", "stone", "sand", "ocean", "nether", "end", "ember", "frost", "night", "bloom"];
 }
 
 component IconChoice inherits Rectangle {
@@ -39,7 +39,7 @@ export component CreateInstanceDialog inherits Modal {
     private property <string> selected-version;
     private property <int> loader: 0;
     private property <int> loader-version-index: 0;
-    private property <string> icon: "grass";
+    private property <string> icon: "accent";
     private property <bool> picking-icon;
     private property <bool> can-create: root.selected-version != "" && (root.loader == 0 || App.loader-versions.length > 0);
     private property <[string]> loader-names: ["Vanilla", "Fabric", "Quilt", "Forge", "NeoForge"];
@@ -56,7 +56,7 @@ export component CreateInstanceDialog inherits Modal {
             root.name = "";
             root.version-filter = "";
             root.loader-version-index = 0;
-            root.icon = "grass";
+            root.icon = "accent";
             root.picking-icon = false;
             root.loader = App.create-preset-loader >= 0 ? App.create-preset-loader : 0;
             root.selected-version = App.create-preset-version;
@@ -86,17 +86,47 @@ export component CreateInstanceDialog inherits Modal {
             width: 38px;
             height: 38px;
             accessible-role: button;
-            accessible-label: "Choose icon";
+            accessible-label: "Change icon";
             accessible-action-default => { root.picking-icon = !root.picking-icon; }
             InstanceIcon {
                 key: root.icon;
-                initial: "V";
+                initial: App.initial-of(root.name == "" ? root.default-name : root.name);
                 size: ita.has-hover ? 40px : 38px;
                 animate size { duration: Motion.fast; easing: Motion.spring; }
+            }
+            // Pencil badge so it is obvious the icon can be changed.
+            Rectangle {
+                x: parent.width - 14px;
+                y: parent.height - 14px;
+                width: 18px;
+                height: 18px;
+                border-radius: 9px;
+                background: Theme.surface-3;
+                border-width: 2px;
+                border-color: Theme.surface-1;
+                opacity: ita.has-hover || root.picking-icon ? 1 : 0;
+                animate opacity { duration: Motion.fast; }
+                Icon {
+                    source: @image-url("icons/edit.svg");
+                    size: 10px;
+                    colorize: Theme.text;
+                }
             }
             ita := TouchArea {
                 mouse-cursor: pointer;
                 clicked => { root.picking-icon = !root.picking-icon; }
+            }
+            if ita.has-hover && !root.picking-icon: Rectangle {
+                y: parent.height + 6px;
+                width: tip.preferred-width + 16px;
+                height: 26px;
+                border-radius: Radius.sm;
+                background: Theme.dark ? #26282e : #1b1c20;
+                tip := Text {
+                    text: "Change icon";
+                    color: #f2f3f5;
+                    font-size: Type.caption;
+                }
             }
         }
         TextField {
@@ -107,16 +137,34 @@ export component CreateInstanceDialog inherits Modal {
         }
     }
 
-    if root.picking-icon: HorizontalLayout {
+    if root.picking-icon: VerticalLayout {
         spacing: Space.s1;
-        alignment: start;
-        for k in IconKeys.all: IconChoice {
-            key: k;
-            initial: "";
-            selected: root.icon == k;
-            clicked => {
-                root.icon = k;
-                root.picking-icon = false;
+        HorizontalLayout {
+            spacing: Space.s1;
+            alignment: start;
+            for k[i] in IconKeys.all: IconChoice {
+                visible: i < 6;
+                key: k;
+                initial: "";
+                selected: root.icon == k;
+                clicked => {
+                    root.icon = k;
+                    root.picking-icon = false;
+                }
+            }
+        }
+        HorizontalLayout {
+            spacing: Space.s1;
+            alignment: start;
+            for k[i] in IconKeys.all: IconChoice {
+                visible: i >= 6;
+                key: k;
+                initial: "";
+                selected: root.icon == k;
+                clicked => {
+                    root.icon = k;
+                    root.picking-icon = false;
+                }
             }
         }
     }
@@ -464,7 +512,7 @@ export component IconDialog inherits Modal {
         alignment: center;
         spacing: Space.s1;
         for k[i] in IconKeys.all: IconChoice {
-            visible: i < 5;
+            visible: i < 6;
             key: k;
             initial: root.initial;
             selected: root.current == k;
@@ -478,7 +526,7 @@ export component IconDialog inherits Modal {
         alignment: center;
         spacing: Space.s1;
         for k[i] in IconKeys.all: IconChoice {
-            visible: i >= 5;
+            visible: i >= 6;
             key: k;
             initial: root.initial;
             selected: root.current == k;

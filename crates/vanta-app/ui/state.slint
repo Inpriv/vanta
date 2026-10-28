@@ -93,6 +93,8 @@ export global App {
     callback open-url(string);
     // Case-insensitive substring match (Slint strings have no `contains`).
     pure callback text-matches(string, string) -> bool;
+    // First letter of a name, upper-cased (Slint strings can't be sliced).
+    pure callback initial-of(string) -> string;
 
     // ---- toasts ----
     in-out property <string> toast-text;

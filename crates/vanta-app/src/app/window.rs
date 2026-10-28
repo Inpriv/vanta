@@ -88,6 +88,7 @@ pub fn bind(ctrl: &Ctrl, ui: &AppWindow) {
     });
 
     app.on_text_matches(|text, needle| text.to_lowercase().contains(&needle.to_lowercase()));
+    app.on_initial_of(|name| crate::format::initial(&name).into());
 }
 
 /// Bring the window to the front (used by the single-instance guard).

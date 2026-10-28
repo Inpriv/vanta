@@ -107,8 +107,9 @@ pub struct Instance {
     pub play_time_secs: u64,
 }
 
+/// `accent` follows the launcher's accent colour.
 fn default_icon() -> String {
-    "grass".into()
+    "accent".into()
 }
 
 impl Instance {

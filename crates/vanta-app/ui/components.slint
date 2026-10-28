@@ -765,6 +765,7 @@ export component InstanceIcon inherits Rectangle {
     clip: true;
 
     pure function brush-for(k: string) -> brush {
+        if k == "accent" { return @linear-gradient(145deg, Theme.accent.brighter(0.25) 0%, Theme.accent.darker(0.35) 100%); }
         if k == "stone" { return @linear-gradient(145deg, #a7adb6 0%, #565c65 100%); }
         if k == "sand" { return @linear-gradient(145deg, #f6dc9c 0%, #c4964c 100%); }
         if k == "ocean" { return @linear-gradient(145deg, #6cc4ff 0%, #2a62c4 100%); }
