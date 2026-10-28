@@ -52,23 +52,24 @@ export component TitleBar inherits Rectangle {
         Text {
             text: root.title;
             color: Theme.text-faint;
+            font-family: Type.pixel;
             font-size: Type.small;
             font-weight: 500;
             vertical-alignment: center;
             horizontal-stretch: 1;
         }
         WindowControl {
-            icon: @image-url("icons/win-min.svg");
+            icon: @image-url("icons/px/win-min.png");
             label: "Minimize";
             clicked => { App.minimize(); }
         }
         WindowControl {
-            icon: App.maximized ? @image-url("icons/win-restore.svg") : @image-url("icons/win-max.svg");
+            icon: App.maximized ? @image-url("icons/px/win-restore.png") : @image-url("icons/px/win-max.png");
             label: App.maximized ? "Restore" : "Maximize";
             clicked => { App.toggle-maximize(); }
         }
         WindowControl {
-            icon: @image-url("icons/win-close.svg");
+            icon: @image-url("icons/px/win-close.png");
             label: "Close";
             danger: true;
             clicked => { App.close(); }
@@ -122,6 +123,7 @@ component NavItem inherits Rectangle {
             text: root.label;
             horizontal-alignment: center;
             font-size: 10.5px;
+            font-family: Type.pixel;
             font-weight: root.active ? 600 : 500;
             color: root.active ? Theme.text : Theme.text-faint;
         }
@@ -154,7 +156,7 @@ export component Avatar inherits Rectangle {
         image-rendering: pixelated;
     }
     if !(has-account && account.has-head): Icon {
-        source: @image-url("icons/user.svg");
+        source: @image-url("icons/px/user.png");
         size: root.size * 0.55;
         colorize: Theme.text-muted;
     }
@@ -202,7 +204,7 @@ export component Sidebar inherits Rectangle {
         HorizontalLayout {
             alignment: center;
             NavItem {
-                icon: @image-url("icons/home.svg");
+                icon: @image-url("icons/px/home.png");
                 label: "Home";
                 active: App.page == Page.home;
                 clicked => { App.page = Page.home; }
@@ -211,7 +213,7 @@ export component Sidebar inherits Rectangle {
         HorizontalLayout {
             alignment: center;
             NavItem {
-                icon: @image-url("icons/grid.svg");
+                icon: @image-url("icons/px/grid.png");
                 label: "Library";
                 active: App.page == Page.instances || App.page == Page.instance;
                 clicked => { App.page = Page.instances; }
@@ -220,7 +222,7 @@ export component Sidebar inherits Rectangle {
         HorizontalLayout {
             alignment: center;
             NavItem {
-                icon: @image-url("icons/compass.svg");
+                icon: @image-url("icons/px/compass.png");
                 label: "Browse";
                 active: App.page == Page.browse;
                 clicked => {
@@ -233,7 +235,7 @@ export component Sidebar inherits Rectangle {
         HorizontalLayout {
             alignment: center;
             NavItem {
-                icon: @image-url("icons/terminal.svg");
+                icon: @image-url("icons/px/terminal.png");
                 label: "Console";
                 active: App.console-open;
                 clicked => { App.console-open = !App.console-open; }
@@ -242,7 +244,7 @@ export component Sidebar inherits Rectangle {
         HorizontalLayout {
             alignment: center;
             NavItem {
-                icon: @image-url("icons/settings.svg");
+                icon: @image-url("icons/px/settings.png");
                 label: "Settings";
                 active: App.page == Page.settings;
                 clicked => { App.page = Page.settings; }

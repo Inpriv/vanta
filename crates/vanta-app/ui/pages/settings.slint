@@ -9,7 +9,7 @@ component Swatch inherits Rectangle {
     callback clicked();
     width: 30px;
     height: 30px;
-    border-radius: 15px;
+    border-radius: Radius.sm;
     background: swatch;
     border-width: selected ? 3px : (fs.has-focus ? 2px : 0px);
     border-color: selected ? Theme.surface-1 : Theme.focus-ring;
@@ -33,7 +33,7 @@ component Swatch inherits Rectangle {
     Rectangle {
         width: parent.width + 6px;
         height: parent.height + 6px;
-        border-radius: self.width / 2;
+        border-radius: Radius.md;
         border-width: root.selected ? 2px : (ta.has-hover ? 1px : 0px);
         border-color: root.selected ? root.swatch : Theme.border-strong;
         animate border-width { duration: Motion.fast; }
@@ -70,6 +70,7 @@ export component SettingsPage inherits Rectangle {
             Text {
                 text: "Settings";
                 color: Theme.text;
+                font-family: Type.pixel;
                 font-size: Type.display;
                 font-weight: 700;
                 letter-spacing: -0.4px;
@@ -209,7 +210,7 @@ export component SettingsPage inherits Rectangle {
                             y: (parent.height - self.height) / 2;
                             text: App.javas-loading ? "Scanning" : "Detect installed";
                             loading: App.javas-loading;
-                            icon: @image-url("../icons/search.svg");
+                            icon: @image-url("../icons/px/search.png");
                             has-icon: true;
                             clicked => { App.detect-java(); }
                         }
@@ -255,6 +256,7 @@ export component SettingsPage inherits Rectangle {
                                 text: j.label;
                                 color: Theme.text;
                                 font-size: Type.small;
+                                font-family: Type.pixel;
                                 font-weight: 600;
                                 vertical-alignment: center;
                                 width: 110px;
@@ -269,7 +271,7 @@ export component SettingsPage inherits Rectangle {
                                 horizontal-stretch: 1;
                             }
                             if App.java-path == j.path: Icon {
-                                source: @image-url("../icons/check.svg");
+                                source: @image-url("../icons/px/check.png");
                                 size: 16px;
                                 colorize: Theme.accent;
                                 y: (parent.height - self.height) / 2;
@@ -305,7 +307,7 @@ export component SettingsPage inherits Rectangle {
                     Button {
                         y: (parent.height - self.height) / 2;
                         text: "Open";
-                        icon: @image-url("../icons/folder.svg");
+                        icon: @image-url("../icons/px/folder.png");
                         has-icon: true;
                         clicked => { App.open-data-dir(); }
                     }
@@ -332,7 +334,7 @@ export component SettingsPage inherits Rectangle {
                         y: (parent.height - self.height) / 2;
                         text: App.update-busy ? "Checking" : "Check now";
                         loading: App.update-busy;
-                        icon: @image-url("../icons/refresh.svg");
+                        icon: @image-url("../icons/px/refresh.png");
                         has-icon: true;
                         clicked => { App.check-for-updates(); }
                     }
@@ -359,7 +361,8 @@ export component SettingsPage inherits Rectangle {
                     HorizontalLayout {
                         spacing: Space.s3;
                         Image {
-                            source: @image-url("../icons/logo.svg");
+                            source: @image-url("../icons/logo-px24.png");
+                            image-rendering: pixelated;
                             colorize: Theme.text;
                             width: 28px;
                             height: 28px;
@@ -369,6 +372,7 @@ export component SettingsPage inherits Rectangle {
                             Text {
                                 text: "Vanta";
                                 color: Theme.text;
+                                font-family: Type.pixel;
                                 font-weight: 700;
                                 font-size: Type.subtitle;
                             }
@@ -387,7 +391,7 @@ export component SettingsPage inherits Rectangle {
                         Button {
                             y: (parent.height - self.height) / 2;
                             text: "Source code";
-                            icon: @image-url("../icons/external.svg");
+                            icon: @image-url("../icons/px/external.png");
                             has-icon: true;
                             clicked => { App.open-url("https://github.com/Inpriv/vanta"); }
                         }
@@ -399,7 +403,7 @@ export component SettingsPage inherits Rectangle {
                         wrap: word-wrap;
                     }
                     Text {
-                        text: "Inter typeface © The Inter Project Authors, SIL Open Font License 1.1. Mod listings provided by Modrinth.";
+                        text: "Inter © The Inter Project Authors and Pixelify Sans © The Pixelify Sans Project Authors, both under the SIL Open Font License 1.1. Mod listings provided by Modrinth.";
                         color: Theme.text-faint;
                         font-size: Type.caption;
                         wrap: word-wrap;

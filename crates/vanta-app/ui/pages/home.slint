@@ -49,11 +49,13 @@ component Hero inherits Rectangle {
             text: root.inst.running ? "Now playing" : "Continue playing";
             color: Theme.accent;
             font-size: Type.small;
+            font-family: Type.pixel;
             font-weight: 600;
         }
         Text {
             text: root.inst.name;
             color: Theme.text;
+            font-family: Type.pixel;
             font-size: Type.hero;
             font-weight: 700;
             overflow: elide;
@@ -79,18 +81,18 @@ component Hero inherits Rectangle {
             PlayControl {
                 instance-id: root.inst.id;
                 running: root.inst.running;
-                control-width: 220px;
+                control-width: 248px;
             }
             IconButton {
                 y: (parent.height - self.height) / 2;
-                icon: @image-url("../icons/folder.svg");
+                icon: @image-url("../icons/px/folder.png");
                 label: "Open folder";
                 size: 44px;
                 clicked => { App.open-instance-folder(root.inst.id); }
             }
             IconButton {
                 y: (parent.height - self.height) / 2;
-                icon: @image-url("../icons/settings.svg");
+                icon: @image-url("../icons/px/settings.png");
                 label: "Instance settings";
                 size: 44px;
                 clicked => {
@@ -100,7 +102,7 @@ component Hero inherits Rectangle {
             }
             IconButton {
                 y: (parent.height - self.height) / 2;
-                icon: @image-url("../icons/terminal.svg");
+                icon: @image-url("../icons/px/terminal.png");
                 label: "Console";
                 size: 44px;
                 clicked => { App.console-open = true; }
@@ -146,7 +148,8 @@ component EmptyHero inherits Rectangle {
         HorizontalLayout {
             alignment: center;
             Image {
-                source: @image-url("../icons/logo.svg");
+                source: @image-url("../icons/logo-px24.png");
+                image-rendering: pixelated;
                 colorize: Theme.text;
                 width: 44px;
                 height: 44px;
@@ -156,6 +159,7 @@ component EmptyHero inherits Rectangle {
             text: "Welcome to Vanta";
             horizontal-alignment: center;
             color: Theme.text;
+            font-family: Type.pixel;
             font-size: Type.display;
             font-weight: 700;
         }
@@ -172,13 +176,13 @@ component EmptyHero inherits Rectangle {
             Button {
                 text: "New instance";
                 kind: ButtonKind.primary;
-                icon: @image-url("../icons/plus.svg");
+                icon: @image-url("../icons/px/plus.png");
                 has-icon: true;
                 clicked => { root.create(); }
             }
             Button {
                 text: "Import modpack";
-                icon: @image-url("../icons/import.svg");
+                icon: @image-url("../icons/px/import.png");
                 has-icon: true;
                 clicked => { App.import-mrpack(); }
             }
@@ -220,6 +224,7 @@ component RecentCard inherits Rectangle {
                     text: root.inst.name;
                     color: Theme.text;
                     font-size: Type.body;
+                    font-family: Type.pixel;
                     font-weight: 600;
                     overflow: elide;
                 }
@@ -276,6 +281,7 @@ export component HomePage inherits Rectangle {
                     Text {
                         text: "Recent";
                         color: Theme.text;
+                        font-family: Type.pixel;
                         font-size: Type.subtitle;
                         font-weight: 600;
                         horizontal-stretch: 1;

@@ -27,7 +27,7 @@ component ContentRow inherits Rectangle {
                 height: 100%;
             }
             if !root.item.has-icon: Icon {
-                source: @image-url("../icons/box.svg");
+                source: @image-url("../icons/px/box.png");
                 size: 18px;
                 colorize: Theme.text-faint;
             }
@@ -57,7 +57,7 @@ component ContentRow inherits Rectangle {
             y: (parent.height - self.height) / 2;
             height: 30px;
             text: "Update";
-            icon: @image-url("../icons/download.svg");
+            icon: @image-url("../icons/px/download.png");
             has-icon: true;
             clicked => { App.update-content(root.item.file-name); }
         }
@@ -69,7 +69,7 @@ component ContentRow inherits Rectangle {
         }
         IconButton {
             y: (parent.height - self.height) / 2;
-            icon: @image-url("../icons/trash.svg");
+            icon: @image-url("../icons/px/trash.png");
             label: "Remove";
             hover-tint: Theme.danger;
             clicked => { App.remove-content(root.item.file-name); }
@@ -96,19 +96,19 @@ component ContentTab inherits VerticalLayout {
         if App.updates-available == 0: Button {
             text: App.checking-updates ? "Checking" : "Updates";
             loading: App.checking-updates;
-            icon: @image-url("../icons/refresh.svg");
+            icon: @image-url("../icons/px/refresh.png");
             has-icon: true;
             clicked => { App.check-content-updates(); }
         }
         IconButton {
-            icon: @image-url("../icons/folder.svg");
+            icon: @image-url("../icons/px/folder.png");
             label: "Add files";
             size: 36px;
             clicked => { App.add-local-content(); }
         }
         Button {
             text: "Browse";
-            icon: @image-url("../icons/compass.svg");
+            icon: @image-url("../icons/px/compass.png");
             has-icon: true;
             clicked => {
                 App.browse-target-id = App.selected-id;
@@ -134,6 +134,7 @@ component ContentTab inherits VerticalLayout {
                 text: "Nothing installed yet";
                 horizontal-alignment: center;
                 color: Theme.text;
+                font-family: Type.pixel;
                 font-weight: 600;
             }
             Text {
@@ -184,7 +185,7 @@ component SettingsTab inherits ScrollArea {
                     Button {
                         y: (parent.height - self.height) / 2;
                         text: "Rename";
-                        icon: @image-url("../icons/edit.svg");
+                        icon: @image-url("../icons/px/edit.png");
                         has-icon: true;
                         clicked => { root.rename(); }
                     }
@@ -345,19 +346,19 @@ component SettingsTab inherits ScrollArea {
                     alignment: start;
                     Button {
                         text: "Open folder";
-                        icon: @image-url("../icons/folder.svg");
+                        icon: @image-url("../icons/px/folder.png");
                         has-icon: true;
                         clicked => { App.open-instance-folder(root.draft.id); }
                     }
                     Button {
                         text: "Duplicate";
-                        icon: @image-url("../icons/copy.svg");
+                        icon: @image-url("../icons/px/copy.png");
                         has-icon: true;
                         clicked => { App.duplicate-instance(root.draft.id); }
                     }
                     Button {
                         text: "Export .mrpack";
-                        icon: @image-url("../icons/upload.svg");
+                        icon: @image-url("../icons/px/upload.png");
                         has-icon: true;
                         clicked => { root.export(); }
                     }
@@ -365,7 +366,7 @@ component SettingsTab inherits ScrollArea {
                     Button {
                         text: "Delete";
                         kind: ButtonKind.danger;
-                        icon: @image-url("../icons/trash.svg");
+                        icon: @image-url("../icons/px/trash.png");
                         has-icon: true;
                         clicked => { root.delete(); }
                     }
@@ -395,7 +396,7 @@ export component InstancePage inherits Rectangle {
             spacing: Space.s4;
             IconButton {
                 y: (parent.height - self.height) / 2;
-                icon: @image-url("../icons/chevron-left.svg");
+                icon: @image-url("../icons/px/chevron-left.png");
                 label: "Back to library";
                 clicked => { App.page = Page.instances; }
             }
@@ -411,6 +412,7 @@ export component InstancePage inherits Rectangle {
                 Text {
                     text: App.selected.name;
                     color: Theme.text;
+                    font-family: Type.pixel;
                     font-size: Type.display;
                     font-weight: 700;
                     overflow: elide;
@@ -433,7 +435,7 @@ export component InstancePage inherits Rectangle {
                 y: (parent.height - self.height) / 2;
                 instance-id: App.selected.id;
                 running: App.selected.running;
-                control-width: 200px;
+                control-width: 236px;
             }
         }
 

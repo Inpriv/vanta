@@ -111,7 +111,7 @@ export component CreateInstanceDialog inherits Modal {
                 opacity: ita.has-hover || root.picking-icon ? 1 : 0;
                 animate opacity { duration: Motion.fast; }
                 Icon {
-                    source: @image-url("icons/edit.svg");
+                    source: @image-url("icons/px/edit.png");
                     size: 10px;
                     colorize: Theme.text;
                 }
@@ -208,7 +208,7 @@ export component CreateInstanceDialog inherits Modal {
         }
         TextField {
             placeholder: "Search versions";
-            icon: @image-url("icons/search.svg");
+            icon: @image-url("icons/px/search.png");
             has-icon: true;
             text <=> root.version-filter;
             edited(t) => { App.refresh-versions(t); }
@@ -248,7 +248,7 @@ export component CreateInstanceDialog inherits Modal {
                         padding-right: Space.s3;
                         spacing: Space.s3;
                         if v.id == root.selected-version: Icon {
-                            source: @image-url("icons/check.svg");
+                            source: @image-url("icons/px/check.png");
                             size: 14px;
                             colorize: Theme.accent;
                             y: (parent.height - self.height) / 2;
@@ -256,6 +256,7 @@ export component CreateInstanceDialog inherits Modal {
                         Text {
                             text: v.id;
                             color: v.id == root.selected-version ? Theme.accent : Theme.text;
+                            font-family: Type.pixel;
                             font-weight: v.id == root.selected-version ? 600 : 400;
                             vertical-alignment: center;
                             horizontal-stretch: 1;
@@ -345,7 +346,7 @@ export component ProjectDialog inherits Modal {
                 height: 100%;
             }
             if !App.project.has-icon: Icon {
-                source: @image-url("icons/box.svg");
+                source: @image-url("icons/px/box.png");
                 size: 28px;
                 colorize: Theme.text-faint;
             }
@@ -408,7 +409,7 @@ export component ProjectDialog inherits Modal {
                 Button {
                     y: (parent.height - self.height) / 2;
                     text: "Create instance";
-                    icon: @image-url("icons/plus.svg");
+                    icon: @image-url("icons/px/plus.png");
                     has-icon: true;
                     clicked => {
                         App.create-preset-version = App.project-best-version;
@@ -426,7 +427,7 @@ export component ProjectDialog inherits Modal {
         Button {
             text: "View on Modrinth";
             kind: ButtonKind.ghost;
-            icon: @image-url("icons/external.svg");
+            icon: @image-url("icons/px/external.png");
             has-icon: true;
             clicked => { App.open-project-page(App.project.id); }
         }
@@ -436,7 +437,7 @@ export component ProjectDialog inherits Modal {
             kind: ButtonKind.primary;
             loading: App.project.installing;
             enabled: !App.project.installed && (root.is-pack || App.browse-target-id != "");
-            icon: App.project.installed ? @image-url("icons/check.svg") : @image-url("icons/download.svg");
+            icon: App.project.installed ? @image-url("icons/px/check.png") : @image-url("icons/px/download.png");
             has-icon: true;
             clicked => { App.install-project(App.project.id); }
         }
@@ -599,7 +600,7 @@ export component LoginDialog inherits Modal {
                 }
                 IconButton {
                     y: (parent.height - self.height) / 2;
-                    icon: @image-url("icons/copy.svg");
+                    icon: @image-url("icons/px/copy.png");
                     label: "Copy code";
                     size: 40px;
                     clicked => { App.copy-login-code(); }
@@ -634,7 +635,7 @@ export component LoginDialog inherits Modal {
         if App.login-code != "" && App.login-error == "": Button {
             text: "Open " + App.login-url;
             kind: ButtonKind.primary;
-            icon: @image-url("icons/external.svg");
+            icon: @image-url("icons/px/external.png");
             has-icon: true;
             clicked => {
                 App.copy-login-code();
@@ -708,6 +709,7 @@ export component AccountsDialog inherits Modal {
                 Text {
                     text: a.name;
                     color: Theme.text;
+                    font-family: Type.pixel;
                     font-weight: 600;
                 }
                 Text {
@@ -732,7 +734,7 @@ export component AccountsDialog inherits Modal {
         Button {
             text: "Sign in with Microsoft";
             kind: ButtonKind.primary;
-            icon: @image-url("icons/plus.svg");
+            icon: @image-url("icons/px/plus.png");
             has-icon: true;
             clicked => {
                 root.open-state = false;
@@ -830,7 +832,7 @@ export component ExportDialog inherits Modal {
         Button {
             text: "Export";
             kind: ButtonKind.primary;
-            icon: @image-url("icons/upload.svg");
+            icon: @image-url("icons/px/upload.png");
             has-icon: true;
             clicked => {
                 App.export-mrpack(App.selected-id, root.pack-version, root.instance-name, root.mods, root.config, root.packs, root.options);
@@ -871,7 +873,7 @@ export component CrashDialog inherits Modal {
         spacing: Space.s2;
         Button {
             text: "View logs";
-            icon: @image-url("icons/terminal.svg");
+            icon: @image-url("icons/px/terminal.png");
             has-icon: true;
             clicked => {
                 App.crash-open = false;
@@ -880,7 +882,7 @@ export component CrashDialog inherits Modal {
         }
         Button {
             text: "Copy details";
-            icon: @image-url("icons/copy.svg");
+            icon: @image-url("icons/px/copy.png");
             has-icon: true;
             clicked => { App.copy-crash(); }
         }
@@ -983,6 +985,7 @@ export component Console inherits Rectangle {
                 Text {
                     text: "Game console";
                     color: Theme.text;
+                    font-family: Type.pixel;
                     font-size: Type.subtitle;
                     font-weight: 600;
                     vertical-alignment: center;
@@ -1003,31 +1006,31 @@ export component Console inherits Rectangle {
                 TextField {
                     width: 200px;
                     placeholder: "Filter";
-                    icon: @image-url("icons/search.svg");
+                    icon: @image-url("icons/px/search.png");
                     has-icon: true;
                     text <=> App.log-search;
                     edited => { App.apply-log-filter(); }
                 }
                 IconButton {
-                    icon: @image-url("icons/copy.svg");
+                    icon: @image-url("icons/px/copy.png");
                     label: "Copy log";
                     size: 36px;
                     clicked => { App.copy-logs(); }
                 }
                 IconButton {
-                    icon: @image-url("icons/folder.svg");
+                    icon: @image-url("icons/px/folder.png");
                     label: "Open logs folder";
                     size: 36px;
                     clicked => { App.open-logs-folder(); }
                 }
                 IconButton {
-                    icon: @image-url("icons/trash.svg");
+                    icon: @image-url("icons/px/trash.png");
                     label: "Clear";
                     size: 36px;
                     clicked => { App.clear-logs(); }
                 }
                 IconButton {
-                    icon: @image-url("icons/chevron-down.svg");
+                    icon: @image-url("icons/px/chevron-down.png");
                     label: "Hide";
                     size: 36px;
                     clicked => { App.console-open = false; }
@@ -1083,7 +1086,7 @@ export component Toast inherits Rectangle {
     opacity: shown ? 1 : 0;
     visible: self.opacity > 0.01;
     animate y, opacity { duration: Motion.base; easing: Motion.out; }
-    border-radius: 22px;
+    border-radius: Radius.md;
     background: Theme.dark ? #26282e : #1b1c20;
     border-width: 1px;
     border-color: App.toast-error ? Theme.danger.with-alpha(0.5) : #ffffff14;
@@ -1098,7 +1101,7 @@ export component Toast inherits Rectangle {
         spacing: Space.s2;
         alignment: center;
         if App.toast-error: Icon {
-            source: @image-url("icons/alert.svg");
+            source: @image-url("icons/px/alert.png");
             size: 16px;
             colorize: Theme.danger;
             y: (parent.height - self.height) / 2;
@@ -1106,6 +1109,7 @@ export component Toast inherits Rectangle {
         msg := Text {
             text: App.toast-text;
             color: #f2f3f5;
+            font-family: Type.pixel;
             font-size: Type.small;
             vertical-alignment: center;
             horizontal-alignment: center;

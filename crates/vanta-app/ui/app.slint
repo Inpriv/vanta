@@ -43,7 +43,7 @@ export component AppWindow inherits Window {
     min-height: 460px;
     // With rounded corners the window itself is transparent and `frame`
     // paints the background.
-    private property <length> corner: App.rounded-window && !App.maximized ? 12px : 0px;
+    private property <length> corner: App.rounded-window && !App.maximized ? 8px : 0px;
     background: root.corner > 0 ? transparent : Theme.bg;
 
     // Keep std widgets (scroll bars, list views) in sync with the theme.
@@ -65,6 +65,18 @@ export component AppWindow inherits Window {
         border-radius: root.corner;
         clip: root.corner > 0;
         background: Theme.bg;
+
+        // Faint pixel grain over the background ("bits").
+        Image {
+            width: parent.width;
+            height: parent.height;
+            source: @image-url("icons/texture.png");
+            image-rendering: pixelated;
+            horizontal-tiling: repeat;
+            vertical-tiling: repeat;
+            colorize: Theme.text;
+            opacity: Theme.dark ? 0.035 : 0.05;
+        }
 
         HorizontalLayout {
             Sidebar {

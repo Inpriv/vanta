@@ -48,7 +48,7 @@ component InstanceCard inherits Rectangle {
                         }
                     }
                     Icon {
-                        source: root.inst.running ? @image-url("../icons/stop.svg") : @image-url("../icons/play.svg");
+                        source: root.inst.running ? @image-url("../icons/px/stop.png") : @image-url("../icons/px/play.png");
                         size: 16px;
                         colorize: root.inst.running ? Theme.text : Theme.on-accent;
                     }
@@ -61,6 +61,7 @@ component InstanceCard inherits Rectangle {
                     text: root.inst.name;
                     color: Theme.text;
                     font-size: Type.body;
+                    font-family: Type.pixel;
                     font-weight: 600;
                     overflow: elide;
                 }
@@ -97,6 +98,7 @@ export component InstancesPage inherits Rectangle {
                 Text {
                     text: "Library";
                     color: Theme.text;
+                    font-family: Type.pixel;
                     font-size: Type.display;
                     font-weight: 700;
                     letter-spacing: -0.4px;
@@ -111,14 +113,14 @@ export component InstancesPage inherits Rectangle {
                 width: 180px;
                 y: (parent.height - self.height) / 2;
                 placeholder: "Filter";
-                icon: @image-url("../icons/search.svg");
+                icon: @image-url("../icons/px/search.png");
                 has-icon: true;
                 edited(t) => { root.filter = t; }
             }
             Button {
                 y: (parent.height - self.height) / 2;
                 text: "Import";
-                icon: @image-url("../icons/import.svg");
+                icon: @image-url("../icons/px/import.png");
                 has-icon: true;
                 clicked => { App.import-mrpack(); }
             }
@@ -126,7 +128,7 @@ export component InstancesPage inherits Rectangle {
                 y: (parent.height - self.height) / 2;
                 text: "New instance";
                 kind: ButtonKind.primary;
-                icon: @image-url("../icons/plus.svg");
+                icon: @image-url("../icons/px/plus.png");
                 has-icon: true;
                 clicked => { root.create-instance(); }
             }
@@ -164,6 +166,7 @@ export component InstancesPage inherits Rectangle {
             text: "No instances yet";
             horizontal-alignment: center;
             color: Theme.text;
+            font-family: Type.pixel;
             font-size: Type.title;
             font-weight: 600;
         }

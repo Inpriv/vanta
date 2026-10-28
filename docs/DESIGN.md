@@ -43,9 +43,24 @@ One accent at a time. Text on the accent uses `on-accent` (`bg` in dark mode, wh
 
 `accent-soft` is the accent at 14 % (12 % in light mode) for active navigation and selections.
 
+## Pixel style
+
+Vanta's look is built around its pixel-art block icons:
+
+- **Pixelify Sans** (SIL OFL 1.1) for titles, labels, tabs, buttons, badges and
+  notifications; Inter for longer reading text (descriptions, hints, logs).
+- **Pixel icons** on a 16 px grid (`ui/icons/px`, generated from the line
+  icons by `scripts/gen_pixel_icons.py`), always shown at 16 or 32 px with
+  nearest-neighbour scaling. The logo has pixel versions at 16 and 24 px.
+- **Block shapes**: small corner radii, a light 2 px top edge and a darker
+  3 px bottom lip on filled buttons, and hard (unblurred) pixel shadows.
+- **Pixel grain**: a faint tiled speckle texture over the window background.
+- **Stepped motion** where it fits the style: the loading screen and the
+  spinner move in discrete steps.
+
 ## Typography
 
-Inter (SIL OFL 1.1), bundled in Regular, Medium, SemiBold and Bold.
+Inter (SIL OFL 1.1) in Regular, Medium, SemiBold and Bold, and Pixelify Sans (SIL OFL 1.1) in Regular and SemiBold.
 
 | Token | Size | Typical weight |
 | --- | --- | --- |
@@ -60,7 +75,7 @@ Inter (SIL OFL 1.1), bundled in Regular, Medium, SemiBold and Bold.
 ## Spacing, radius, depth
 
 - Spacing follows a 4 px grid: `s1` 4 · `s2` 8 · `s3` 12 · `s4` 16 · `s5` 20 · `s6` 24 · `s8` 32 · `s10` 40 · `s12` 48.
-- Radius: `sm` 6 · `md` 10 · `lg` 14 · `xl` 20 px. Pills use half their height.
+- Radius: `sm` 3 · `md` 4 · `lg` 6 · `xl` 8 px. Pills use half their height.
 - Depth comes from surface steps, not borders. Shadows appear only on things
   that float: hovered cards (24 px blur, 8 px offset), popups and dialogs
   (24–48 px blur).

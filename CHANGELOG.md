@@ -2,6 +2,14 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.6 (2026-10-28)
+
+### New features
+
+- A new pixel look built around the block icons: Pixelify Sans for titles, labels and buttons, pixel icons, block-style buttons with hard shadows, square controls and a faint pixel grain
+- Pixel loading screen: the V builds up in steps, the name types in and a block bar fills
+- Pixel version of the Vanta logo and a stepped pixel spinner
+
 ## 0.1.5 (2026-10-28)
 
 ### New features

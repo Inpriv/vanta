@@ -2,10 +2,11 @@ import { Theme, Type, Space, Radius, Motion } from "theme.slint";
 
 export component Icon inherits Image {
     in property <length> size: 18px;
-    width: size;
-    height: size;
+    // Pixel icons are drawn on a 16 px grid; keep them at whole multiples.
+    width: root.size < 26px ? 16px : 32px;
+    height: self.width;
     colorize: Theme.text;
-    image-rendering: smooth;
+    image-rendering: pixelated;
 }
 
 export component Spinner inherits Rectangle {
@@ -14,26 +15,16 @@ export component Spinner inherits Rectangle {
     width: size;
     height: size;
     accessible-role: progress-indicator;
-    // Faint full ring with a rotating 90° arc on top.
-    Path {
-        width: 100%;
-        height: 100%;
-        viewbox-width: 24;
-        viewbox-height: 24;
-        stroke: root.tint.with-alpha(0.22);
-        stroke-width: max(1.5px, root.size / 9);
-        commands: "M 12 3 A 9 9 0 1 1 11.99 3";
-    }
-    Path {
-        width: 100%;
-        height: 100%;
-        viewbox-width: 24;
-        viewbox-height: 24;
-        stroke: root.tint;
-        stroke-width: max(1.5px, root.size / 9);
-        stroke-line-cap: round;
-        commands: "M 12 3 A 9 9 0 0 1 21 12";
-        transform-rotation: Motion.reduce ? 0deg : 360deg * (mod(animation-tick(), 800ms) / 800ms);
+    // Eight blocks around a square; the bright one steps clockwise.
+    private property <int> step: Motion.reduce ? 0 : mod(floor(animation-tick() / 90ms), 8);
+    private property <length> cell: round(root.size / 3 / 1phx) * 1phx;
+    for i in 8: Rectangle {
+        // Ring positions: top row, right column, bottom row, left column.
+        x: (i < 3 ? i : i == 3 ? 2 : i < 7 ? 6 - i : 0) * root.cell;
+        y: (i < 3 ? 0 : i == 3 ? 1 : i < 7 ? 2 : 1) * root.cell;
+        width: root.cell - 1px;
+        height: root.cell - 1px;
+        background: root.tint.with-alpha(mod(i - root.step + 8, 8) == 0 ? 1 : mod(i - root.step + 8, 8) == 7 ? 0.55 : 0.18);
     }
 }
 
@@ -73,6 +64,12 @@ export component Button inherits Rectangle {
     opacity: enabled ? 1 : 0.55;
     animate background, border-color, opacity { duration: Motion.fast; easing: Motion.out; }
 
+    // Block look: hard pixel shadow under filled buttons.
+    drop-shadow-blur: 0px;
+    drop-shadow-offset-y: kind == ButtonKind.ghost || !enabled ? 0px : (down ? 1px : 3px);
+    drop-shadow-color: kind == ButtonKind.primary ? Theme.accent.darker(0.6) : kind == ButtonKind.danger ? Theme.danger.darker(0.6) : #00000066;
+    animate drop-shadow-offset-y { duration: Motion.fast; easing: Motion.out; }
+
     accessible-role: button;
     accessible-label: text;
     accessible-enabled: enabled;
@@ -95,6 +92,17 @@ export component Button inherits Rectangle {
         clicked => { root.clicked(); }
     }
 
+    if kind != ButtonKind.ghost && enabled: Rectangle {
+        y: 0;
+        height: 2px;
+        border-radius: root.border-radius;
+        background: #ffffff2e;
+    }
+    if kind != ButtonKind.ghost && enabled: Rectangle {
+        y: root.height - 3px;
+        height: 3px;
+        background: #0000002e;
+    }
     HorizontalLayout {
         padding-left: text == "" ? 0 : (large ? Space.s6 : Space.s4);
         padding-right: self.padding-left;
@@ -116,6 +124,7 @@ export component Button inherits Rectangle {
             text: root.text;
             color: !root.enabled ? Theme.text-faint : root.fg;
             font-size: large ? Type.subtitle : Type.body;
+            font-family: Type.pixel;
             font-weight: kind == ButtonKind.ghost ? 500 : 600;
             vertical-alignment: center;
         }
@@ -262,7 +271,7 @@ export component Toggle inherits Rectangle {
 
     width: 40px;
     height: 24px;
-    border-radius: 12px;
+    border-radius: Radius.md;
     background: checked ? Theme.accent : (ta.has-hover ? Theme.border-strong.with-alpha(0.25) : Theme.surface-3);
     border-width: fs.has-focus ? 2px : 1px;
     border-color: fs.has-focus ? Theme.focus-ring : (checked ? transparent : Theme.border-strong);
@@ -302,7 +311,7 @@ export component Toggle inherits Rectangle {
         height: 18px;
         y: 3px;
         x: root.checked ? root.width - self.width - 3px : 3px;
-        border-radius: 9px;
+        border-radius: 2px;
         background: root.checked ? Theme.on-accent : (Theme.dark ? #c9cbd1 : #ffffff);
         drop-shadow-blur: 4px;
         drop-shadow-color: #00000040;
@@ -322,13 +331,13 @@ export component Checkbox inherits HorizontalLayout {
         width: 18px;
         height: 18px;
         y: (parent.height - self.height) / 2;
-        border-radius: 5px;
+        border-radius: 2px;
         background: root.checked ? Theme.accent : Theme.surface-2;
         border-width: fs.has-focus ? 2px : 1px;
         border-color: fs.has-focus ? Theme.focus-ring : (root.checked ? Theme.accent : Theme.border-strong);
         animate background, border-color { duration: Motion.fast; easing: Motion.out; }
         if root.checked: Icon {
-            source: @image-url("icons/check.svg");
+            source: @image-url("icons/px/check.png");
             size: 14px;
             colorize: Theme.on-accent;
         }
@@ -400,7 +409,7 @@ export component Slider inherits Rectangle {
         height: self.width;
         x: root.frac * (root.width - 18px) - (self.width - 18px) / 2;
         y: (parent.height - self.height) / 2;
-        border-radius: self.width / 2;
+        border-radius: 2px;
         background: #ffffff;
         border-width: fs.has-focus ? 3px : 0px;
         border-color: Theme.focus-ring;
@@ -500,6 +509,7 @@ export component Segmented inherits Rectangle {
         Text {
             text: opt;
             font-size: Type.small;
+            font-family: Type.pixel;
             font-weight: i == root.current ? 600 : 500;
             color: i == root.current || ta.has-hover ? Theme.text : Theme.text-muted;
             overflow: elide;
@@ -571,7 +581,7 @@ export component Select inherits Rectangle {
             overflow: elide;
         }
         Icon {
-            source: @image-url("icons/chevron-down.svg");
+            source: @image-url("icons/px/chevron-down.png");
             size: 16px;
             colorize: Theme.text-muted;
             y: (parent.height - self.height) / 2;
@@ -610,12 +620,13 @@ export component Select inherits Rectangle {
                                 text: opt;
                                 color: i == root.current-index ? Theme.accent : Theme.text;
                                 font-size: Type.body;
+                                font-family: Type.pixel;
                                 font-weight: i == root.current-index ? 600 : 400;
                                 vertical-alignment: center;
                                 overflow: elide;
                             }
                             if i == root.current-index: Icon {
-                                source: @image-url("icons/check.svg");
+                                source: @image-url("icons/px/check.png");
                                 size: 16px;
                                 colorize: Theme.accent;
                                 y: (parent.height - self.height) / 2;
@@ -665,7 +676,7 @@ export component ScrollArea inherits Rectangle {
             y: (root.height - root.thumb-h) * (-fl.content-y / max(1px, root.max-scroll));
             width: ta.has-hover || ta.pressed ? 6px : 4px;
             height: root.thumb-h;
-            border-radius: self.width / 2;
+            border-radius: 1px;
             background: Theme.text.with-alpha(ta.pressed ? 0.4 : ta.has-hover ? 0.3 : 0.14);
             animate width, background { duration: Motion.fast; easing: Motion.out; }
         }
@@ -730,12 +741,13 @@ export component Badge inherits Rectangle {
     in property <color> fill: Theme.surface-3;
     height: 22px;
     width: t.preferred-width + 16px;
-    border-radius: 11px;
+    border-radius: Radius.sm;
     background: fill;
     t := Text {
         text: root.text;
         color: root.text-color;
         font-size: Type.caption;
+        font-family: Type.pixel;
         font-weight: 600;
     }
 }
@@ -747,10 +759,18 @@ export component Card inherits Rectangle {
     border-radius: Radius.lg;
     border-width: 1px;
     border-color: interactive && hovered ? Theme.border-strong : Theme.border;
-    drop-shadow-blur: interactive && hovered ? 24px : 0px;
-    drop-shadow-color: Theme.shadow;
-    drop-shadow-offset-y: interactive && hovered ? 8px : 0px;
+    drop-shadow-blur: 0px;
+    drop-shadow-color: #00000080;
+    drop-shadow-offset-y: interactive && hovered ? 4px : 0px;
     animate border-color, drop-shadow-blur, drop-shadow-offset-y { duration: Motion.base; easing: Motion.out; }
+    // Pixel highlight along the top edge, like the block bevels.
+    Rectangle {
+        x: Radius.lg;
+        y: 0;
+        width: parent.width - 2 * Radius.lg;
+        height: 1px;
+        background: #ffffff14;
+    }
 }
 
 // Instance icon: a pixel-art block, the Vanta mark on the accent colour, or
@@ -827,14 +847,16 @@ export component InstanceIcon inherits Rectangle {
         border-color: #ffffff1f;
     }
     if root.key == "vanta": Image {
-        source: @image-url("icons/logo.svg");
+        source: @image-url("icons/logo-px24.png");
+        image-rendering: pixelated;
         colorize: #ffffff;
-        width: root.size * 0.58;
+        width: max(24px, floor(root.size * 0.62 / 24px) * 24px);
         height: self.width;
     }
     if root.key != "vanta" && !root.is-block(root.key): Text {
         text: root.initial;
         color: #ffffffee;
+        font-family: Type.pixel;
         font-size: root.size * 0.42;
         font-weight: 700;
     }
@@ -907,6 +929,7 @@ export component Modal inherits Rectangle {
                     Text {
                         text: root.title;
                         color: Theme.text;
+                        font-family: Type.pixel;
                         font-size: Type.title;
                         font-weight: 600;
                         wrap: word-wrap;
@@ -919,7 +942,7 @@ export component Modal inherits Rectangle {
                     }
                 }
                 if root.closable: IconButton {
-                    icon: @image-url("icons/close.svg");
+                    icon: @image-url("icons/px/close.png");
                     label: "Close";
                     clicked => { root.dismiss(); }
                 }
@@ -933,6 +956,7 @@ export component Modal inherits Rectangle {
 export component SectionTitle inherits Text {
     color: Theme.text-faint;
     font-size: Type.caption;
+    font-family: Type.pixel;
     font-weight: 600;
     letter-spacing: 0.6px;
 }

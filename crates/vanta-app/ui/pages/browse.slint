@@ -29,7 +29,7 @@ component ProjectRow inherits Rectangle {
                 height: 100%;
             }
             if !root.item.has-icon: Icon {
-                source: @image-url("../icons/box.svg");
+                source: @image-url("../icons/px/box.png");
                 size: 24px;
                 colorize: Theme.text-faint;
             }
@@ -43,6 +43,7 @@ component ProjectRow inherits Rectangle {
                 Text {
                     text: root.item.title;
                     color: Theme.text;
+                    font-family: Type.pixel;
                     font-size: Type.subtitle;
                     font-weight: 600;
                     overflow: elide;
@@ -68,7 +69,7 @@ component ProjectRow inherits Rectangle {
                 HorizontalLayout {
                     spacing: 4px;
                     Icon {
-                        source: @image-url("../icons/download.svg");
+                        source: @image-url("../icons/px/download.png");
                         size: 13px;
                         colorize: Theme.text-faint;
                         y: (parent.height - self.height) / 2;
@@ -93,7 +94,7 @@ component ProjectRow inherits Rectangle {
             text: root.item.installing ? "Installing" : root.item.installed ? "Installed" : root.is-pack ? "Install pack" : "Install";
             kind: root.item.installed ? ButtonKind.ghost : ButtonKind.secondary;
             loading: root.item.installing;
-            icon: root.item.installed ? @image-url("../icons/check.svg") : @image-url("../icons/download.svg");
+            icon: root.item.installed ? @image-url("../icons/px/check.png") : @image-url("../icons/px/download.png");
             has-icon: true;
             enabled: !root.item.installed;
             clicked => {
@@ -122,6 +123,7 @@ export component BrowsePage inherits Rectangle {
             Text {
                 text: "Browse";
                 color: Theme.text;
+                font-family: Type.pixel;
                 font-size: Type.display;
                 font-weight: 700;
                 letter-spacing: -0.4px;
@@ -142,7 +144,7 @@ export component BrowsePage inherits Rectangle {
                 height: 42px;
                 text <=> App.browse-query;
                 placeholder: "Search mods, packs and shaders";
-                icon: @image-url("../icons/search.svg");
+                icon: @image-url("../icons/px/search.png");
                 has-icon: true;
                 accepted => { App.search(); }
                 edited => { debounce.restart(); }
@@ -204,7 +206,7 @@ export component BrowsePage inherits Rectangle {
                     y: 4px;
                     height: 34px;
                     text: "Create an instance";
-                    icon: @image-url("../icons/plus.svg");
+                    icon: @image-url("../icons/px/plus.png");
                     has-icon: true;
                     clicked => { App.create-open = true; }
                 }

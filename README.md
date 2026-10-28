@@ -30,6 +30,7 @@
 - **Offline accounts**: pick a username and play. The same name always maps to the same player UUID, so inventories and progress persist, including on friends' LAN worlds.
 - **Microsoft sign-in (coming soon in official builds)**: device code flow, multiple accounts, quick switching, automatic token refresh, tokens stored only in your OS keychain. It is fully implemented and works in builds made with an approved Azure client ID (see below); official releases will enable it once Vanta's app ID is approved. Online servers, skins and Realms need it. Please buy Minecraft to support Mojang.
 - **One Play button for everything**: it fills with live progress while files download (MB/s, files left), then turns into a "Playing · 12:03" control with Stop.
+- **Pixel look**: a pixel typeface, pixel icons, block-style buttons and a stepped loading screen, built around Vanta's pixel-art block icons.
 - **Make it yours**: 22 original pixel-art block icons (grass, diamond ore, TNT, obsidian…), the Vanta mark or a letter tile in your accent color, plus six accent colors and light/dark themes.
 - **Every version**: releases, snapshots and old betas/alphas from Mojang's official manifest.
 - **Mod loaders**: Fabric, Quilt, Forge and NeoForge, including Forge/NeoForge installer processors.
@@ -110,7 +111,7 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code
 
 ## License
 
-Vanta is licensed under the [GNU General Public License v3.0 or later](LICENSE). The bundled Inter typeface is licensed under the SIL Open Font License 1.1.
+Vanta is licensed under the [GNU General Public License v3.0 or later](LICENSE). The bundled Inter and Pixelify Sans typefaces are licensed under the SIL Open Font License 1.1.
 
 ---
 

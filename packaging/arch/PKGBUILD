@@ -1,7 +1,7 @@
 # Builds vanta-<version>-x86_64.pkg.tar.zst from the release tarball in this
 # directory (used by the release workflow). For the AUR see ../aur/PKGBUILD.
 pkgname=vanta
-pkgver=${VANTA_VERSION:-0.1.5}
+pkgver=${VANTA_VERSION:-0.1.6}
 pkgrel=1
 pkgdesc="Fast, minimal launcher for Minecraft: Java Edition"
 arch=('x86_64')
