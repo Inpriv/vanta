@@ -43,10 +43,10 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 @media (hover: hover) { .nav nav a:hover { color: var(--text); text-decoration: none; } }
 .menu { display: none; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); padding: 0; cursor: pointer; position: relative; }
 .menu span { position: absolute; left: 9px; right: 9px; height: 2px; border-radius: 1px; background: var(--text); transition: transform var(--dur-base) var(--ease-out), top var(--dur-base) var(--ease-out); }
-.menu span:first-child { top: 10px; }
-.menu span:last-child { top: 18px; }
-.menu[aria-expanded="true"] span:first-child { top: 14px; transform: rotate(45deg); }
-.menu[aria-expanded="true"] span:last-child { top: 14px; transform: rotate(-45deg); }
+.menu span:first-child { top: 11px; }
+.menu span:last-child { top: 19px; }
+.menu[aria-expanded="true"] span:first-child { top: 15px; transform: rotate(45deg); }
+.menu[aria-expanded="true"] span:last-child { top: 15px; transform: rotate(-45deg); }
 
 
 /* Buttons */
