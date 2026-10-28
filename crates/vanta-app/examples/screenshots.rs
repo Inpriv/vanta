@@ -2,6 +2,10 @@
 //! Used for the README/website screenshots and as a visual check in CI.
 //!
 //!     cargo run -p vanta-app --example screenshots -- <out-dir>
+//!
+//! Set `VANTA_SHOT_ICONS` to a folder of `<modrinth-slug>.png` files to show
+//! real project icons (as the app would after fetching them); without it the
+//! sample projects get plain gradients. Icons are not kept in the repo.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -43,6 +47,21 @@ fn gradient(a: [u8; 3], b: [u8; 3]) -> Image {
         *p = Rgba8Pixel::new(mix(0), mix(1), mix(2), 255);
     }
     Image::from_rgba8(px)
+}
+
+/// The project's icon from `VANTA_SHOT_ICONS`, or a gradient placeholder.
+fn project_icon(slug: &str, a: [u8; 3], b: [u8; 3]) -> Image {
+    std::env::var_os("VANTA_SHOT_ICONS")
+        .and_then(|dir| image::open(std::path::Path::new(&dir).join(format!("{slug}.png"))).ok())
+        .map(|img| {
+            let img = img.to_rgba8();
+            Image::from_rgba8(SharedPixelBuffer::clone_from_slice(
+                img.as_raw(),
+                img.width(),
+                img.height(),
+            ))
+        })
+        .unwrap_or_else(|| gradient(a, b))
 }
 
 fn head() -> Image {
@@ -161,6 +180,7 @@ fn fill(ui: &AppWindow) {
 
     let projects = [
         (
+            "sodium",
             "Sodium",
             "jellysquid3",
             "A modern rendering engine that greatly improves frame rates.",
@@ -170,6 +190,7 @@ fn fill(ui: &AppWindow) {
             [40, 120, 90],
         ),
         (
+            "iris",
             "Iris Shaders",
             "coderbot",
             "A shaders mod compatible with OptiFine shader packs.",
@@ -179,6 +200,7 @@ fn fill(ui: &AppWindow) {
             [60, 40, 180],
         ),
         (
+            "lithium",
             "Lithium",
             "jellysquid3",
             "No-compromises game logic optimization.",
@@ -188,6 +210,7 @@ fn fill(ui: &AppWindow) {
             [200, 110, 40],
         ),
         (
+            "modmenu",
             "Mod Menu",
             "Prospector",
             "Adds a menu to view installed mods.",
@@ -197,6 +220,7 @@ fn fill(ui: &AppWindow) {
             [40, 90, 200],
         ),
         (
+            "fabric-api",
             "Fabric API",
             "modmuss50",
             "Lightweight and modular API providing common hooks.",
@@ -206,6 +230,7 @@ fn fill(ui: &AppWindow) {
             [140, 110, 70],
         ),
         (
+            "entityculling",
             "Entity Culling",
             "tr7zw",
             "Skips rendering entities that are not visible.",
@@ -218,14 +243,14 @@ fn fill(ui: &AppWindow) {
     let items: Vec<ProjectItem> = projects
         .iter()
         .enumerate()
-        .map(|(i, (t, a, d, dl, c, c1, c2))| ProjectItem {
+        .map(|(i, (slug, t, a, d, dl, c, c1, c2))| ProjectItem {
             id: i.to_string().into(),
             title: (*t).into(),
             author: (*a).into(),
             description: (*d).into(),
             downloads: (*dl).into(),
             categories: (*c).into(),
-            icon: gradient(*c1, *c2),
+            icon: project_icon(slug, *c1, *c2),
             has_icon: true,
             installed: i == 4,
             installing: false,
@@ -239,11 +264,11 @@ fn fill(ui: &AppWindow) {
         .iter()
         .take(4)
         .enumerate()
-        .map(|(i, (t, _, _, _, _, c1, c2))| ContentItem {
+        .map(|(i, (slug, t, _, _, _, _, c1, c2))| ContentItem {
             file_name: format!("{i}.jar").into(),
             title: (*t).into(),
             subtitle: format!("0.{}.{} · {}.jar", 5 + i, i, t.to_lowercase().replace(' ', "-")).into(),
-            icon: gradient(*c1, *c2),
+            icon: project_icon(slug, *c1, *c2),
             has_icon: true,
             enabled: i != 2,
             has_update: i == 1,
