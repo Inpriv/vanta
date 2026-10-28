@@ -201,6 +201,8 @@ code { border-radius: var(--r-sm); }
 
 /* Hotbar of block slots under the hero buttons. */
 .hotbar { display: inline-flex; gap: 4px; margin-top: var(--s8); padding: 4px; background: #0d0e11; border: 2px solid #2a2d33; border-radius: var(--r-sm); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.04), 0 3px 0 rgba(0, 0, 0, 0.5); }
+.hotbar-end { text-align: center; padding-bottom: var(--s10); }
+.hotbar-end .hotbar { margin-top: 0; }
 .slot { width: 40px; height: 40px; display: grid; place-items: center; background: #1a1c21; border: 2px solid #23262c; border-radius: 2px; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35); transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 .slot img { width: 26px; height: 26px; }
 .slot.on { border-color: var(--accent); transform: translateY(-2px); }
@@ -217,7 +219,7 @@ code { border-radius: var(--r-sm); }
 @media (max-width: 720px) {
   .hero h1 { font-size: clamp(30px, 9vw, 40px); line-height: 1.1; text-wrap: balance; }
   .hero .lead { font-size: 15px; line-height: 1.55; margin-top: var(--s4); }
-  .hotbar { margin-top: var(--s6); gap: 3px; padding: 3px; }
+  .hotbar { gap: 3px; padding: 3px; }
   .slot { width: calc((100vw - 32px - 6px - 24px - 8px) / 9); height: auto; aspect-ratio: 1; max-width: 40px; }
   .slot img { width: 62%; height: 62%; }
   /* Compact two-column feature grid. */
