@@ -160,8 +160,8 @@ export component BrowsePage inherits Rectangle {
         HorizontalLayout {
             spacing: Space.s3;
             Segmented {
-                options: ["Mods", "Resource packs", "Shaders", "Modpacks"];
-                item-width: 104px;
+                options: ["Mods", "Packs", "Shaders", "Modpacks"];
+                item-width: 90px;
                 current <=> App.browse-kind;
                 selected => {
                     App.browse-category = 0;
@@ -170,13 +170,13 @@ export component BrowsePage inherits Rectangle {
             }
             Rectangle { horizontal-stretch: 1; }
             Select {
-                width: 160px;
+                width: 138px;
                 options: App.browse-categories;
                 current-index <=> App.browse-category;
                 selected => { App.search(); }
             }
             Select {
-                width: 136px;
+                width: 122px;
                 options: ["Relevance", "Downloads", "Follows", "Newest", "Updated"];
                 current-index <=> App.browse-sort;
                 selected => { App.search(); }
@@ -211,7 +211,7 @@ export component BrowsePage inherits Rectangle {
                 if App.instances.length > 0: Select {
                     y: 3px;
                     height: 36px;
-                    width: 260px;
+                    width: 220px;
                     placeholder: "Choose an instance";
                     options: App.instance-names;
                     current-index: App.browse-target-index;

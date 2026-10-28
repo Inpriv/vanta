@@ -25,8 +25,9 @@ slint::include_modules!();
 /// Azure application ID for Microsoft sign-in, provided at build time.
 pub const MSA_CLIENT_ID: Option<&str> = option_env!("VANTA_MSA_CLIENT_ID");
 
-/// Offline test accounts: debug builds or `--features offline-dev` only.
-pub const OFFLINE_ACCOUNTS: bool = cfg!(any(debug_assertions, feature = "offline-dev"));
+/// Offline (username-only) accounts are available; Microsoft sign-in is
+/// recommended and offered first.
+pub const OFFLINE_ACCOUNTS: bool = true;
 
 fn init_logging(dir: &std::path::Path) -> Option<tracing_appender::non_blocking::WorkerGuard> {
     use tracing_subscriber::filter::LevelFilter;

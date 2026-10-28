@@ -49,7 +49,8 @@ pub struct Account {
     #[serde(default)]
     pub verified: bool,
     pub added: DateTime<Utc>,
-    /// Local test account without Microsoft sign-in (development builds only).
+    /// Username-only account without Microsoft sign-in (singleplayer and
+    /// offline-mode servers only).
     #[serde(default)]
     pub offline: bool,
 }
@@ -82,7 +83,7 @@ pub enum SessionKind {
     /// Token refresh failed (e.g. no network) but the account verified
     /// ownership before; the game runs without online features.
     Offline,
-    /// Local development account (no Microsoft sign-in at all).
+    /// Offline, username-only account (no Microsoft sign-in at all).
     Local,
 }
 
@@ -90,7 +91,7 @@ pub struct AccountManager {
     file: PathBuf,
     secrets: Arc<dyn SecretStore>,
     auth: AuthClient,
-    /// Whether offline (development) accounts may be added and launched.
+    /// Whether offline (username-only) accounts may be added and launched.
     allow_offline: bool,
     pub list: AccountList,
 }
@@ -133,7 +134,7 @@ impl AccountManager {
         self.allow_offline = allow;
     }
 
-    /// Add a local offline account (development builds only).
+    /// Add an offline, username-only account.
     pub fn add_offline(&mut self, name: &str) -> Result<Account> {
         let name = name.trim();
         if !self.allow_offline {

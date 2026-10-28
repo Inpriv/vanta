@@ -31,7 +31,7 @@ pub enum AuthError {
     NoProfile,
     #[error("the session expired, please sign in again")]
     SessionExpired,
-    #[error("offline accounts are only available in development builds")]
+    #[error("offline accounts are turned off in this build")]
     OfflineNotAllowed,
     #[error("usernames are 3–16 characters: letters, digits and underscores")]
     InvalidUsername,

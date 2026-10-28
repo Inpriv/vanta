@@ -81,8 +81,8 @@ component ContentTab inherits VerticalLayout {
     HorizontalLayout {
         spacing: Space.s2;
         Segmented {
-            options: ["Mods", "Resource packs", "Shaders"];
-            item-width: 112px;
+            options: ["Mods", "Packs", "Shaders"];
+            item-width: 100px;
             current <=> App.content-kind;
             selected => { App.refresh-content(); }
         }
@@ -92,7 +92,7 @@ component ContentTab inherits VerticalLayout {
             kind: ButtonKind.primary;
             clicked => { App.update-all-content(); }
         }
-        Button {
+        if App.updates-available == 0: Button {
             text: App.checking-updates ? "Checking" : "Updates";
             loading: App.checking-updates;
             icon: @image-url("../icons/refresh.svg");

@@ -158,6 +158,7 @@ struct Row {
     name: String,
     head: Option<Pixels>,
     active: bool,
+    offline: bool,
 }
 
 fn item(r: &Row) -> AccountItem {
@@ -167,6 +168,7 @@ fn item(r: &Row) -> AccountItem {
         has_head: r.head.is_some(),
         head: r.head.clone().map(Image::from_rgba8).unwrap_or_default(),
         active: r.active,
+        offline: r.offline,
     }
 }
 
@@ -186,6 +188,7 @@ pub fn refresh(ctrl: &Ctrl) {
                 name: a.name.clone(),
                 head,
                 active: list.active.as_deref() == Some(a.uuid.as_str()),
+                offline: a.offline,
             });
         }
         ctrl.with_ui(move |ui| {

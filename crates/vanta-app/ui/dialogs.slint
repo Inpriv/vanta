@@ -670,7 +670,7 @@ export component AccountsDialog inherits Modal {
                     font-weight: 600;
                 }
                 Text {
-                    text: a.active ? "Active" : "Microsoft account";
+                    text: (a.offline ? "Offline account" : "Microsoft account") + (a.active ? " · active" : "");
                     color: a.active ? Theme.accent : Theme.text-faint;
                     font-size: Type.caption;
                 }
@@ -684,9 +684,27 @@ export component AccountsDialog inherits Modal {
             }
         }
     }
+    Button {
+        text: "Sign in with Microsoft";
+        kind: ButtonKind.primary;
+        enabled: App.msa-configured;
+        icon: @image-url("icons/plus.svg");
+        has-icon: true;
+        clicked => {
+            root.open-state = false;
+            App.add-account();
+        }
+    }
+    Text {
+        text: App.msa-configured ? "Recommended: uses the account that owns Minecraft, so online servers, skins and Realms work." : "Microsoft sign-in needs a build with VANTA_MSA_CLIENT_ID (see the README).";
+        color: Theme.text-faint;
+        font-size: Type.caption;
+        wrap: word-wrap;
+    }
     if App.offline-accounts-enabled: VerticalLayout {
         spacing: Space.s2;
-        SectionTitle { text: "OFFLINE ACCOUNT · DEVELOPMENT BUILD"; }
+        padding-top: Space.s2;
+        SectionTitle { text: "OR PLAY OFFLINE"; }
         HorizontalLayout {
             spacing: Space.s2;
             offline-name := TextField {
@@ -698,7 +716,7 @@ export component AccountsDialog inherits Modal {
                 }
             }
             Button {
-                text: "Add";
+                text: "Add offline";
                 enabled: offline-name.text != "";
                 clicked => {
                     App.add-offline-account(offline-name.text);
@@ -707,21 +725,10 @@ export component AccountsDialog inherits Modal {
             }
         }
         Text {
-            text: "For testing only: no online play, and not available in published releases.";
+            text: "Offline accounts only work in singleplayer and on offline-mode servers. Please buy Minecraft to support Mojang.";
             color: Theme.text-faint;
             font-size: Type.caption;
             wrap: word-wrap;
-        }
-    }
-    Button {
-        text: "Add Microsoft account";
-        kind: ButtonKind.primary;
-        enabled: App.msa-configured;
-        icon: @image-url("icons/plus.svg");
-        has-icon: true;
-        clicked => {
-            root.open-state = false;
-            App.add-account();
         }
     }
 }
@@ -1001,10 +1008,11 @@ export component Toast inherits Rectangle {
     private property <int> serial: App.toast-serial;
     changed serial => {
         self.shown = true;
+        hide.running = true;
         hide.restart();
     }
     hide := Timer {
-        interval: 3200ms;
+        interval: 4000ms;
         running: false;
         triggered => {
             self.running = false;

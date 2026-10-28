@@ -34,10 +34,10 @@ export component AppWindow inherits Window {
     no-frame: true;
     default-font-family: "Inter";
     default-font-size: Type.body;
-    preferred-width: 960px;
-    preferred-height: 620px;
-    min-width: 800px;
-    min-height: 520px;
+    preferred-width: 800px;
+    preferred-height: 520px;
+    min-width: 720px;
+    min-height: 460px;
     // With rounded corners the window itself is transparent and `frame`
     // paints the background.
     private property <length> corner: App.rounded-window && !App.maximized ? 12px : 0px;

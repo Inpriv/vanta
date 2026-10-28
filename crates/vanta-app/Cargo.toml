@@ -9,11 +9,6 @@ homepage.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 
-[features]
-# Local offline (username-only) accounts for testing without Microsoft
-# sign-in. Always on in debug builds; never enabled for published releases.
-offline-dev = []
-
 [[bin]]
 name = "vanta"
 path = "src/main.rs"

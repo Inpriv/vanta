@@ -33,6 +33,7 @@ export struct AccountItem {
     head: image,
     has-head: bool,
     active: bool,
+    offline: bool,
 }
 
 export struct LogItem {
@@ -108,7 +109,7 @@ export global App {
     in property <bool> msa-configured: true;
     in-out property <bool> login-open: false;
     in-out property <bool> accounts-open: false;
-    // Development builds only: username-only accounts for testing.
+    // Username-only accounts (Microsoft sign-in is still recommended).
     in property <bool> offline-accounts-enabled: false;
     callback add-offline-account(string);
     in property <string> login-code;

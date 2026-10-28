@@ -22,7 +22,8 @@
 
 ## Features
 
-- **Microsoft sign-in** with the device code flow, multiple accounts, quick switching and automatic token refresh. Tokens are stored only in your OS keychain.
+- **Microsoft sign-in** (recommended) with the device code flow, multiple accounts, quick switching and automatic token refresh. Tokens are stored only in your OS keychain.
+- **Offline accounts**: play singleplayer with just a username. Online servers, skins and Realms need a Microsoft account; please buy Minecraft to support Mojang.
 - **Every version**: releases, snapshots and old betas/alphas from Mojang's official manifest.
 - **Mod loaders**: Fabric, Quilt, Forge and NeoForge, including Forge/NeoForge installer processors.
 - **Modrinth built in**: search mods, resource packs, shaders and modpacks with version/loader/category filters; dependencies install automatically; check for updates, enable/disable or remove content.
@@ -84,7 +85,7 @@ A build without a client ID still runs; account sign-in is disabled and explaine
 
 ## FAQ
 
-**Can I play without owning Minecraft?** No. Vanta verifies that your Microsoft account owns Minecraft: Java Edition. Offline launches are only allowed for accounts that already verified ownership.
+**Do I need a Microsoft account?** It's recommended: signing in with the account that owns Minecraft: Java Edition gives you online servers, skins and Realms. Vanta also supports offline (username-only) accounts for singleplayer and offline-mode servers.
 
 **Where is my data?** `~/.local/share/vanta` on Linux and `%APPDATA%\Vanta` on Windows. You can change it in Settings → Storage. Settings live in `~/.config/vanta` / `%APPDATA%\Vanta\settings.json`.
 

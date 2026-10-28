@@ -30,8 +30,8 @@ impl Platform for Headless {
     }
 }
 
-const W: u32 = 960;
-const H: u32 = 620;
+const W: u32 = 800;
+const H: u32 = 520;
 const SCALE: f32 = 2.0;
 
 fn gradient(a: [u8; 3], b: [u8; 3]) -> Image {
@@ -146,6 +146,7 @@ fn fill(ui: &AppWindow) {
         head: head(),
         has_head: true,
         active: true,
+        offline: false,
     };
     app.set_active_account(account.clone());
     app.set_has_account(true);
