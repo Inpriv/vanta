@@ -20,7 +20,8 @@ component ProjectRow inherits Rectangle {
             width: 64px;
             height: 64px;
             y: (parent.height - self.height) / 2;
-            border-radius: Radius.md;
+            // Project icons are rounded squares, like on Modrinth.
+            border-radius: self.width / 4;
             background: Theme.surface-3;
             clip: true;
             if root.item.has-icon: Image {

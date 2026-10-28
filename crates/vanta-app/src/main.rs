@@ -6,6 +6,7 @@ mod format;
 mod images;
 mod keychain;
 mod markdown;
+mod rounded;
 mod settings;
 mod single_instance;
 mod sys;

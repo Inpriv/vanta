@@ -337,7 +337,8 @@ export component ProjectDialog inherits Modal {
         Rectangle {
             width: 72px;
             height: 72px;
-            border-radius: Radius.lg;
+            // Project icons are rounded squares, like on Modrinth.
+            border-radius: self.width / 4;
             background: Theme.surface-3;
             clip: true;
             if App.project.has-icon: Image {

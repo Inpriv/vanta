@@ -18,7 +18,8 @@ component ContentRow inherits Rectangle {
             width: 36px;
             height: 36px;
             y: (parent.height - self.height) / 2;
-            border-radius: Radius.sm;
+            // Project icons are rounded squares, like on Modrinth.
+            border-radius: self.width / 4;
             background: Theme.surface-3;
             clip: true;
             if root.item.has-icon: Image {

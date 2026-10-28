@@ -7,6 +7,9 @@
 //! real project icons (as the app would after fetching them); without it the
 //! sample projects get plain gradients. Icons are not kept in the repo.
 
+#[path = "../src/rounded.rs"]
+mod rounded;
+
 use std::cell::Cell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -54,7 +57,8 @@ fn project_icon(slug: &str, a: [u8; 3], b: [u8; 3]) -> Image {
     std::env::var_os("VANTA_SHOT_ICONS")
         .and_then(|dir| image::open(std::path::Path::new(&dir).join(format!("{slug}.png"))).ok())
         .map(|img| {
-            let img = img.to_rgba8();
+            let mut img = img.to_rgba8();
+            rounded::round_corners(&mut img, rounded::ICON_ROUNDING);
             Image::from_rgba8(SharedPixelBuffer::clone_from_slice(
                 img.as_raw(),
                 img.width(),

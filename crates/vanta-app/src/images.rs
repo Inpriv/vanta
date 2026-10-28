@@ -53,7 +53,7 @@ impl ImageCache {
         Some(bytes)
     }
 
-    /// A square icon, downscaled to at most 96 px.
+    /// A square icon, downscaled to at most 96 px, with rounded corners.
     pub async fn icon(&self, url: &str) -> Option<Pixels> {
         if let Some(p) = self.memory.lock().unwrap().get(url) {
             return Some(p.clone());
@@ -66,7 +66,9 @@ impl ImageCache {
             } else {
                 img
             };
-            Some(to_pixels(img.to_rgba8()))
+            let mut img = img.to_rgba8();
+            crate::rounded::round_corners(&mut img, crate::rounded::ICON_ROUNDING);
+            Some(to_pixels(img))
         })
         .await
         .ok()??;
