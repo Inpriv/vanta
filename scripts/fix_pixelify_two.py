@@ -3,8 +3,8 @@
 
 Pixelify Sans draws "2" with a closed lower bowl, so "28" reads as "88". This
 swaps in the pixel shape of VT323's "2" (a diagonal instead of a bowl), scaled
-into Pixelify's own "2" box so size, width and spacing stay the same. Every
-other glyph is untouched. Both fonts are OFL-1.1 without Reserved Font Names.
+into Pixelify's own "2" box so size, width and spacing stay the same, with
+strokes thickened to match Pixelify's weight. Every other glyph is untouched. Both fonts are OFL-1.1 without Reserved Font Names.
 
 Usage: scripts/fix_pixelify_two.py web/assets/fonts/PixelifySans-*.woff2
 Needs: fonttools, brotli, skia-pathops.
@@ -30,9 +30,15 @@ VT323_TWO = [
 ]
 VT_BOX = (56, 0, 344, 560)
 
+# Extra stroke weight per Pixelify weight, in font units: every block grows by
+# this much on each side (kept inside the 2's box) so the 2 is as heavy as
+# the digits around it.
+GROW = {"Regular": 14, "SemiBold": 24}
+
 
 def main(paths):
     for p in paths:
+        grow = GROW["SemiBold" if "SemiBold" in p else "Regular"]
         font = TTFont(p)
         glyphs = font.getGlyphSet()
         bounds = BoundsPen(glyphs)
@@ -46,6 +52,8 @@ def main(paths):
             r = pathops.Path()
             X0, X1 = (round(bx0 + (x - VT_BOX[0]) * sx) for x in (x0, x1))
             Y0, Y1 = (round(by0 + (y - VT_BOX[1]) * sy) for y in (y0, y1))
+            X0, Y0 = max(bx0, X0 - grow), max(by0, Y0 - grow)
+            X1, Y1 = min(bx1, X1 + grow), min(by1, Y1 + grow)
             r.moveTo(X0, Y0 - 1)
             r.lineTo(X0, Y1 + 1)
             r.lineTo(X1, Y1 + 1)
