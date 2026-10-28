@@ -109,7 +109,7 @@ fn fill(ui: &AppWindow) {
         ),
         inst(
             "create",
-            "Create: Above",
+            "Cozy Builds",
             "planks",
             "1.20.1",
             "Forge",
