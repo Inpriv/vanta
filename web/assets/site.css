@@ -66,6 +66,7 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 .cta { display: flex; gap: var(--s3); justify-content: center; flex-wrap: wrap; margin-top: var(--s8); }
 .hint { color: var(--text-faint); font-size: var(--fs-small); margin-top: var(--s3); }
 .shot { margin: var(--s12) auto 0; border-radius: var(--r-xl); overflow: hidden; border: 1px solid var(--border-strong); box-shadow: 0 40px 120px rgba(0, 0, 0, 0.55); max-width: 1040px; }
+.shot img, .gallery img { width: 100%; }
 
 /* Features */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s4); }
