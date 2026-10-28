@@ -107,9 +107,9 @@ pub struct Instance {
     pub play_time_secs: u64,
 }
 
-/// `accent` follows the launcher's accent colour.
+/// The Vanta mark on the accent colour.
 fn default_icon() -> String {
-    "accent".into()
+    "vanta".into()
 }
 
 impl Instance {

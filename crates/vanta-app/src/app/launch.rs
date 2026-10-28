@@ -129,6 +129,8 @@ async fn run(ctrl: &Ctrl, id: &str) -> anyhow::Result<()> {
         .launcher
         .launch(id, auth, &global, &progress, &on_stage)
         .await?;
+    // The game is up: the launch phase is over (the UI switches to "Playing").
+    ctrl.shared.launch.lock().unwrap().active = false;
 
     // Hand the kill switch to the UI, stream events here.
     let (kill_tx, kill_rx) = tokio::sync::oneshot::channel();

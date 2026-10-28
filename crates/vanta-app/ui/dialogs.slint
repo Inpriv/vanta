@@ -5,10 +5,11 @@ import { Avatar } from "shell.slint";
 import { ListView } from "std-widgets.slint";
 
 export global IconKeys {
-    out property <[string]> all: ["accent", "grass", "stone", "sand", "ocean", "nether", "end", "ember", "frost", "night", "bloom"];
-    // Two rows for the pickers (hidden repeater items would still take space).
-    out property <[string]> row1: ["accent", "grass", "stone", "sand", "ocean", "nether"];
-    out property <[string]> row2: ["end", "ember", "frost", "night", "bloom"];
+    out property <[string]> all: ["vanta", "accent", "grass", "dirt", "stone", "cobblestone", "bedrock", "sand", "gravel", "oak_log", "planks", "coal_ore", "iron_ore", "gold_ore", "diamond_ore", "emerald_ore", "redstone_ore", "netherrack", "end_stone", "obsidian", "ice", "snow", "glowstone", "tnt"];
+    // Rows for the pickers (hidden repeater items would still take space).
+    out property <[string]> row1: ["vanta", "accent", "grass", "dirt", "stone", "cobblestone", "bedrock", "sand"];
+    out property <[string]> row2: ["gravel", "oak_log", "planks", "coal_ore", "iron_ore", "gold_ore", "diamond_ore", "emerald_ore"];
+    out property <[string]> row3: ["redstone_ore", "netherrack", "end_stone", "obsidian", "ice", "snow", "glowstone", "tnt"];
 }
 
 component IconChoice inherits Rectangle {
@@ -42,7 +43,7 @@ export component CreateInstanceDialog inherits Modal {
     private property <string> selected-version;
     private property <int> loader: 0;
     private property <int> loader-version-index: 0;
-    private property <string> icon: "accent";
+    private property <string> icon: "vanta";
     private property <bool> picking-icon;
     private property <bool> can-create: root.selected-version != "" && (root.loader == 0 || App.loader-versions.length > 0);
     private property <[string]> loader-names: ["Vanilla", "Fabric", "Quilt", "Forge", "NeoForge"];
@@ -59,7 +60,7 @@ export component CreateInstanceDialog inherits Modal {
             root.name = "";
             root.version-filter = "";
             root.loader-version-index = 0;
-            root.icon = "accent";
+            root.icon = "vanta";
             root.picking-icon = false;
             root.loader = App.create-preset-loader >= 0 ? App.create-preset-loader : 0;
             root.selected-version = App.create-preset-version;
@@ -147,7 +148,7 @@ export component CreateInstanceDialog inherits Modal {
             alignment: start;
             for k in IconKeys.row1: IconChoice {
                 key: k;
-                initial: "";
+                initial: App.initial-of(root.name == "" ? root.default-name : root.name);
                 selected: root.icon == k;
                 clicked => {
                     root.icon = k;
@@ -160,7 +161,20 @@ export component CreateInstanceDialog inherits Modal {
             alignment: start;
             for k in IconKeys.row2: IconChoice {
                 key: k;
-                initial: "";
+                initial: App.initial-of(root.name == "" ? root.default-name : root.name);
+                selected: root.icon == k;
+                clicked => {
+                    root.icon = k;
+                    root.picking-icon = false;
+                }
+            }
+        }
+        HorizontalLayout {
+            spacing: Space.s1;
+            alignment: start;
+            for k in IconKeys.row3: IconChoice {
+                key: k;
+                initial: App.initial-of(root.name == "" ? root.default-name : root.name);
                 selected: root.icon == k;
                 clicked => {
                     root.icon = k;
@@ -507,7 +521,7 @@ export component IconDialog inherits Modal {
     callback picked(string);
     open: open-state;
     title: "Choose an icon";
-    dialog-width: 420px;
+    dialog-width: 480px;
     dismiss => { root.open-state = false; }
     HorizontalLayout {
         alignment: center;
@@ -526,6 +540,19 @@ export component IconDialog inherits Modal {
         alignment: center;
         spacing: Space.s1;
         for k in IconKeys.row2: IconChoice {
+            key: k;
+            initial: root.initial;
+            selected: root.current == k;
+            clicked => {
+                root.picked(k);
+                root.open-state = false;
+            }
+        }
+    }
+    HorizontalLayout {
+        alignment: center;
+        spacing: Space.s1;
+        for k in IconKeys.row3: IconChoice {
             key: k;
             initial: root.initial;
             selected: root.current == k;

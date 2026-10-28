@@ -753,21 +753,50 @@ export component Card inherits Rectangle {
     animate border-color, drop-shadow-blur, drop-shadow-offset-y { duration: Motion.base; easing: Motion.out; }
 }
 
-// Gradient tile used as an instance icon.
+// Instance icon: a pixel-art block, the Vanta mark on the accent colour, or
+// a coloured tile with the instance's initial.
 export component InstanceIcon inherits Rectangle {
-    in property <string> key: "grass";
-    // First letter of the instance name.
+    in property <string> key: "vanta";
+    // First letter of the instance name (used by letter tiles).
     in property <string> initial: "V";
     in property <length> size: 44px;
     width: size;
     height: size;
-    border-radius: size * 0.28;
+    border-radius: size * 0.26;
     clip: true;
 
+    pure function is-block(k: string) -> bool {
+        return k == "grass" || k == "dirt" || k == "stone" || k == "cobblestone" || k == "bedrock" || k == "sand" || k == "gravel" || k == "oak_log" || k == "planks" || k == "coal_ore" || k == "iron_ore" || k == "gold_ore" || k == "diamond_ore" || k == "emerald_ore" || k == "redstone_ore" || k == "netherrack" || k == "end_stone" || k == "obsidian" || k == "ice" || k == "snow" || k == "glowstone" || k == "tnt";
+    }
+    pure function block-image(k: string) -> image {
+        if k == "grass" { return @image-url("blocks/grass.png"); }
+        if k == "dirt" { return @image-url("blocks/dirt.png"); }
+        if k == "stone" { return @image-url("blocks/stone.png"); }
+        if k == "cobblestone" { return @image-url("blocks/cobblestone.png"); }
+        if k == "bedrock" { return @image-url("blocks/bedrock.png"); }
+        if k == "sand" { return @image-url("blocks/sand.png"); }
+        if k == "gravel" { return @image-url("blocks/gravel.png"); }
+        if k == "oak_log" { return @image-url("blocks/oak_log.png"); }
+        if k == "planks" { return @image-url("blocks/planks.png"); }
+        if k == "coal_ore" { return @image-url("blocks/coal_ore.png"); }
+        if k == "iron_ore" { return @image-url("blocks/iron_ore.png"); }
+        if k == "gold_ore" { return @image-url("blocks/gold_ore.png"); }
+        if k == "diamond_ore" { return @image-url("blocks/diamond_ore.png"); }
+        if k == "emerald_ore" { return @image-url("blocks/emerald_ore.png"); }
+        if k == "redstone_ore" { return @image-url("blocks/redstone_ore.png"); }
+        if k == "netherrack" { return @image-url("blocks/netherrack.png"); }
+        if k == "end_stone" { return @image-url("blocks/end_stone.png"); }
+        if k == "obsidian" { return @image-url("blocks/obsidian.png"); }
+        if k == "ice" { return @image-url("blocks/ice.png"); }
+        if k == "snow" { return @image-url("blocks/snow.png"); }
+        if k == "glowstone" { return @image-url("blocks/glowstone.png"); }
+        if k == "tnt" { return @image-url("blocks/tnt.png"); }
+        return @image-url("blocks/grass.png");
+    }
     pure function brush-for(k: string) -> brush {
-        if k == "accent" { return @linear-gradient(145deg, Theme.accent.brighter(0.25) 0%, Theme.accent.darker(0.35) 100%); }
-        if k == "stone" { return @linear-gradient(145deg, #a7adb6 0%, #565c65 100%); }
-        if k == "sand" { return @linear-gradient(145deg, #f6dc9c 0%, #c4964c 100%); }
+        if k == "accent" || k == "vanta" { return @linear-gradient(145deg, Theme.accent.brighter(0.25) 0%, Theme.accent.darker(0.35) 100%); }
+        // Older colour tiles stay supported for existing instances.
+        if k == "stone-tile" { return @linear-gradient(145deg, #a7adb6 0%, #565c65 100%); }
         if k == "ocean" { return @linear-gradient(145deg, #6cc4ff 0%, #2a62c4 100%); }
         if k == "nether" { return @linear-gradient(145deg, #ff7a62 0%, #9c2337 100%); }
         if k == "end" { return @linear-gradient(145deg, #d0a6ff 0%, #5b34c9 100%); }
@@ -778,14 +807,32 @@ export component InstanceIcon inherits Rectangle {
         return @linear-gradient(145deg, #72e3a4 0%, #2b8a59 100%);
     }
 
-    background: brush-for(key);
-    // Soft top highlight for depth.
+    background: root.is-block(root.key) ? #000 : root.brush-for(root.key);
+
+    if root.is-block(root.key): Image {
+        width: 100%;
+        height: 100%;
+        source: root.block-image(root.key);
+        image-rendering: pixelated;
+    }
+    // Soft top highlight and a hairline edge give every tile some depth.
     Rectangle {
         y: 0;
         height: parent.height * 0.5;
-        background: @linear-gradient(180deg, #ffffff2e 0%, #ffffff00 100%);
+        background: @linear-gradient(180deg, #ffffff26 0%, #ffffff00 100%);
     }
-    Text {
+    Rectangle {
+        border-radius: parent.border-radius;
+        border-width: 1px;
+        border-color: #ffffff1f;
+    }
+    if root.key == "vanta": Image {
+        source: @image-url("icons/logo.svg");
+        colorize: #ffffff;
+        width: root.size * 0.58;
+        height: self.width;
+    }
+    if root.key != "vanta" && !root.is-block(root.key): Text {
         text: root.initial;
         color: #ffffffee;
         font-size: root.size * 0.42;

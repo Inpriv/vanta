@@ -2,6 +2,20 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.4 (2026-10-28)
+
+### New features
+
+- A single Play control: it fills with live download progress, then shows "Playing" with the play time and a Stop button
+- 22 original pixel-art block icons for instances, plus the Vanta mark in your accent color (the new default)
+- The AppImage shows the Vanta icon in file managers
+
+### Fixes
+
+- "Starting game" no longer stays on screen while the game is running
+- Shorter progress labels that fit the Play control
+- Release signing works with the passwordless signing key
+
 ## 0.1.3 (2026-10-28)
 
 ### New features

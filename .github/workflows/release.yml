@@ -117,6 +117,8 @@ jobs:
           cp packaging/linux/xyz.getvanta.Vanta.metainfo.xml $app/usr/share/metainfo/xyz.getvanta.Vanta.appdata.xml
           cp packaging/icons/vanta-256.png $app/usr/share/icons/hicolor/256x256/apps/xyz.getvanta.Vanta.png
           cp packaging/icons/vanta-256.png $app/xyz.getvanta.Vanta.png
+          # Icon file managers show for the .AppImage file itself.
+          cp packaging/icons/vanta-256.png $app/.DirIcon
           printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/bin/vanta" "$@"\n' > $app/AppRun
           chmod +x $app/AppRun
           ARCH=x86_64 ./appimagetool --no-appstream $app "dist/Vanta-${VERSION}-x86_64.AppImage"
@@ -168,14 +170,15 @@ jobs:
         env:
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
         run: |
-          sudo apt-get update && sudo apt-get install -y minisign
           if [ -z "$MINISIGN_SECRET_KEY" ]; then echo "::error::MINISIGN_SECRET_KEY is not set"; exit 1; fi
+          # rsign2 reads the passwordless key format the key was created with.
+          cargo install --locked rsign2
           printf '%s\n' "$MINISIGN_SECRET_KEY" > "$RUNNER_TEMP/minisign.key"
           cd artifacts
           for f in *; do
-            minisign -S -s "$RUNNER_TEMP/minisign.key" -m "$f" -t "Vanta $TAG $f" < /dev/null
+            rsign sign -W -s "$RUNNER_TEMP/minisign.key" -t "Vanta $TAG $f" "$f" < /dev/null
+            rsign verify -p ../packaging/minisign.pub "$f"
           done
-          minisign -V -p ../packaging/minisign.pub -m "$(ls *.AppImage)"
           rm -f "$RUNNER_TEMP/minisign.key"
       - name: Checksums
         run: cd artifacts && sha256sum $(ls | grep -v minisig) > SHA256SUMS.txt && cat SHA256SUMS.txt

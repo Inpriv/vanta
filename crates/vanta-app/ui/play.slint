@@ -1,0 +1,170 @@
+// One control for the whole play lifecycle: Play → launching (with live
+// progress) → playing (with Stop). It keeps the same size in every state so
+// nothing around it jumps.
+
+import { Theme, Type, Space, Radius, Motion } from "theme.slint";
+import { Button, ButtonKind, Icon, Spinner } from "components.slint";
+import { App } from "state.slint";
+
+component Pill inherits Rectangle {
+    border-radius: Radius.lg;
+    clip: true;
+}
+
+export component PlayControl inherits Rectangle {
+    in property <string> instance-id;
+    in property <bool> running;
+    in property <length> control-width: 220px;
+
+    private property <bool> launching: App.launch-progress.active && App.launch-instance-id == root.instance-id;
+    private property <float> frac: App.launch-progress.fraction;
+
+    width: root.control-width;
+    height: 48px;
+    accessible-role: button;
+    accessible-label: root.launching ? App.launch-progress.stage : root.running ? "Stop" : "Play";
+
+    if !root.launching && !root.running: Button {
+        width: parent.width;
+        text: "Play";
+        kind: ButtonKind.primary;
+        large: true;
+        icon: @image-url("icons/play.svg");
+        has-icon: true;
+        clicked => { App.play(root.instance-id); }
+    }
+
+    if root.launching: Pill {
+        background: Theme.surface-2;
+        border-width: 1px;
+        border-color: Theme.accent.with-alpha(0.35);
+
+        // Progress fills the pill from the left; unknown progress sweeps.
+        if root.frac >= 0: Rectangle {
+            x: 0;
+            width: parent.width * max(0.04, root.frac);
+            background: Theme.accent.with-alpha(Theme.dark ? 0.22 : 0.18);
+            animate width { duration: Motion.slow; easing: Motion.out; }
+        }
+        if root.frac < 0: Rectangle {
+            width: parent.width * 0.4;
+            x: Motion.reduce ? 0 : parent.width * 1.4 * (mod(animation-tick(), 1500ms) / 1500ms) - parent.width * 0.4;
+            background: @linear-gradient(90deg, Theme.accent.with-alpha(0) 0%, Theme.accent.with-alpha(0.22) 50%, Theme.accent.with-alpha(0) 100%);
+        }
+
+        HorizontalLayout {
+            padding-left: Space.s4;
+            padding-right: 6px;
+            spacing: Space.s3;
+            Spinner {
+                size: 16px;
+                y: (parent.height - self.height) / 2;
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 1px;
+                Text {
+                    text: App.launch-progress.stage;
+                    color: Theme.text;
+                    font-size: Type.small;
+                    font-weight: 600;
+                    overflow: elide;
+                }
+                Text {
+                    text: root.frac >= 0 ? round(root.frac * 100) + "%" : "Please wait…";
+                    color: Theme.text-muted;
+                    font-size: Type.caption;
+                }
+            }
+            cancel := Rectangle {
+                width: 34px;
+                height: 34px;
+                y: (parent.height - self.height) / 2;
+                border-radius: Radius.md;
+                background: ca.pressed ? Theme.surface-3 : ca.has-hover ? Theme.surface-3.with-alpha(0.7) : transparent;
+                animate background { duration: Motion.fast; }
+                accessible-role: button;
+                accessible-label: "Cancel";
+                accessible-action-default => { App.cancel-launch(); }
+                ca := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { App.cancel-launch(); }
+                }
+                Icon {
+                    source: @image-url("icons/close.svg");
+                    size: 16px;
+                    colorize: ca.has-hover ? Theme.text : Theme.text-muted;
+                }
+            }
+        }
+    }
+
+    if root.running && !root.launching: Pill {
+        background: Theme.accent-soft;
+        border-width: 1px;
+        border-color: Theme.accent.with-alpha(0.4);
+        HorizontalLayout {
+            padding-left: Space.s4;
+            padding-right: 6px;
+            spacing: Space.s3;
+            // Gently pulsing "live" dot.
+            Rectangle {
+                width: 10px;
+                y: (parent.height - 10px) / 2;
+                height: 10px;
+                border-radius: 5px;
+                background: Theme.accent;
+                opacity: Motion.reduce ? 1 : 0.55 + 0.45 * (1 + sin(360deg * mod(animation-tick(), 1800ms) / 1800ms)) / 2;
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 1px;
+                Text {
+                    text: "Playing";
+                    color: Theme.text;
+                    font-size: Type.small;
+                    font-weight: 600;
+                }
+                Text {
+                    text: App.running-time;
+                    color: Theme.text-muted;
+                    font-size: Type.caption;
+                }
+            }
+            stop := Rectangle {
+                width: 74px;
+                height: 34px;
+                y: (parent.height - self.height) / 2;
+                border-radius: Radius.md;
+                background: sa.pressed ? Theme.danger.with-alpha(0.3) : sa.has-hover ? Theme.danger.with-alpha(0.2) : Theme.surface-1.with-alpha(0.6);
+                animate background { duration: Motion.fast; }
+                accessible-role: button;
+                accessible-label: "Stop";
+                accessible-action-default => { App.stop(root.instance-id); }
+                sa := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { App.stop(root.instance-id); }
+                }
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 6px;
+                    Icon {
+                        source: @image-url("icons/stop.svg");
+                        size: 12px;
+                        colorize: sa.has-hover ? Theme.danger : Theme.text;
+                        y: (parent.height - self.height) / 2;
+                    }
+                    Text {
+                        text: "Stop";
+                        color: sa.has-hover ? Theme.danger : Theme.text;
+                        font-size: Type.small;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+}

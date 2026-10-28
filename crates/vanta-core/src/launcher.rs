@@ -27,11 +27,11 @@ pub enum Stage {
 impl Stage {
     pub fn label(self) -> String {
         match self {
-            Stage::Resolving => "Resolving version".into(),
+            Stage::Resolving => "Preparing".into(),
             Stage::InstallingLoader => "Installing mod loader".into(),
-            Stage::Downloading => "Downloading game files".into(),
-            Stage::PreparingJava => "Preparing Java".into(),
-            Stage::DownloadingJava(major) => format!("Downloading Java {major} (first launch only)"),
+            Stage::Downloading => "Downloading files".into(),
+            Stage::PreparingJava => "Checking Java".into(),
+            Stage::DownloadingJava(major) => format!("Downloading Java {major}"),
             Stage::Starting => "Starting game".into(),
         }
     }

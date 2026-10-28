@@ -1,6 +1,7 @@
 import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
 import { Button, ButtonKind, IconButton, Icon, ProgressBar, Card, InstanceIcon, Skeleton, Badge, ScrollArea } from "../components.slint";
 import { App, Page, InstanceItem } from "../state.slint";
+import { PlayControl } from "../play.slint";
 
 component Hero inherits Rectangle {
     in property <InstanceItem> inst;
@@ -72,26 +73,13 @@ component Hero inherits Rectangle {
         }
         Rectangle { height: Space.s4; }
 
-        if !root.launching: HorizontalLayout {
+        HorizontalLayout {
             spacing: Space.s2;
             alignment: start;
-            if !root.inst.running: Button {
-                text: "Play";
-                kind: ButtonKind.primary;
-                large: true;
-                min-width: 180px;
-                icon: @image-url("../icons/play.svg");
-                has-icon: true;
-                clicked => { App.play(root.inst.id); }
-            }
-            if root.inst.running: Button {
-                text: "Stop  ·  " + App.running-time;
-                kind: ButtonKind.secondary;
-                large: true;
-                min-width: 180px;
-                icon: @image-url("../icons/stop.svg");
-                has-icon: true;
-                clicked => { App.stop(root.inst.id); }
+            PlayControl {
+                instance-id: root.inst.id;
+                running: root.inst.running;
+                control-width: 220px;
             }
             IconButton {
                 y: (parent.height - self.height) / 2;
@@ -118,39 +106,13 @@ component Hero inherits Rectangle {
                 clicked => { App.console-open = true; }
             }
         }
-        if root.launching: VerticalLayout {
-            spacing: Space.s2;
-            max-width: 420px;
-            HorizontalLayout {
-                Text {
-                    text: App.launch-progress.stage;
-                    color: Theme.text;
-                    font-size: Type.body;
-                    font-weight: 600;
-                    horizontal-stretch: 1;
-                }
-                Text {
-                    text: App.launch-progress.fraction >= 0 ? round(App.launch-progress.fraction * 100) + "%" : "";
-                    color: Theme.text-muted;
-                    font-size: Type.small;
-                }
-            }
-            ProgressBar { value: App.launch-progress.fraction; }
-            HorizontalLayout {
-                Text {
-                    text: App.launch-progress.detail;
-                    color: Theme.text-muted;
-                    font-size: Type.small;
-                    horizontal-stretch: 1;
-                    overflow: elide;
-                }
-                Button {
-                    text: "Cancel";
-                    kind: ButtonKind.ghost;
-                    height: 28px;
-                    clicked => { App.cancel-launch(); }
-                }
-            }
+        // Download details under the control while launching.
+        Text {
+            text: root.launching ? App.launch-progress.detail : "";
+            color: Theme.text-faint;
+            font-size: Type.caption;
+            overflow: elide;
+            height: Type.caption * 1.5;
         }
         if !App.has-account && !root.launching: Text {
             text: App.msa-configured ? "You'll be asked to sign in with Microsoft when you press Play." : "Press Play and choose a username to start.";

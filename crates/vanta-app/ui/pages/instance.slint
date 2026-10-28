@@ -1,6 +1,7 @@
 import { Theme, Type, Space, Radius, Motion } from "../theme.slint";
 import { Button, ButtonKind, IconButton, Icon, TextField, Toggle, Slider, Segmented, Select, Card, InstanceIcon, Skeleton, Badge, Spinner, FieldRow, Divider, SectionTitle, ScrollArea } from "../components.slint";
 import { App, Page, InstanceItem, ContentItem } from "../state.slint";
+import { PlayControl } from "../play.slint";
 
 component ContentRow inherits Rectangle {
     in property <ContentItem> item;
@@ -428,43 +429,11 @@ export component InstancePage inherits Rectangle {
                     }
                 }
             }
-            if !root.launching && !App.selected.running: Button {
+            PlayControl {
                 y: (parent.height - self.height) / 2;
-                text: "Play";
-                kind: ButtonKind.primary;
-                large: true;
-                min-width: 140px;
-                icon: @image-url("../icons/play.svg");
-                has-icon: true;
-                clicked => { App.play(App.selected.id); }
-            }
-            if App.selected.running: Button {
-                y: (parent.height - self.height) / 2;
-                text: "Stop";
-                large: true;
-                icon: @image-url("../icons/stop.svg");
-                has-icon: true;
-                clicked => { App.stop(App.selected.id); }
-            }
-            if root.launching: HorizontalLayout {
-                spacing: Space.s3;
-                width: 260px;
-                Spinner { y: (parent.height - self.height) / 2; }
-                VerticalLayout {
-                    alignment: center;
-                    Text {
-                        text: App.launch-progress.stage;
-                        color: Theme.text;
-                        font-weight: 600;
-                        overflow: elide;
-                    }
-                    Text {
-                        text: App.launch-progress.detail;
-                        color: Theme.text-muted;
-                        font-size: Type.caption;
-                        overflow: elide;
-                    }
-                }
+                instance-id: App.selected.id;
+                running: App.selected.running;
+                control-width: 200px;
             }
         }
 

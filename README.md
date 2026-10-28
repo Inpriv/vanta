@@ -20,10 +20,17 @@
   <img src="web/assets/screenshots/home.webp" alt="Vanta home screen" width="900">
 </p>
 
+<p align="center">
+  <img src="web/assets/screenshots/browse.webp" alt="Browsing Modrinth inside Vanta" width="440">
+  <img src="web/assets/screenshots/launching.webp" alt="Launching with live download progress" width="440">
+</p>
+
 ## Features
 
 - **Offline accounts**: pick a username and play. The same name always maps to the same player UUID, so inventories and progress persist, including on friends' LAN worlds.
 - **Microsoft sign-in (coming soon in official builds)**: device code flow, multiple accounts, quick switching, automatic token refresh, tokens stored only in your OS keychain. It is fully implemented and works in builds made with an approved Azure client ID (see below); official releases will enable it once Vanta's app ID is approved. Online servers, skins and Realms need it. Please buy Minecraft to support Mojang.
+- **One Play button for everything**: it fills with live progress while files download (MB/s, files left), then turns into a "Playing · 12:03" control with Stop.
+- **Make it yours**: 22 original pixel-art block icons (grass, diamond ore, TNT, obsidian…), the Vanta mark or a letter tile in your accent color, plus six accent colors and light/dark themes.
 - **Every version**: releases, snapshots and old betas/alphas from Mojang's official manifest.
 - **Mod loaders**: Fabric, Quilt, Forge and NeoForge, including Forge/NeoForge installer processors.
 - **Modrinth built in**: search mods, resource packs, shaders and modpacks with version/loader/category filters; dependencies install automatically; check for updates, enable/disable or remove content.
@@ -45,10 +52,12 @@ Vanta has **no telemetry and no analytics**. It only contacts Microsoft/Xbox (si
 | --- | --- |
 | Windows | `Vanta-Setup-<version>.exe` (per-user installer) or `Vanta-<version>-portable.exe` |
 | Ubuntu / Debian | `vanta_<version>_amd64.deb` (double-click to open in your software center) |
-| Any Linux | `Vanta-<version>-x86_64.AppImage` or `vanta-<version>-x86_64-linux.tar.gz` |
-| Arch Linux | `vanta-<version>-x86_64.pkg.tar.zst` (`sudo pacman -U …`) or the AUR: `yay -S vanta-bin` |
+| Any Linux | `Vanta-<version>-x86_64.AppImage` (double-click to run) or `vanta-<version>-x86_64-linux.tar.gz` |
+| Arch Linux | `vanta-<version>-x86_64.pkg.tar.zst` (`sudo pacman -U …`); an AUR package is coming soon |
 
 Get them from the [latest release](https://github.com/Inpriv/vanta/releases/latest). Verify with `sha256sum -c SHA256SUMS.txt`.
+
+**AppImage:** after downloading, allow it to run once — right-click → *Properties* → *Executable as program* (or `chmod +x Vanta-*.AppImage`) — then double-click it.
 
 ## Build from source
 

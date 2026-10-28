@@ -107,7 +107,14 @@ fn fill(ui: &AppWindow) {
             "Fabric",
             "2 hours ago",
         ),
-        inst("create", "Create: Above", "ember", "1.20.1", "Forge", "yesterday"),
+        inst(
+            "create",
+            "Create: Above",
+            "planks",
+            "1.20.1",
+            "Forge",
+            "yesterday",
+        ),
         inst(
             "skyblock",
             "Skyblock",
@@ -124,8 +131,15 @@ fn fill(ui: &AppWindow) {
             "Fabric",
             "1 week ago",
         ),
-        inst("classic", "Beta Nostalgia", "sand", "b1.7.3", "Vanilla", ""),
-        inst("end", "Into the End", "end", "1.21.4", "Quilt", ""),
+        inst(
+            "classic",
+            "Beta Nostalgia",
+            "cobblestone",
+            "b1.7.3",
+            "Vanilla",
+            "",
+        ),
+        inst("end", "Into the End", "end_stone", "1.21.4", "Quilt", ""),
     ];
     app.set_featured(instances[0].clone());
     app.set_featured_id("survival".into());
@@ -344,6 +358,35 @@ fn main() {
         app.set_page(page);
         app.set_console_open(console);
         render(&window, &out.join(format!("{name}.png")));
+    }
+    // Play states on the instance page and home.
+    if only.as_deref().is_none_or(|o| o == "launching") {
+        app.set_page(Page::Instance);
+        app.set_console_open(false);
+        app.set_launch_instance_id("survival".into());
+        app.set_launch_progress(ProgressInfo {
+            active: true,
+            stage: "Downloading files".into(),
+            fraction: 0.42,
+            detail: "312 MB of 733 MB · 41.2 MB/s · 1,804 files left".into(),
+        });
+        render(&window, &out.join("launching.png"));
+        app.set_page(Page::Home);
+        render(&window, &out.join("launching-home.png"));
+        app.set_launch_progress(ProgressInfo::default());
+    }
+    if only.as_deref().is_none_or(|o| o == "running") {
+        let mut f = app.get_featured();
+        f.running = true;
+        app.set_featured(f.clone());
+        app.set_selected(f);
+        app.set_running_time("12:03".into());
+        app.set_page(Page::Instance);
+        render(&window, &out.join("running.png"));
+        let mut f = app.get_featured();
+        f.running = false;
+        app.set_featured(f.clone());
+        app.set_selected(f);
     }
     // Dialogs
     if only.as_deref().is_none_or(|o| o == "create") {
