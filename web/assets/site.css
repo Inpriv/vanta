@@ -33,7 +33,9 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 .lead { color: var(--text-muted); font-size: 18px; max-width: 60ch; }
 
 /* Nav */
-.nav { position: sticky; top: 0; z-index: 5; backdrop-filter: saturate(140%) blur(14px); background: linear-gradient(180deg, rgba(114, 184, 255, 0.07) 0%, rgba(114, 184, 255, 0) 100%), rgba(11, 12, 14, 0.72); border-bottom: 1px solid var(--border); }
+/* Nearly opaque instead of a backdrop blur: re-blurring the page under a
+   sticky header on every scroll frame makes phones drop frames. */
+.nav { position: sticky; top: 0; z-index: 5; background: linear-gradient(180deg, rgba(114, 184, 255, 0.07) 0%, rgba(114, 184, 255, 0) 100%), rgba(11, 12, 14, 0.96); border-bottom: 1px solid var(--border); }
 .nav-inner { display: flex; align-items: center; gap: var(--s6); height: 72px; }
 .brand span { font-size: 18px; }
 .brand { display: inline-flex; align-items: center; gap: var(--s2); color: var(--text); font-weight: 700; }
