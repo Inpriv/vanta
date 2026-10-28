@@ -6,6 +6,9 @@ import { ListView } from "std-widgets.slint";
 
 export global IconKeys {
     out property <[string]> all: ["accent", "grass", "stone", "sand", "ocean", "nether", "end", "ember", "frost", "night", "bloom"];
+    // Two rows for the pickers (hidden repeater items would still take space).
+    out property <[string]> row1: ["accent", "grass", "stone", "sand", "ocean", "nether"];
+    out property <[string]> row2: ["end", "ember", "frost", "night", "bloom"];
 }
 
 component IconChoice inherits Rectangle {
@@ -142,8 +145,7 @@ export component CreateInstanceDialog inherits Modal {
         HorizontalLayout {
             spacing: Space.s1;
             alignment: start;
-            for k[i] in IconKeys.all: IconChoice {
-                visible: i < 6;
+            for k in IconKeys.row1: IconChoice {
                 key: k;
                 initial: "";
                 selected: root.icon == k;
@@ -156,8 +158,7 @@ export component CreateInstanceDialog inherits Modal {
         HorizontalLayout {
             spacing: Space.s1;
             alignment: start;
-            for k[i] in IconKeys.all: IconChoice {
-                visible: i >= 6;
+            for k in IconKeys.row2: IconChoice {
                 key: k;
                 initial: "";
                 selected: root.icon == k;
@@ -511,8 +512,7 @@ export component IconDialog inherits Modal {
     HorizontalLayout {
         alignment: center;
         spacing: Space.s1;
-        for k[i] in IconKeys.all: IconChoice {
-            visible: i < 6;
+        for k in IconKeys.row1: IconChoice {
             key: k;
             initial: root.initial;
             selected: root.current == k;
@@ -525,8 +525,7 @@ export component IconDialog inherits Modal {
     HorizontalLayout {
         alignment: center;
         spacing: Space.s1;
-        for k[i] in IconKeys.all: IconChoice {
-            visible: i >= 6;
+        for k in IconKeys.row2: IconChoice {
             key: k;
             initial: root.initial;
             selected: root.current == k;
