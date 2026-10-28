@@ -63,7 +63,6 @@ assets = [
     ["target/release/vanta", "usr/bin/vanta", "755"],
     ["../../packaging/linux/xyz.getvanta.Vanta.desktop", "usr/share/applications/", "644"],
     ["../../packaging/linux/xyz.getvanta.Vanta.metainfo.xml", "usr/share/metainfo/", "644"],
-    ["../../packaging/icons/vanta.svg", "usr/share/icons/hicolor/scalable/apps/xyz.getvanta.Vanta.svg", "644"],
     ["../../packaging/icons/vanta-16.png", "usr/share/icons/hicolor/16x16/apps/xyz.getvanta.Vanta.png", "644"],
     ["../../packaging/icons/vanta-32.png", "usr/share/icons/hicolor/32x32/apps/xyz.getvanta.Vanta.png", "644"],
     ["../../packaging/icons/vanta-48.png", "usr/share/icons/hicolor/48x48/apps/xyz.getvanta.Vanta.png", "644"],

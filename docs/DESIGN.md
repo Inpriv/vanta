@@ -6,13 +6,11 @@ website (`web/assets/tokens.css`). Change both together.
 
 ## Logo
 
-A faceted "V": two planes of an inverted gem split along the centre, with a
-notch in the top edge. The left plane is lighter, the right one darker, which
-reads as a single light source from the top left. It is drawn on a 24 px grid
-so it stays sharp at 16 px.
+A hand-drawn, flowing white "V".
 
-- Mark: `packaging/icons/vanta-mark.svg`
-- App icon (mark on a dark rounded tile): `packaging/icons/vanta.svg`, PNGs 16–512 px, `vanta.ico`
+- Program icon (transparent background): `packaging/icons/vanta.ico` (Windows exe and installer), `vanta.png` and PNGs 16–512 px (Linux, window icon)
+- On black (`vanta-bg.png`, `vanta-bg.ico`): website favicon, README
+- In the app the transparent mark is tinted with `text`, so it works in both themes
 
 ## Color
 
@@ -36,10 +34,10 @@ One accent at a time. Text on the accent uses `on-accent` (`bg` in dark mode, wh
 
 | Name | Dark | Light |
 | --- | --- | --- |
-| Signal (default) | `#74e8bc` | `#16a46e` |
+| Signal | `#74e8bc` | `#16a46e` |
 | Iris | `#a898ff` | `#6b55f0` |
 | Ember | `#ff9a62` | `#e2622a` |
-| Azure | `#72b8ff` | `#2a7bd8` |
+| Azure (default) | `#72b8ff` | `#2a7bd8` |
 | Rose | `#ff85ba` | `#d83f82` |
 | Sun | `#f4d265` | `#b58a0b` |
 

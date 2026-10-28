@@ -5,8 +5,8 @@ import { App } from "state.slint";
 
 export global Theme {
     in-out property <bool> dark: true;
-    // 0 Signal · 1 Iris · 2 Ember · 3 Azure · 4 Rose · 5 Sun
-    in-out property <int> accent-index: 0;
+    // 0 Signal · 1 Iris · 2 Ember · 3 Azure (default) · 4 Rose · 5 Sun
+    in-out property <int> accent-index: 3;
 
     // Surfaces: near-black with a faint cool cast.
     out property <color> bg: dark ? #0b0c0e : #f5f5f3;

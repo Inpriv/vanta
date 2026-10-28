@@ -9,9 +9,9 @@
   --text: #ecedf0;
   --text-muted: #9a9da6;
   --text-faint: #7e818a;
-  --accent: #74e8bc;
+  --accent: #72b8ff;
   --on-accent: #0b0c0e;
-  --accent-soft: rgba(116, 232, 188, 0.14);
+  --accent-soft: rgba(114, 184, 255, 0.14);
   --danger: #ff6b6b;
 
   --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;

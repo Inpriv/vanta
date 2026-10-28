@@ -91,7 +91,7 @@ jobs:
           d="vanta-${VERSION}-x86_64-linux"
           mkdir -p "$d/icons"
           cp target/release/vanta LICENSE packaging/linux/xyz.getvanta.Vanta.desktop packaging/linux/xyz.getvanta.Vanta.metainfo.xml "$d/"
-          cp packaging/icons/vanta.svg packaging/icons/vanta-*.png "$d/icons/"
+          cp packaging/icons/vanta-*.png "$d/icons/"
           tar czf "dist/$d.tar.gz" "$d"
       - name: Debian package
         run: |

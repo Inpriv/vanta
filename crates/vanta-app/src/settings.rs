@@ -44,7 +44,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: ThemeMode::Dark,
-            accent: 0,
+            accent: 3,
             reduce_motion: false,
             default_memory_mb: default_memory(),
             java_path: None,

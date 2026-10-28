@@ -23,6 +23,5 @@ package() {
   for size in 16 32 48 64 128 256 512; do
     install -Dm644 "icons/vanta-${size}.png" "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/xyz.getvanta.Vanta.png"
   done
-  install -Dm644 icons/vanta.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/xyz.getvanta.Vanta.svg"
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }

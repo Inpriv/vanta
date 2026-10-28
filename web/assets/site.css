@@ -51,14 +51,14 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 .btn:active { transform: translateY(1px); }
 .btn-small { height: 34px; padding: 0 var(--s4); font-size: var(--fs-small); }
 .btn-large { height: 52px; padding: 0 var(--s8); font-size: var(--fs-subtitle); border-radius: var(--r-lg); }
-.btn-primary { background: var(--accent); color: var(--on-accent); border-color: transparent; box-shadow: 0 8px 30px rgba(116, 232, 188, 0.18); }
-.btn-primary:hover { background: #8ff0cb; box-shadow: 0 10px 40px rgba(116, 232, 188, 0.3); transform: translateY(-1px); }
+.btn-primary { background: var(--accent); color: var(--on-accent); border-color: transparent; box-shadow: 0 8px 30px rgba(114, 184, 255, 0.18); }
+.btn-primary:hover { background: #93c9ff; box-shadow: 0 10px 40px rgba(114, 184, 255, 0.3); transform: translateY(-1px); }
 .btn-ghost { background: transparent; }
 .btn-ghost:hover { background: var(--surface-2); }
 
 /* Hero */
 .hero { position: relative; overflow: hidden; padding-top: var(--s16); }
-.glow { position: absolute; inset: -320px 0 auto; height: 760px; background: radial-gradient(closest-side, rgba(116, 232, 188, 0.16), transparent 70%); pointer-events: none; }
+.glow { position: absolute; inset: -320px 0 auto; height: 760px; background: radial-gradient(closest-side, rgba(114, 184, 255, 0.16), transparent 70%); pointer-events: none; }
 .hero-inner { position: relative; text-align: center; }
 .eyebrow { color: var(--accent); font-size: var(--fs-small); font-weight: 600; letter-spacing: 0.02em; margin: 0 0 var(--s4); }
 .hero h1 { font-size: clamp(38px, 6.4vw, 72px); font-weight: 700; letter-spacing: -0.035em; }
@@ -102,7 +102,7 @@ details p { color: var(--text-muted); margin: var(--s3) 0 0; }
 .dl { display: flex; flex-direction: column; gap: 2px; padding: var(--s4) var(--s5); border-radius: var(--r-lg); background: var(--surface-1); border: 1px solid var(--border); color: var(--text); transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
 .dl:hover { text-decoration: none; border-color: var(--accent); transform: translateY(-2px); }
 .dl span { color: var(--text-muted); font-size: var(--fs-small); }
-.dl.recommended { border-color: rgba(116, 232, 188, 0.5); background: linear-gradient(180deg, var(--accent-soft), var(--surface-1)); }
+.dl.recommended { border-color: rgba(114, 184, 255, 0.5); background: linear-gradient(180deg, var(--accent-soft), var(--surface-1)); }
 .note { color: var(--text-muted); font-size: var(--fs-small); margin-top: var(--s5); }
 
 /* Footer */
