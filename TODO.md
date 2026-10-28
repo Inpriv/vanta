@@ -52,7 +52,7 @@ Status legend: `[x]` done · `[~]` in progress · `[ ]` not started
 
 ## M10 — Website
 - [x] Static site in `web/`, shared tokens, OS-detecting download button
-- [x] GitHub Pages workflow, `CNAME`
+- [x] Cloudflare Pages deployment (`wrangler.jsonc`, getvanta.xyz)
 
 ## M11 — Docs + polish
 - [x] README, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, CHANGELOG, templates

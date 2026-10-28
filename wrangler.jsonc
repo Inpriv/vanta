@@ -1,0 +1,9 @@
+// The website in web/ is hosted on Cloudflare Pages (project "getvanta",
+// custom domain getvanta.xyz). Deploy with:
+//   npx wrangler pages deploy --branch main
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "getvanta",
+  "compatibility_date": "2026-10-01",
+  "pages_build_output_dir": "./web"
+}

@@ -35,3 +35,14 @@ auto-update to (users download it manually once).
    and push both to `ssh://aur@aur.archlinux.org/vanta-bin.git`.
 
 To rebuild an existing tag, run the workflow manually with the tag name.
+
+## Website
+
+The site in `web/` is hosted on Cloudflare Pages (project `getvanta`, domain
+getvanta.xyz). After changing it, deploy with:
+
+```sh
+npx wrangler pages deploy --branch main
+```
+
+`wrangler.jsonc` points wrangler at `web/`. Log in once with `npx wrangler login`.

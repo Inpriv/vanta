@@ -7,7 +7,7 @@ crates/
   vanta-core      Everything that is not UI. No Slint, fully unit-tested.
   vanta-modrinth  Typed client for the Modrinth v2 API.
   vanta-app       The `vanta` binary: Slint UI + glue to core.
-web/              Static website (plain HTML/CSS/JS), deployed with GitHub Pages.
+web/              Static website (plain HTML/CSS/JS), hosted on Cloudflare Pages (see wrangler.jsonc).
 packaging/        Icons, .desktop, AppStream metainfo, NSIS script, PKGBUILDs, signing key.
 ```
 
