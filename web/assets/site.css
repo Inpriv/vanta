@@ -64,15 +64,15 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 .btn-ghost:hover { background: var(--surface-2); }
 
 /* Hero */
-.hero { position: relative; overflow: hidden; padding-top: var(--s16); }
+.hero { position: relative; overflow: hidden; padding-top: var(--s6); }
 .glow { position: absolute; inset: -320px 0 auto; height: 760px; background: radial-gradient(closest-side, rgba(114, 184, 255, 0.16), transparent 70%); pointer-events: none; }
 .hero-inner { position: relative; text-align: center; }
-.eyebrow { color: var(--accent); font-size: var(--fs-small); font-weight: 600; letter-spacing: 0.02em; margin: 0 0 var(--s4); }
+.eyebrow { color: var(--accent); font-size: var(--fs-small); font-weight: 600; letter-spacing: 0.02em; margin: 0 0 var(--s3); }
 .hero h1 { font-size: clamp(38px, 6.4vw, 72px); font-weight: 700; letter-spacing: -0.035em; }
-.hero .lead { margin: var(--s6) auto 0; }
-.cta { display: flex; gap: var(--s3); justify-content: center; flex-wrap: wrap; margin-top: var(--s8); }
+.hero .lead { margin: var(--s5) auto 0; }
+.cta { display: flex; gap: var(--s3); justify-content: center; flex-wrap: wrap; margin-top: var(--s6); }
 .hint { color: var(--text-faint); font-size: var(--fs-small); margin-top: var(--s3); }
-.shot { margin: var(--s12) auto 0; border-radius: var(--r-xl); overflow: hidden; border: 1px solid var(--border-strong); box-shadow: 0 40px 120px rgba(0, 0, 0, 0.55); max-width: 1040px; }
+.shot { margin: var(--s10) auto 0; border-radius: var(--r-xl); overflow: hidden; border: 1px solid var(--border-strong); box-shadow: 0 40px 120px rgba(0, 0, 0, 0.55); max-width: 1040px; }
 .shot img, .gallery img { width: 100%; }
 
 /* Features */
@@ -143,7 +143,7 @@ details p { color: var(--text-muted); margin: var(--s3) 0 0; }
 
   br.wide { display: none; }
   .section { padding-top: var(--s16); }
-  .hero { padding-top: var(--s10); }
+  .hero { padding-top: var(--s5); }
   .hero .lead { font-size: 16px; }
   .lead { font-size: 16px; }
   .cta { flex-direction: column; align-items: stretch; width: 100%; max-width: 360px; margin-inline: auto; }

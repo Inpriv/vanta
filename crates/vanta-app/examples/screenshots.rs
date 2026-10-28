@@ -107,14 +107,7 @@ fn fill(ui: &AppWindow) {
             "Fabric",
             "2 hours ago",
         ),
-        inst(
-            "create",
-            "Forge 1.20.1",
-            "planks",
-            "1.20.1",
-            "Forge",
-            "yesterday",
-        ),
+        inst("create", "Forge 1.20.1", "planks", "1.20.1", "Forge", "yesterday"),
         inst(
             "skyblock",
             "Skyblock",
@@ -329,6 +322,28 @@ fn main() {
     fill(&ui);
     ui.show().unwrap();
     let only = std::env::args().nth(2);
+
+    // Opening animation frames (the clock starts at 0 when the window is created).
+    if only.as_deref() == Some("splash") {
+        let (w, h) = ((W as f32 * SCALE) as usize, (H as f32 * SCALE) as usize);
+        for ms in [200u64, 450, 700, 950] {
+            while CLOCK.with(|c| c.get()) < Duration::from_millis(ms) {
+                CLOCK.with(|c| c.set(c.get() + Duration::from_millis(10)));
+                slint::platform::update_timers_and_animations();
+            }
+            let mut buf = vec![PremultipliedRgbaColor::default(); w * h];
+            window.request_redraw();
+            window.draw_if_needed(|r| {
+                r.render(&mut buf, w);
+            });
+            let mut img = image::RgbaImage::new(w as u32, h as u32);
+            for (p, c) in img.pixels_mut().zip(&buf) {
+                *p = image::Rgba([c.red, c.green, c.blue, 255]);
+            }
+            img.save(out.join(format!("splash-{ms}.png"))).unwrap();
+        }
+        return;
+    }
 
     let app = ui.global::<App>();
     let versions: Vec<VersionItem> = ["1.21.4", "1.21.1", "1.20.6", "1.20.1", "1.19.4", "1.18.2"]

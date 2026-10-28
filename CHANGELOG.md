@@ -2,6 +2,17 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.5 (2026-10-28)
+
+### New features
+
+- Opening animation: the Vanta mark rises in with an accent glow and the name appears letter by letter (click to skip; off with "Reduce motion")
+- New Linux download `Vanta-linux-x86_64.tar.gz`: extract it and double-click `vanta`, no extra steps
+
+### Fixes
+
+- The new-instance icon tooltip no longer covers the mod loader label
+
 ## 0.1.4 (2026-10-28)
 
 ### New features

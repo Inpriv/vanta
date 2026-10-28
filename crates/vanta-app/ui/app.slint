@@ -11,6 +11,7 @@ import {
     ExportDialog, CrashDialog, UpdateDialog, Console, Toast
 } from "dialogs.slint";
 import { Palette } from "std-widgets.slint";
+import { Splash } from "splash.slint";
 
 import "fonts/Inter-Regular.ttf";
 import "fonts/Inter-Medium.ttf";
@@ -175,6 +176,8 @@ export component AppWindow inherits Window {
             x: round((parent.width - self.width) / 2 / 1phx) * 1phx;
             y: parent.height - self.height - 24px;
         }
+
+        Splash { }
 
         // Hairline edge so the rounded window reads against any wallpaper.
         if root.corner > 0: Rectangle {

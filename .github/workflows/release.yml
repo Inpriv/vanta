@@ -101,6 +101,11 @@ jobs:
           cp target/release/vanta LICENSE packaging/linux/xyz.getvanta.Vanta.desktop packaging/linux/xyz.getvanta.Vanta.metainfo.xml "$d/"
           cp packaging/icons/vanta-*.png "$d/icons/"
           tar czf "dist/$d.tar.gz" "$d"
+          # User-facing download: a folder with just the program, which keeps
+          # its executable bit so it opens with a double-click after extracting.
+          mkdir -p simple/Vanta
+          install -m755 target/release/vanta simple/Vanta/vanta
+          tar czf dist/Vanta-linux-x86_64.tar.gz -C simple Vanta
       - name: Debian package
         run: |
           cargo install cargo-deb --locked

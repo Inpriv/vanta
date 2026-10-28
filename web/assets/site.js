@@ -38,12 +38,13 @@
   const matchers = {
     setup: (n) => /^Vanta-Setup-.*\.exe$/.test(n),
     portable: (n) => /-portable\.exe$/.test(n),
+    linux: (n) => /^Vanta-linux-x86_64\.tar\.gz$/.test(n),
     appimage: (n) => /\.AppImage$/.test(n),
     deb: (n) => /_amd64\.deb$/.test(n),
     arch: (n) => /\.pkg\.tar\.zst$/.test(n),
     tar: (n) => /-linux\.tar\.gz$/.test(n),
   };
-  const preferred = os === "windows" ? "setup" : os === "linux" ? (/Ubuntu|Debian/i.test(ua) ? "deb" : "appimage") : null;
+  const preferred = os === "windows" ? "setup" : os === "linux" ? "linux" : null;
   const primary = document.getElementById("download-primary");
   const label = document.getElementById("download-label");
   const hint = document.getElementById("download-hint");

@@ -1,0 +1,71 @@
+// Opening animation: the V mark rises and is revealed from the bottom while
+// an accent glow blooms, the wordmark appears letter by letter, then the
+// splash dissolves into the app. About 1.2 s; click to skip; skipped with
+// "Reduce motion".
+
+import { Theme, Motion } from "theme.slint";
+
+export component Splash inherits Rectangle {
+    private property <float> t: 0;
+    private property <bool> skipped: false;
+    animate t { duration: 1200ms; easing: linear; }
+    init => { root.t = 1; }
+
+    pure function clamp01(x: float) -> float { return max(0, min(1, x)); }
+    pure function ease-out(x: float) -> float { return 1 - pow(1 - root.clamp01(x), 3); }
+
+    private property <float> mark: root.ease-out(root.t / 0.45);
+    private property <float> fade: root.ease-out((root.t - 0.72) / 0.28);
+
+    visible: !Motion.reduce && !root.skipped && root.t < 1;
+    background: Theme.bg;
+    opacity: 1 - root.fade;
+
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.skipped = true; }
+    }
+
+    // Accent glow
+    Rectangle {
+        width: 360px + 120px * root.mark;
+        height: self.width;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 24px;
+        border-radius: self.width / 2;
+        background: @radial-gradient(circle, Theme.accent.with-alpha(0.22 * root.mark) 0%, Theme.accent.with-alpha(0) 70%);
+    }
+
+    // The mark, revealed bottom-up while it rises into place.
+    reveal := Rectangle {
+        width: 84px;
+        height: 84px * root.mark;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - 84px) / 2 - 24px + (84px - self.height) + (1 - root.mark) * 14px;
+        clip: true;
+        Image {
+            y: reveal.height - 84px;
+            width: 84px;
+            height: 84px;
+            source: @image-url("icons/logo.svg");
+            colorize: Theme.text;
+        }
+    }
+
+    // Wordmark, letter by letter.
+    HorizontalLayout {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height) / 2 + 44px;
+        width: self.preferred-width;
+        spacing: 10px;
+        for ch[i] in ["V", "A", "N", "T", "A"]: Text {
+            private property <float> k: root.ease-out((root.t - 0.28 - i * 0.06) / 0.2);
+            text: ch;
+            color: Theme.text;
+            font-size: 20px;
+            font-weight: 600;
+            opacity: self.k;
+            y: (1 - self.k) * 8px;
+        }
+    }
+}

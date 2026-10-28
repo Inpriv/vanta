@@ -52,7 +52,7 @@ Vanta has **no telemetry and no analytics**. It only contacts Microsoft/Xbox (si
 | --- | --- |
 | Windows | `Vanta-Setup-<version>.exe` (per-user installer) or `Vanta-<version>-portable.exe` |
 | Ubuntu / Debian | `vanta_<version>_amd64.deb` (double-click to open in your software center) |
-| Any Linux | `Vanta-<version>-x86_64.AppImage` (double-click to run) or `vanta-<version>-x86_64-linux.tar.gz` |
+| Any Linux | `Vanta-linux-x86_64.tar.gz`: extract it and double-click `vanta`. Also: `Vanta-<version>-x86_64.AppImage` |
 | Arch Linux | `vanta-<version>-x86_64.pkg.tar.zst` (`sudo pacman -U …`); an AUR package is coming soon |
 
 Get them from the [latest release](https://github.com/Inpriv/vanta/releases/latest). Verify with `sha256sum -c SHA256SUMS.txt`.
