@@ -22,8 +22,8 @@
 
 ## Features
 
-- **Microsoft sign-in** (recommended) with the device code flow, multiple accounts, quick switching and automatic token refresh. Tokens are stored only in your OS keychain.
-- **Offline accounts**: play singleplayer with just a username. Online servers, skins and Realms need a Microsoft account; please buy Minecraft to support Mojang.
+- **Offline accounts**: pick a username and play. The same name always maps to the same player UUID, so inventories and progress persist, including on friends' LAN worlds.
+- **Microsoft sign-in (coming soon in official builds)**: device code flow, multiple accounts, quick switching, automatic token refresh, tokens stored only in your OS keychain. It is fully implemented and works in builds made with an approved Azure client ID (see below); official releases will enable it once Vanta's app ID is approved. Online servers, skins and Realms need it. Please buy Minecraft to support Mojang.
 - **Every version**: releases, snapshots and old betas/alphas from Mojang's official manifest.
 - **Mod loaders**: Fabric, Quilt, Forge and NeoForge, including Forge/NeoForge installer processors.
 - **Modrinth built in**: search mods, resource packs, shaders and modpacks with version/loader/category filters; dependencies install automatically; check for updates, enable/disable or remove content.
@@ -85,7 +85,9 @@ A build without a client ID still runs; account sign-in is disabled and explaine
 
 ## FAQ
 
-**Do I need a Microsoft account?** It's recommended: signing in with the account that owns Minecraft: Java Edition gives you online servers, skins and Realms. Vanta also supports offline (username-only) accounts for singleplayer and offline-mode servers.
+**Do I need a Microsoft account?** Not right now: official builds use offline accounts while Microsoft sign-in is being approved. Once it is available, signing in with the account that owns Minecraft: Java Edition is recommended for online servers, skins and Realms.
+
+**Will I keep my inventory?** Yes. An offline account's UUID is derived from its username (the same scheme vanilla Minecraft uses), so the same name is always the same player.
 
 **Where is my data?** `~/.local/share/vanta` on Linux and `%APPDATA%\Vanta` on Windows. You can change it in Settings → Storage. Settings live in `~/.config/vanta` / `%APPDATA%\Vanta\settings.json`.
 

@@ -629,19 +629,45 @@ export component LoginDialog inherits Modal {
     }
 }
 
+component OfflineSignIn inherits VerticalLayout {
+    in property <bool> primary;
+    spacing: Space.s2;
+    HorizontalLayout {
+        spacing: Space.s2;
+        name := TextField {
+            horizontal-stretch: 1;
+            placeholder: "Username";
+            accepted(t) => {
+                App.add-offline-account(t);
+                self.text = "";
+            }
+        }
+        Button {
+            text: root.primary ? "Play offline" : "Add offline";
+            kind: root.primary ? ButtonKind.primary : ButtonKind.secondary;
+            enabled: name.text != "";
+            clicked => {
+                App.add-offline-account(name.text);
+                name.text = "";
+            }
+        }
+    }
+    Text {
+        text: "3–16 letters, digits or underscores. The same name always keeps your inventory and progress, also on friends' LAN worlds.";
+        color: Theme.text-faint;
+        font-size: Type.caption;
+        wrap: word-wrap;
+    }
+}
+
 export component AccountsDialog inherits Modal {
     in-out property <bool> open-state;
     open: open-state;
     title: "Accounts";
-    dialog-width: 420px;
+    subtitle: App.accounts.length > 0 ? "" : App.msa-configured ? "Sign in to start playing." : "Choose a username to start playing.";
+    dialog-width: 440px;
     dismiss => { root.open-state = false; }
 
-    if App.accounts.length == 0: Text {
-        text: App.msa-configured ? "No accounts yet. Sign in with the Microsoft account that owns Minecraft: Java Edition." : "This build has no Microsoft client ID, so Microsoft sign-in is unavailable. See the README to build with VANTA_MSA_CLIENT_ID.";
-        color: Theme.text-muted;
-        font-size: Type.small;
-        wrap: word-wrap;
-    }
     for a in App.accounts: Rectangle {
         height: 56px;
         border-radius: Radius.md;
@@ -678,57 +704,74 @@ export component AccountsDialog inherits Modal {
             IconButton {
                 y: (parent.height - self.height) / 2;
                 icon: @image-url("icons/logout.svg");
-                label: "Sign out";
+                label: "Remove account";
                 hover-tint: Theme.danger;
                 clicked => { App.remove-account(a.uuid); }
             }
         }
     }
-    Button {
-        text: "Sign in with Microsoft";
-        kind: ButtonKind.primary;
-        enabled: App.msa-configured;
-        icon: @image-url("icons/plus.svg");
-        has-icon: true;
-        clicked => {
-            root.open-state = false;
-            App.add-account();
-        }
-    }
-    Text {
-        text: App.msa-configured ? "Recommended: uses the account that owns Minecraft, so online servers, skins and Realms work." : "Microsoft sign-in needs a build with VANTA_MSA_CLIENT_ID (see the README).";
-        color: Theme.text-faint;
-        font-size: Type.caption;
-        wrap: word-wrap;
-    }
-    if App.offline-accounts-enabled: VerticalLayout {
+
+    // Microsoft sign-in available: it comes first and is recommended.
+    if App.msa-configured: VerticalLayout {
         spacing: Space.s2;
-        padding-top: Space.s2;
-        SectionTitle { text: "OR PLAY OFFLINE"; }
-        HorizontalLayout {
-            spacing: Space.s2;
-            offline-name := TextField {
-                horizontal-stretch: 1;
-                placeholder: "Username";
-                accepted(t) => {
-                    App.add-offline-account(t);
-                    self.text = "";
-                }
-            }
-            Button {
-                text: "Add offline";
-                enabled: offline-name.text != "";
-                clicked => {
-                    App.add-offline-account(offline-name.text);
-                    offline-name.text = "";
-                }
+        Button {
+            text: "Sign in with Microsoft";
+            kind: ButtonKind.primary;
+            icon: @image-url("icons/plus.svg");
+            has-icon: true;
+            clicked => {
+                root.open-state = false;
+                App.add-account();
             }
         }
         Text {
-            text: "Offline accounts only work in singleplayer and on offline-mode servers. Please buy Minecraft to support Mojang.";
+            text: "Recommended: uses the account that owns Minecraft, so online servers, skins and Realms work.";
             color: Theme.text-faint;
             font-size: Type.caption;
             wrap: word-wrap;
+        }
+    }
+    if App.msa-configured && App.offline-accounts-enabled: VerticalLayout {
+        spacing: Space.s2;
+        padding-top: Space.s2;
+        SectionTitle { text: "OR PLAY OFFLINE"; }
+        OfflineSignIn { primary: false; }
+    }
+
+    // Not available yet: offline is the way to play for now.
+    if !App.msa-configured: VerticalLayout {
+        spacing: Space.s2;
+        SectionTitle { text: App.accounts.length > 0 ? "ADD ANOTHER PLAYER" : "PLAY OFFLINE"; }
+        OfflineSignIn { primary: true; }
+    }
+    if !App.msa-configured: Divider { }
+    if !App.msa-configured: HorizontalLayout {
+        spacing: Space.s3;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 2px;
+            HorizontalLayout {
+                spacing: Space.s2;
+                alignment: start;
+                Text {
+                    text: "Microsoft sign-in";
+                    color: Theme.text;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                }
+                Badge {
+                    text: "Coming soon";
+                    text-color: Theme.accent;
+                    fill: Theme.accent-soft;
+                }
+            }
+            Text {
+                text: "Needed later for online servers, skins and Realms.";
+                color: Theme.text-faint;
+                font-size: Type.caption;
+                wrap: word-wrap;
+            }
         }
     }
 }

@@ -54,7 +54,15 @@ jobs:
       - name: Installer
         shell: pwsh
         run: |
-          makensis /DVERSION=$env:VERSION /DSOURCE="$pwd\target\release\vanta.exe" /DOUTFILE="$pwd\dist\Vanta-Setup-$env:VERSION.exe" packaging\windows\installer.nsi
+          # NSIS is not always preinstalled on the runner image.
+          $nsis = Get-Command makensis -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          if (-not $nsis) { $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe" }
+          if (-not (Test-Path $nsis)) {
+            choco install nsis -y --no-progress
+            $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          }
+          & $nsis /DVERSION=$env:VERSION /DSOURCE="$pwd\target\release\vanta.exe" /DOUTFILE="$pwd\dist\Vanta-Setup-$env:VERSION.exe" packaging\windows\installer.nsi
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Sign installer
         if: steps.sign.outputs.enabled == 'true'
         shell: pwsh

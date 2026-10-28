@@ -331,6 +331,27 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn offline_uuid_is_stable_across_restarts() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("accounts.json");
+        let store = Arc::new(MemoryStore::default());
+        let auth = AuthClient::new(crate::http::client(), "");
+        let mut m = AccountManager::load(file.clone(), store.clone(), auth.clone());
+        m.set_allow_offline(true);
+        let first = m.add_offline("Saloyek").unwrap();
+        // Adding the same name again keeps one account with the same UUID.
+        let again = m.add_offline("Saloyek").unwrap();
+        assert_eq!(first.uuid, again.uuid);
+        assert_eq!(m.list.accounts.len(), 1);
+        // A "restart": load from disk and launch.
+        let mut reloaded = AccountManager::load(file, store, auth);
+        reloaded.set_allow_offline(true);
+        let (launch, _) = reloaded.session(&first.uuid).await.unwrap();
+        assert_eq!(launch.uuid, offline_uuid("Saloyek"));
+        assert_eq!(launch.player_name, "Saloyek");
+    }
+
+    #[tokio::test]
     async fn offline_accounts_need_permission() {
         let dir = tempfile::tempdir().unwrap();
         let auth = AuthClient::new(crate::http::client(), "");

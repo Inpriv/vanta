@@ -368,6 +368,9 @@ fn main() {
     if only.as_deref().is_none_or(|o| o == "accounts") {
         app.set_page(Page::Home);
         app.set_offline_accounts_enabled(true);
+        // What users see today: no Microsoft client ID, no account yet.
+        app.set_msa_configured(false);
+        app.set_accounts(ModelRc::default());
         app.set_accounts_open(true);
         app.set_toast_text("Created test".into());
         app.set_toast_serial(app.get_toast_serial() + 1);

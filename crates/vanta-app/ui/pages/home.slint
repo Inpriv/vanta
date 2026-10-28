@@ -153,7 +153,7 @@ component Hero inherits Rectangle {
             }
         }
         if !App.has-account && !root.launching: Text {
-            text: "You'll be asked to sign in with Microsoft when you press Play.";
+            text: App.msa-configured ? "You'll be asked to sign in with Microsoft when you press Play." : "Press Play and choose a username to start.";
             color: Theme.text-muted;
             font-size: Type.small;
         }

@@ -2,6 +2,22 @@
 
 All notable changes to Vanta are documented here. The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.1.3 (2026-10-28)
+
+### New features
+
+- Play with an offline account: just pick a username. The same name always keeps the same player, so inventories and progress persist, also on friends' LAN worlds
+- Microsoft sign-in is shown as coming soon in official builds
+- New instances get an icon in your accent color with the first letter of their name
+- Smaller default window (800×520)
+
+### Fixes
+
+- Text in dialogs, the console and notifications is sharp
+- Notifications hide after four seconds and their text is centered
+- The icon picker no longer overflows the new-instance dialog
+- Windows installer builds again in the release workflow
+
 ## 0.1.2 (2026-10-28)
 
 ### New features
