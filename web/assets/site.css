@@ -41,12 +41,12 @@ h3 { font-size: var(--fs-subtitle); margin-bottom: var(--s2); }
 .nav nav { display: flex; gap: var(--s5); margin-left: auto; }
 .nav nav a { color: var(--text-muted); font-size: var(--fs-body); transition: color var(--dur-fast) var(--ease-out); }
 @media (hover: hover) { .nav nav a:hover { color: var(--text); text-decoration: none; } }
-.menu { display: none; width: 40px; height: 40px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); padding: 0; cursor: pointer; position: relative; }
-.menu span { position: absolute; left: 11px; right: 11px; height: 2px; border-radius: 1px; background: var(--text); transition: transform var(--dur-base) var(--ease-out), top var(--dur-base) var(--ease-out); }
-.menu span:first-child { top: 15px; }
-.menu span:last-child { top: 23px; }
-.menu[aria-expanded="true"] span:first-child { top: 19px; transform: rotate(45deg); }
-.menu[aria-expanded="true"] span:last-child { top: 19px; transform: rotate(-45deg); }
+.menu { display: none; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); padding: 0; cursor: pointer; position: relative; }
+.menu span { position: absolute; left: 9px; right: 9px; height: 2px; border-radius: 1px; background: var(--text); transition: transform var(--dur-base) var(--ease-out), top var(--dur-base) var(--ease-out); }
+.menu span:first-child { top: 12px; }
+.menu span:last-child { top: 20px; }
+.menu[aria-expanded="true"] span:first-child { top: 16px; transform: rotate(45deg); }
+.menu[aria-expanded="true"] span:last-child { top: 16px; transform: rotate(-45deg); }
 
 
 /* Buttons */
