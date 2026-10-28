@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="packaging/icons/vanta-bg.png" width="96" height="96" alt="Vanta logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="packaging/icons/vanta.png">
+    <img src="packaging/icons/vanta-dark.png" width="96" height="96" alt="Vanta logo">
+  </picture>
 </p>
 
 <h1 align="center">Vanta</h1>

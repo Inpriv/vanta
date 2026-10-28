@@ -15,6 +15,7 @@
   --danger: #ff6b6b;
 
   --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pixel: "Pixelify Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
   --fs-caption: 12px;
   --fs-small: 13px;
   --fs-body: 14px;
@@ -26,7 +27,7 @@
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px;
   --s8: 32px; --s10: 40px; --s12: 48px; --s16: 64px; --s24: 96px;
 
-  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px;
+  --r-sm: 3px; --r-md: 4px; --r-lg: 6px; --r-xl: 8px;
 
   --dur-fast: 120ms;
   --dur-base: 180ms;
