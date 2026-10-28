@@ -56,7 +56,6 @@ export component AppWindow inherits Window {
     private property <string> rename-value;
     private property <bool> delete-open;
     private property <bool> icon-open;
-    private property <bool> accounts-open;
     private property <bool> export-open;
 
     frame := Rectangle {
@@ -70,7 +69,7 @@ export component AppWindow inherits Window {
                     if App.accounts.length == 0 && App.msa-configured {
                         App.add-account();
                     } else {
-                        root.accounts-open = true;
+                        App.accounts-open = true;
                     }
                 }
             }
@@ -162,7 +161,7 @@ export component AppWindow inherits Window {
             picked(k) => { App.set-instance-icon(App.selected-id, k); }
         }
         AccountsDialog {
-            open-state <=> root.accounts-open;
+            open-state <=> App.accounts-open;
         }
         ExportDialog {
             open-state <=> root.export-open;

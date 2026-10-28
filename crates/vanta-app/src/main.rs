@@ -25,6 +25,9 @@ slint::include_modules!();
 /// Azure application ID for Microsoft sign-in, provided at build time.
 pub const MSA_CLIENT_ID: Option<&str> = option_env!("VANTA_MSA_CLIENT_ID");
 
+/// Offline test accounts: debug builds or `--features offline-dev` only.
+pub const OFFLINE_ACCOUNTS: bool = cfg!(any(debug_assertions, feature = "offline-dev"));
+
 fn init_logging(dir: &std::path::Path) -> Option<tracing_appender::non_blocking::WorkerGuard> {
     use tracing_subscriber::filter::LevelFilter;
     std::fs::create_dir_all(dir).ok()?;
@@ -138,7 +141,8 @@ fn main() -> anyhow::Result<()> {
 
     let launcher = Launcher::new(paths.clone());
     let auth = AuthClient::new(launcher.client.clone(), MSA_CLIENT_ID.unwrap_or_default());
-    let accounts = AccountManager::load(paths.accounts_file(), Arc::new(keychain::Keychain), auth);
+    let mut accounts = AccountManager::load(paths.accounts_file(), Arc::new(keychain::Keychain), auth);
+    accounts.set_allow_offline(OFFLINE_ACCOUNTS);
     let shared = Arc::new(app::Shared::new(launcher, accounts, settings));
     let _ctrl = app::setup(&ui, shared, rt.handle().clone());
 

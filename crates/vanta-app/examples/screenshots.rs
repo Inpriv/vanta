@@ -364,6 +364,15 @@ fn main() {
         render(&window, &out.join("project.png"));
         app.set_project_open(false);
     }
+    if only.as_deref().is_none_or(|o| o == "accounts") {
+        app.set_page(Page::Home);
+        app.set_offline_accounts_enabled(true);
+        app.set_accounts_open(true);
+        app.set_toast_text("Created test".into());
+        app.set_toast_serial(app.get_toast_serial() + 1);
+        render(&window, &out.join("accounts.png"));
+        app.set_accounts_open(false);
+    }
     let theme = ui.global::<Theme>();
     theme.set_dark(false);
     app.set_page(Page::Home);

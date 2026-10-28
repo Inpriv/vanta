@@ -107,6 +107,10 @@ export global App {
     in property <bool> has-account: false;
     in property <bool> msa-configured: true;
     in-out property <bool> login-open: false;
+    in-out property <bool> accounts-open: false;
+    // Development builds only: username-only accounts for testing.
+    in property <bool> offline-accounts-enabled: false;
+    callback add-offline-account(string);
     in property <string> login-code;
     in property <string> login-url;
     in property <string> login-error;

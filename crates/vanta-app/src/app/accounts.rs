@@ -32,6 +32,24 @@ pub fn bind(ctrl: &Ctrl, ui: &AppWindow) {
         move || start_login(&ctrl)
     });
 
+    app.on_add_offline_account({
+        let ctrl = ctrl.clone();
+        move |name| {
+            let ctrl = ctrl.clone();
+            ctrl.clone().spawn(async move {
+                let res = ctrl.shared.accounts.lock().await.add_offline(&name);
+                match res {
+                    Ok(a) => {
+                        ctrl.toast(format!("Added offline account {}", a.name));
+                        ctrl.with_ui(|ui| ui.global::<App>().set_accounts_open(false));
+                    }
+                    Err(e) => ctrl.error(e),
+                }
+                refresh(&ctrl);
+            });
+        }
+    });
+
     app.on_cancel_login({
         let ctrl = ctrl.clone();
         move || {
@@ -83,6 +101,12 @@ pub fn bind(ctrl: &Ctrl, ui: &AppWindow) {
 }
 
 fn start_login(ctrl: &Ctrl) {
+    // Without a client ID, Microsoft sign-in can't work; show the accounts
+    // dialog (which explains why and offers offline accounts in dev builds).
+    if !crate::MSA_CLIENT_ID.is_some_and(|id| !id.is_empty()) {
+        ctrl.with_ui(|ui| ui.global::<App>().set_accounts_open(true));
+        return;
+    }
     if let Some(task) = ctrl.shared.login_task.lock().unwrap().take() {
         task.abort();
     }

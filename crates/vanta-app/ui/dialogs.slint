@@ -637,7 +637,7 @@ export component AccountsDialog inherits Modal {
     dismiss => { root.open-state = false; }
 
     if App.accounts.length == 0: Text {
-        text: App.msa-configured ? "No accounts yet. Sign in with the Microsoft account that owns Minecraft: Java Edition." : "This build of Vanta has no Microsoft client ID configured, so sign-in is unavailable. See the README to build with VANTA_MSA_CLIENT_ID.";
+        text: App.msa-configured ? "No accounts yet. Sign in with the Microsoft account that owns Minecraft: Java Edition." : "This build has no Microsoft client ID, so Microsoft sign-in is unavailable. See the README to build with VANTA_MSA_CLIENT_ID.";
         color: Theme.text-muted;
         font-size: Type.small;
         wrap: word-wrap;
@@ -682,6 +682,35 @@ export component AccountsDialog inherits Modal {
                 hover-tint: Theme.danger;
                 clicked => { App.remove-account(a.uuid); }
             }
+        }
+    }
+    if App.offline-accounts-enabled: VerticalLayout {
+        spacing: Space.s2;
+        SectionTitle { text: "OFFLINE ACCOUNT · DEVELOPMENT BUILD"; }
+        HorizontalLayout {
+            spacing: Space.s2;
+            offline-name := TextField {
+                horizontal-stretch: 1;
+                placeholder: "Username";
+                accepted(t) => {
+                    App.add-offline-account(t);
+                    self.text = "";
+                }
+            }
+            Button {
+                text: "Add";
+                enabled: offline-name.text != "";
+                clicked => {
+                    App.add-offline-account(offline-name.text);
+                    offline-name.text = "";
+                }
+            }
+        }
+        Text {
+            text: "For testing only: no online play, and not available in published releases.";
+            color: Theme.text-faint;
+            font-size: Type.caption;
+            wrap: word-wrap;
         }
     }
     Button {
@@ -982,7 +1011,7 @@ export component Toast inherits Rectangle {
             root.shown = false;
         }
     }
-    width: min(msg.preferred-width + 48px, 560px);
+    width: min(row.preferred-width, 560px);
     height: 44px;
     y: shown ? 0 : 16px;
     opacity: shown ? 1 : 0;
@@ -997,10 +1026,11 @@ export component Toast inherits Rectangle {
     drop-shadow-offset-y: 6px;
     accessible-role: text;
     accessible-label: App.toast-text;
-    HorizontalLayout {
+    row := HorizontalLayout {
         padding-left: Space.s5;
         padding-right: Space.s5;
         spacing: Space.s2;
+        alignment: center;
         if App.toast-error: Icon {
             source: @image-url("icons/alert.svg");
             size: 16px;
@@ -1012,6 +1042,7 @@ export component Toast inherits Rectangle {
             color: #f2f3f5;
             font-size: Type.small;
             vertical-alignment: center;
+            horizontal-alignment: center;
             overflow: elide;
         }
     }

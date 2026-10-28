@@ -49,6 +49,9 @@ pub struct Account {
     #[serde(default)]
     pub verified: bool,
     pub added: DateTime<Utc>,
+    /// Local test account without Microsoft sign-in (development builds only).
+    #[serde(default)]
+    pub offline: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -79,13 +82,32 @@ pub enum SessionKind {
     /// Token refresh failed (e.g. no network) but the account verified
     /// ownership before; the game runs without online features.
     Offline,
+    /// Local development account (no Microsoft sign-in at all).
+    Local,
 }
 
 pub struct AccountManager {
     file: PathBuf,
     secrets: Arc<dyn SecretStore>,
     auth: AuthClient,
+    /// Whether offline (development) accounts may be added and launched.
+    allow_offline: bool,
     pub list: AccountList,
+}
+
+/// UUID the vanilla game uses for an offline player name:
+/// `UUID.nameUUIDFromBytes("OfflinePlayer:" + name)` (MD5, version 3).
+pub fn offline_uuid(name: &str) -> String {
+    use md5::{Digest, Md5};
+    let mut b: [u8; 16] = Md5::digest(format!("OfflinePlayer:{name}").as_bytes()).into();
+    b[6] = (b[6] & 0x0f) | 0x30;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    hex::encode(b)
+}
+
+/// Minecraft usernames: 3–16 characters of letters, digits and underscores.
+pub fn valid_username(name: &str) -> bool {
+    (3..=16).contains(&name.len()) && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 fn secret_key(uuid: &str) -> String {
@@ -102,8 +124,37 @@ impl AccountManager {
             file,
             secrets,
             auth,
+            allow_offline: false,
             list,
         }
+    }
+
+    pub fn set_allow_offline(&mut self, allow: bool) {
+        self.allow_offline = allow;
+    }
+
+    /// Add a local offline account (development builds only).
+    pub fn add_offline(&mut self, name: &str) -> Result<Account> {
+        let name = name.trim();
+        if !self.allow_offline {
+            return Err(AuthError::OfflineNotAllowed.into());
+        }
+        if !valid_username(name) {
+            return Err(AuthError::InvalidUsername.into());
+        }
+        let account = Account {
+            uuid: offline_uuid(name),
+            name: name.to_owned(),
+            skin_url: None,
+            verified: false,
+            added: Utc::now(),
+            offline: true,
+        };
+        self.list.accounts.retain(|a| a.uuid != account.uuid);
+        self.list.accounts.push(account.clone());
+        self.list.active = Some(account.uuid.clone());
+        self.save()?;
+        Ok(account)
     }
 
     pub fn auth(&self) -> &AuthClient {
@@ -141,6 +192,7 @@ impl AccountManager {
             skin_url: session.profile.active_skin().map(|s| s.url.clone()),
             verified: true,
             added: Utc::now(),
+            offline: false,
         };
         self.store_secrets(&account.uuid, &tokens, &session)?;
         self.list.accounts.retain(|a| a.uuid != account.uuid);
@@ -188,6 +240,19 @@ impl AccountManager {
             .find(|a| a.uuid == uuid)
             .cloned()
             .ok_or(AuthError::SessionExpired)?;
+        if account.offline {
+            if !self.allow_offline {
+                return Err(AuthError::OfflineNotAllowed.into());
+            }
+            let launch = LaunchAuth {
+                player_name: account.name.clone(),
+                uuid: account.uuid.clone(),
+                access_token: "0".into(),
+                xuid: String::new(),
+                user_type: "legacy".into(),
+            };
+            return Ok((launch, SessionKind::Local));
+        }
         let secrets = self.load_secrets(uuid).ok_or(AuthError::SessionExpired)?;
 
         let launch = |token: String| LaunchAuth {
@@ -253,6 +318,33 @@ mod tests {
             refresh_token: "r".into(),
             expires_at: Utc::now(),
         }
+    }
+
+    #[test]
+    fn offline_uuid_matches_vanilla() {
+        // java.util.UUID.nameUUIDFromBytes("OfflinePlayer:Notch")
+        assert_eq!(offline_uuid("Notch"), "b50ad385829d3141a2167e7d7539ba7f");
+        assert!(valid_username("Steve_01"));
+        assert!(!valid_username("no"));
+        assert!(!valid_username("has space"));
+    }
+
+    #[tokio::test]
+    async fn offline_accounts_need_permission() {
+        let dir = tempfile::tempdir().unwrap();
+        let auth = AuthClient::new(crate::http::client(), "");
+        let mut m = AccountManager::load(dir.path().join("a.json"), Arc::new(MemoryStore::default()), auth);
+        assert!(m.add_offline("Tester").is_err());
+        m.set_allow_offline(true);
+        let acc = m.add_offline("Tester").unwrap();
+        let (launch, kind) = m.session(&acc.uuid).await.unwrap();
+        assert_eq!(launch.player_name, "Tester");
+        assert!(matches!(kind, SessionKind::Local));
+        m.set_allow_offline(false);
+        assert!(
+            m.session(&acc.uuid).await.is_err(),
+            "public builds refuse offline accounts"
+        );
     }
 
     #[tokio::test]

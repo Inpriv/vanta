@@ -122,6 +122,7 @@ pub fn setup(ui: &AppWindow, shared: Arc<Shared>, rt: tokio::runtime::Handle) ->
     let app = ui.global::<App>();
     app.set_version(env!("CARGO_PKG_VERSION").into());
     app.set_msa_configured(crate::MSA_CLIENT_ID.is_some_and(|id| !id.is_empty()));
+    app.set_offline_accounts_enabled(crate::OFFLINE_ACCOUNTS);
 
     window::bind(&ctrl, ui);
     prefs::bind(&ctrl, ui);
