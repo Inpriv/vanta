@@ -1,9 +1,11 @@
 //! Borderless window behaviour: dragging, resizing, maximize, close.
 
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 
-use slint::ComponentHandle;
+use slint::platform::{PointerEventButton, WindowEvent};
 use slint::winit_030::{WinitWindowAccessor, winit};
+use slint::{ComponentHandle, LogicalPosition};
 
 use super::Ctrl;
 use crate::{App, AppWindow};
@@ -14,11 +16,14 @@ pub fn bind(ctrl: &Ctrl, ui: &AppWindow) {
 
     app.on_start_drag({
         let weak = weak.clone();
-        move || {
+        move |x, y| {
             if let Some(ui) = weak.upgrade() {
                 ui.window().with_winit_window(|w: &winit::window::Window| {
                     let _ = w.drag_window();
                 });
+                // Released where it was pressed, so a double-click still
+                // maximizes.
+                release_pointer(&ui, LogicalPosition::new(x, y));
             }
         }
     });
@@ -41,6 +46,8 @@ pub fn bind(ctrl: &Ctrl, ui: &AppWindow) {
                 ui.window().with_winit_window(|w: &winit::window::Window| {
                     let _ = w.drag_resize_window(dir);
                 });
+                // Outside the window, so it never counts as a click.
+                release_pointer(&ui, LogicalPosition::new(-1.0, -1.0));
             }
         }
     });
@@ -97,4 +104,23 @@ pub fn show_window(ui: &AppWindow) {
     ui.window().set_minimized(false);
     ui.window()
         .with_winit_window(|w: &winit::window::Window| w.focus_window());
+}
+
+/// Once a move or resize is handed to the window manager, it owns the pointer
+/// and the button release never reaches Slint, which would keep the grip
+/// "pressed": the resize cursor stays and every later click starts another
+/// resize. Tell Slint the button is up and the pointer left the window; the
+/// next real pointer move restores hover state.
+fn release_pointer(ui: &AppWindow, position: LogicalPosition) {
+    let weak = ui.as_weak();
+    slint::Timer::single_shot(Duration::ZERO, move || {
+        if let Some(ui) = weak.upgrade() {
+            let window = ui.window();
+            window.dispatch_event(WindowEvent::PointerReleased {
+                position,
+                button: PointerEventButton::Left,
+            });
+            window.dispatch_event(WindowEvent::PointerExited);
+        }
+    });
 }

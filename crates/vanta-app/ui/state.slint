@@ -86,7 +86,8 @@ export global App {
     // Linux draws its own rounded window; Windows 11 rounds corners natively.
     in property <bool> rounded-window: false;
     in property <string> version: "0.1.0";
-    callback start-drag();
+    // Where the press happened (window coordinates), to release it there.
+    callback start-drag(length, length);
     callback start-resize(int);
     callback toggle-maximize();
     callback minimize();

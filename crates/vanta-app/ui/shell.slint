@@ -39,7 +39,7 @@ export component TitleBar inherits Rectangle {
     TouchArea {
         pointer-event(e) => {
             if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
-                App.start-drag();
+                App.start-drag(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
             }
         }
         double-clicked => { App.toggle-maximize(); }
@@ -173,7 +173,7 @@ export component Sidebar inherits Rectangle {
         height: 56px;
         pointer-event(e) => {
             if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
-                App.start-drag();
+                App.start-drag(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
             }
         }
     }
