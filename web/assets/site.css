@@ -5,7 +5,8 @@
 @font-face { font-family: "Pixelify Sans"; src: url("fonts/PixelifySans-SemiBold.woff2") format("woff2"); font-weight: 500 700; font-display: swap; }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
   margin: 0;
@@ -195,4 +196,33 @@ h2 { font-weight: 600; }
 .ico { width: 40px; height: 40px; border-radius: var(--r-sm); background: none; margin-bottom: var(--s4); display: block; }
 .shot, .gallery img { border-radius: var(--r-xl); }
 code { border-radius: var(--r-sm); }
+
+/* Hotbar of block slots under the hero buttons. */
+.hotbar { display: inline-flex; gap: 4px; margin-top: var(--s8); padding: 4px; background: #0d0e11; border: 2px solid #2a2d33; border-radius: var(--r-sm); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.04), 0 3px 0 rgba(0, 0, 0, 0.5); }
+.slot { width: 40px; height: 40px; display: grid; place-items: center; background: #1a1c21; border: 2px solid #23262c; border-radius: 2px; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35); transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+.slot img { width: 26px; height: 26px; }
+.slot.on { border-color: var(--accent); transform: translateY(-2px); }
+
+/* Press feedback without the mobile tap highlight. */
+@media (hover: none) {
+  .btn:active, .dl:active, .card:active, .menu:active { filter: brightness(0.92); }
+  .btn:hover, .card:hover, .dl:hover { transform: none; }
+}
+
+@media (max-width: 720px) {
+  .hero h1 { font-size: clamp(30px, 9vw, 40px); line-height: 1.1; text-wrap: balance; }
+  .hero .lead { font-size: 15px; line-height: 1.55; margin-top: var(--s4); }
+  .eyebrow { font-size: 12px; }
+  .hotbar { margin-top: var(--s6); gap: 3px; padding: 3px; }
+  .slot { width: calc((100vw - 32px - 6px - 24px - 8px) / 9); height: auto; aspect-ratio: 1; max-width: 40px; }
+  .slot img { width: 62%; height: 62%; }
+  /* Compact two-column feature grid. */
+  .grid { grid-template-columns: 1fr 1fr; gap: var(--s3); }
+  .grid .card:last-child:nth-child(odd) { grid-column: span 2; }
+  .card { padding: var(--s4); }
+  .card h3 { font-size: 15px; }
+  .card p { font-size: 13px; line-height: 1.5; }
+  .ico { width: 32px; height: 32px; margin-bottom: var(--s3); }
+  h2 { font-size: 26px; }
+}
 

@@ -49,7 +49,43 @@
   const label = document.getElementById("download-label");
   const hint = document.getElementById("download-hint");
 
-  if (preferred) {
+  // Phones can't run Vanta: offer to send the link to a computer instead.
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  if (mobile) {
+    label.textContent = "Send to my computer";
+    const secondary = document.getElementById("secondary-cta");
+    secondary.textContent = "All downloads";
+    secondary.href = "#download";
+    secondary.removeAttribute("rel");
+    hint.textContent = "Vanta runs on Windows and Linux.";
+    primary.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const url = "https://getvanta.xyz/";
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: "Vanta", text: "Vanta — a fast Minecraft launcher", url });
+          return;
+        }
+        await navigator.clipboard.writeText(url);
+        hint.textContent = "Link copied — open it on your PC.";
+      } catch {
+        /* share sheet dismissed */
+      }
+    });
+  }
+
+  // Hotbar: the selected slot steps along, like scrolling through blocks.
+  const slots = [...document.querySelectorAll(".hotbar .slot")];
+  if (slots.length && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    let sel = 0;
+    setInterval(() => {
+      slots[sel].classList.remove("on");
+      sel = (sel + 1) % slots.length;
+      slots[sel].classList.add("on");
+    }, 1400);
+  }
+
+  if (preferred && !mobile) {
     document.querySelector(`[data-asset="${preferred}"]`)?.classList.add("recommended");
     label.textContent = os === "windows" ? "Download for Windows" : "Download for Linux";
   }
@@ -63,7 +99,7 @@
         const asset = (release.assets || []).find((a) => test(a.name));
         const link = document.querySelector(`[data-asset="${key}"]`);
         if (asset && link) link.href = asset.browser_download_url;
-        if (asset && key === preferred) {
+        if (asset && key === preferred && !mobile) {
           primary.href = asset.browser_download_url;
           hint.textContent = `Version ${version} · ${(asset.size / 1e6).toFixed(1)} MB · Free forever, GPL-3.0.`;
         }
