@@ -464,6 +464,17 @@ fn main() {
         render(&window, &out.join("accounts.png"));
         app.set_accounts_open(false);
     }
+    if only.as_deref().is_none_or(|o| o == "update") {
+        app.set_page(Page::Home);
+        app.set_update_version("0.1.8".into());
+        app.set_update_notes(
+            "## 0.1.8 (2026-10-28)\n\n### Fixes\n\n- **ui:** Round block icons and centre the home glow on every renderer\n- **web:** Drop the header backdrop blur; add an And more feature card"
+                .into(),
+        );
+        app.set_update_open(true);
+        render(&window, &out.join("update.png"));
+        app.set_update_open(false);
+    }
     let theme = ui.global::<Theme>();
     theme.set_dark(false);
     app.set_page(Page::Home);
