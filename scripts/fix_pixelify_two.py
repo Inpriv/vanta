@@ -3,8 +3,8 @@
 
 Pixelify Sans draws "2" with a closed lower bowl, so at stat sizes "28" reads
 as "88". This replaces just that glyph with an open, classic pixel 2 built on
-the font's own grid and stroke widths, with a half-height notch in the
-bottom bar; every other glyph is untouched. The
+the font's own grid and stroke widths, with two half-height notches in
+the bottom bar; every other glyph is untouched. The
 fonts are OFL-1.1 with no Reserved Font Name, so the family name stays.
 
 Usage: scripts/fix_pixelify_two.py web/assets/fonts/PixelifySans-*.woff2
@@ -36,15 +36,14 @@ def rects(g, steps=3):
         (g["L"], g["tip_lo"], g["li"], g["top_lo"] + 1),    # left tip
         (g["ri"], g["mid_hi"], g["R"], g["top_lo"] + 1),    # right shoulder
     ]
-    # Bottom bar with a half-height notch cut into its underside, mid-way.
-    gap = g["l"] - g["L"]
-    gx = (g["L"] + g["R"] - gap) // 2
+    # Bottom bar split into five cells; the second and fourth are cut away
+    # on their lower half, leaving two small notches beside the middle.
+    cell = (g["R"] - g["L"]) / 5
     half = (g["bot"] + g["bar"]) // 2
-    out += [
-        (g["L"], g["bot"], gx, g["bar"]),
-        (gx + gap, g["bot"], g["R"], g["bar"]),
-        (gx - 1, half, gx + gap + 1, g["bar"]),
-    ]
+    xs = [round(g["L"] + cell * i) for i in range(6)]
+    for i in range(5):
+        y0 = half if i in (1, 3) else g["bot"]
+        out.append((xs[i] - (i > 0), y0, xs[i + 1] + (i < 4), g["bar"]))
     # Diagonal from under the shoulder down to the bottom-left, one stroke
     # wide, as a staircase of equal steps (each overlaps the next by 1 unit).
     h = (g["mid_hi"] - g["bar"]) / steps
