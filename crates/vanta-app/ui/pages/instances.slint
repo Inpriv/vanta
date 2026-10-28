@@ -6,7 +6,7 @@ component InstanceCard inherits Rectangle {
     in property <InstanceItem> inst;
     callback open();
 
-    height: 148px;
+    height: 80px;
     Card {
         interactive: true;
         hovered: ta.has-hover;
@@ -20,42 +20,20 @@ component InstanceCard inherits Rectangle {
             mouse-cursor: pointer;
             clicked => { root.open(); }
         }
-        VerticalLayout {
-            padding: Space.s4;
+        // Icon, then name and details, then Play: one compact row.
+        HorizontalLayout {
+            padding-left: Space.s4;
+            padding-right: Space.s4;
             spacing: Space.s3;
-            HorizontalLayout {
-                InstanceIcon {
-                    key: root.inst.icon;
-                    initial: root.inst.initial;
-                    size: 48px;
-                }
-                Rectangle { horizontal-stretch: 1; }
-                play := Rectangle {
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 18px;
-                    background: root.inst.running ? Theme.surface-3 : (pa.has-hover ? Theme.accent.brighter(0.08) : Theme.accent);
-                    opacity: ta.has-hover || pa.has-hover || root.inst.running ? 1 : 0;
-                    y: ta.has-hover || pa.has-hover || root.inst.running ? 0px : 6px;
-                    animate opacity, y, background { duration: Motion.base; easing: Motion.out; }
-                    accessible-role: button;
-                    accessible-label: root.inst.running ? "Stop" : "Play " + root.inst.name;
-                    accessible-action-default => { if root.inst.running { App.stop(root.inst.id); } else { App.play(root.inst.id); } }
-                    pa := TouchArea {
-                        mouse-cursor: pointer;
-                        clicked => {
-                            if root.inst.running { App.stop(root.inst.id); } else { App.play(root.inst.id); }
-                        }
-                    }
-                    Icon {
-                        source: root.inst.running ? @image-url("../icons/px/stop.png") : @image-url("../icons/px/play.png");
-                        size: 16px;
-                        colorize: root.inst.running ? Theme.text : Theme.on-accent;
-                    }
-                }
+            InstanceIcon {
+                key: root.inst.icon;
+                initial: root.inst.initial;
+                size: 48px;
+                y: (parent.height - self.height) / 2;
             }
-            Rectangle { vertical-stretch: 1; }
             VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
                 spacing: 2px;
                 Text {
                     text: root.inst.name;
@@ -72,6 +50,30 @@ component InstanceCard inherits Rectangle {
                     overflow: elide;
                 }
             }
+            // Always takes its space, so the text doesn't shift when it shows.
+            play := Rectangle {
+                width: 36px;
+                height: 36px;
+                border-radius: 18px;
+                background: root.inst.running ? Theme.surface-3 : (pa.has-hover ? Theme.accent.brighter(0.08) : Theme.accent);
+                opacity: ta.has-hover || pa.has-hover || root.inst.running ? 1 : 0;
+                y: (parent.height - self.height) / 2 + (ta.has-hover || pa.has-hover || root.inst.running ? 0px : 6px);
+                animate opacity, y, background { duration: Motion.base; easing: Motion.out; }
+                accessible-role: button;
+                accessible-label: root.inst.running ? "Stop" : "Play " + root.inst.name;
+                accessible-action-default => { if root.inst.running { App.stop(root.inst.id); } else { App.play(root.inst.id); } }
+                pa := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        if root.inst.running { App.stop(root.inst.id); } else { App.play(root.inst.id); }
+                    }
+                }
+                Icon {
+                    source: root.inst.running ? @image-url("../icons/px/stop.png") : @image-url("../icons/px/play.png");
+                    size: 16px;
+                    colorize: root.inst.running ? Theme.text : Theme.on-accent;
+                }
+            }
         }
     }
 }
@@ -79,8 +81,10 @@ component InstanceCard inherits Rectangle {
 export component InstancesPage inherits Rectangle {
     callback create-instance();
     private property <string> filter;
-    private property <int> cols: max(1, floor((root.width - 80px + 16px) / 236px));
-    private property <length> card-w: (root.width - 80px - (cols - 1) * 16px) / cols;
+    // Same side padding as the page, so the grid lines up with the header.
+    private property <length> inner: root.width - 2 * Space.s8;
+    private property <int> cols: max(1, floor((root.inner + 12px) / 272px));
+    private property <length> card-w: (root.inner - (cols - 1) * 12px) / cols;
 
     VerticalLayout {
         width: parent.width;
@@ -139,10 +143,10 @@ export component InstancesPage inherits Rectangle {
             content-height: grid.height + Space.s10;
             grid := Rectangle {
                 y: 4px;
-                height: ceil(App.instances.length / root.cols) * (148px + 16px);
+                height: ceil(App.instances.length / root.cols) * (80px + 12px);
                 for inst[i] in App.instances: InstanceCard {
-                    x: mod(i, root.cols) * (root.card-w + 16px);
-                    y: floor(i / root.cols) * (148px + 16px);
+                    x: mod(i, root.cols) * (root.card-w + 12px);
+                    y: floor(i / root.cols) * (80px + 12px);
                     width: root.card-w;
                     inst: inst;
                     // Filtering dims non-matching cards instead of reflowing the grid.
