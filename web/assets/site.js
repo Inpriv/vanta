@@ -13,6 +13,14 @@
   // No pinch zoom: Safari ignores user-scalable=no, so stop its gestures too.
   for (const g of ["gesturestart", "gesturechange"]) addEventListener(g, (e) => e.preventDefault(), { passive: false });
 
+  // Long-pressing a link or picture on a phone opens the browser's link menu;
+  // the site should feel like an app, so skip it on touch screens.
+  if (matchMedia("(hover: none)").matches) {
+    addEventListener("contextmenu", (e) => {
+      if (e.target.closest("a, button, img, .slot")) e.preventDefault();
+    });
+  }
+
   // Mobile menu.
   const menu = document.querySelector(".menu");
   const nav = document.getElementById("site-nav");

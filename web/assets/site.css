@@ -210,6 +210,8 @@ code { border-radius: var(--r-sm); }
 @media (hover: none) {
   .btn:active, .dl:active, .card:active, .menu:active { filter: brightness(0.92); }
   .btn-ghost:active { background: var(--surface-2); }
+  /* Holding a button or picture shouldn't open the browser's link menu. */
+  a, button, img, .slot { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
 }
 
 @media (max-width: 720px) {
