@@ -16,11 +16,12 @@ import pathops
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTFont
 
-# The middle stroke's full extent in each weight, read from the original "2":
-# from the left inner edge to the right outer edge, bottom to top.
+# The middle stroke in each weight, read from the original "2": the glyph's
+# full width (outer left to outer right edge), bottom to top of the stroke.
+# Spanning the full width hides the side strokes' offset ends.
 MIDDLE = {
-    "Regular": (151, 260, 433, 359),
-    "SemiBold": (150, 251, 446, 374),
+    "Regular": (60, 260, 525, 359),
+    "SemiBold": (61, 251, 536, 374),
 }
 
 
